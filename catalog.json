@@ -1,0 +1,24 @@
+{
+  "articles": [
+    {
+      "id": "r20261017-01",
+      "readingId": "R-20261017-01",
+      "title": "通过硼自由基裂解实现N-烷基氮杂环丙烷的发散式开环与官能团化",
+      "journal": "Nature Chemistry",
+      "published": "2026.09",
+      "kind": "research",
+      "doi": "10.1038/s41557-026-02247-x",
+      "cover": "./covers/r20261017-01.png"
+    },
+    {
+      "id": "paper01",
+      "readingId": "R-20261016-01",
+      "title": "催化不对称自由基–极性交叉氢烷氧基化",
+      "journal": "Journal of the American Chemical Society",
+      "published": "2019.10",
+      "kind": "research",
+      "doi": "10.1021/jacs.9b10645",
+      "cover": "./covers/paper01.png"
+    }
+  ]
+}

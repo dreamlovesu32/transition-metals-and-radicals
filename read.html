@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="mono">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>文献导读</title>
+  <link rel="stylesheet" href="./app.css">
+  <script src="./reader.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./index.html" aria-label="返回文献目录"><span class="brand-mark">R<span>·</span></span><span>文献导读</span></a>
+    <nav class="reading-navigation" aria-label="阅读导航"><div class="reading-main-nav"><a id="nav-catalog" href="./index.html">文献导航</a><button id="nav-prev" type="button" disabled>上一篇</button><button id="nav-next" type="button" disabled>下一篇</button></div><div class="reading-jump-nav"><button id="nav-top" type="button">顶部</button><button id="nav-bottom" type="button">底部</button></div></nav>
+    <div class="top-actions"><a class="top-link" href="#" target="_blank" rel="noopener">原文链接 <span class="ui-arrow-external" aria-hidden="true"></span></a></div>
+  </header>
+  <div class="layout">
+    <aside class="left-rail" aria-label="原文配图">
+      <div class="figure-panel-head"><span class="rail-kicker">原文配图</span><div class="figure-head-actions"><button id="figure-auto" class="figure-auto" type="button" aria-pressed="true">自动</button><button id="figure-zoom" type="button" aria-pressed="false">铺满</button><div class="figure-scale-controls" role="group" aria-label="图片缩放"><button id="figure-zoom-out" type="button" aria-label="缩小图片">−</button><button id="figure-detail-zoom" type="button" aria-label="放大图片">＋</button><button id="figure-fit" type="button">适应</button></div></div><span id="figure-position"></span></div>
+      <div class="figure-stage-wrap"><div class="figure-stage" id="figure-stage" tabindex="0" aria-label="原文配图，放大后可横向和纵向滚动"><div id="figure-canvas"><img id="panel-figure-image" alt=""></div></div><button id="figure-edge-prev" class="figure-edge-nav prev" type="button" aria-label="上一张原图"><span class="ui-arrow-left" aria-hidden="true"></span></button><button id="figure-edge-next" class="figure-edge-nav next" type="button" aria-label="下一张原图"><span class="ui-arrow-right" aria-hidden="true"></span></button></div>
+      <div class="figure-panel-meta"><span id="panel-figure-page"></span><p id="panel-figure-caption"></p><span id="panel-figure-note"></span></div>
+      <div class="figure-controls"><button id="figure-prev" type="button" aria-label="上一张原图"><span class="ui-arrow-left" aria-hidden="true"></span></button><div id="figure-list" class="figure-list" role="group" aria-label="选择原文配图"></div><button id="figure-next" type="button" aria-label="下一张原图"><span class="ui-arrow-right" aria-hidden="true"></span></button></div>
+    </aside>
+    <div id="pane-divider" class="pane-divider" role="separator" aria-label="调整原图与正文宽度" aria-orientation="vertical" aria-controls="figure-stage main" aria-valuemin="30" aria-valuemax="70" aria-valuenow="45" aria-valuetext="原图45%，正文55%" tabindex="0" title="拖动调整宽度；双击恢复45%/55%；方向键微调"></div>
+    <aside class="old-navigation" hidden aria-label="文章导航"><nav id="toc"></nav></aside>
+    <main id="main"><div class="article-head"><div class="eyebrow"><span class="eyebrow-line"></span> 研究论文 <span class="separator">/</span> 导读</div><div id="article"></div></div><footer class="article-footer" aria-label="阅读结束导航"><button id="footer-top" type="button">返回顶部 <span class="ui-arrow-up" aria-hidden="true"></span></button><a id="footer-catalog" href="./index.html">返回导航 <span class="ui-arrow-right" aria-hidden="true"></span></a></footer></main>
+  </div>
+</body>
+</html>
