@@ -51,7 +51,7 @@ async function startCatalog() {
     $("#review-count").textContent = `${reviews.length} 篇`;
     $("#review-empty").hidden = reviews.length > 0;
   } catch(error) {
-    $("#research-list").textContent = "目录暂时无法载入，请检查本机阅读服务。";
+    $("#research-list").textContent = "目录暂时无法载入，请刷新页面重试。";
   }
 }
 
