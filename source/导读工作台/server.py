@@ -177,6 +177,8 @@ class Handler(DemoMixin, BaseHTTPRequestHandler):
                 return self.json_response(error.status, {'error': error.code})
         if path == "/app.css":
             return self.file_response(ROOT / "app.css", "text/css; charset=utf-8")
+        if path == "/inline-format.js":
+            return self.file_response(ROOT / "inline-format.js", "text/javascript; charset=utf-8")
         if path == "/app.js":
             return self.file_response(ROOT / "app.js", "text/javascript; charset=utf-8")
         if path in ("/api/catalog", "/catalog.json"):

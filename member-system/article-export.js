@@ -2,7 +2,8 @@
 (function(global){
  'use strict';
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function inline(s){return esc(s).replace(/S&lt;sub&gt;([NH])&lt;\/sub&gt;([12])/g,'S<sub>$1</sub>$2').replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2">$1</a>').replace(/\*\*([^\n]+?)\*\*/g,'<strong>$1</strong>').replace(/(^|[^A-Za-z0-9\u0370-\u03FF\u1F00-\u1FFF])\*([^*\n]+)\*/g,'$1<em>$2</em>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\n/g,'<br>');}
+ const formatter=global.ReadInline||(typeof require==='function'?require('../inline-format.js'):null);
+ function inline(s){if(!formatter)throw Error('排版工具尚未载入，请刷新重试。');return formatter.html(s);}
  function visible(s){return String(s||'').replace(/<\/?sub>/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/[*`\s]/g,'');}
  function stats(blocks){return {characters:blocks.reduce((n,b)=>n+visible(b.text).length,0),figures:blocks.filter(b=>b.kind==='figure').length};}
  function split(blocks,starts){

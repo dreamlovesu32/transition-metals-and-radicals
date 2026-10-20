@@ -21,6 +21,7 @@ SCHEMA = (
     'CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, uid TEXT NOT NULL, article_id TEXT NOT NULL, version_hash TEXT NOT NULL, anchor TEXT NOT NULL, quote TEXT NOT NULL, text TEXT NOT NULL)',
     'CREATE TABLE IF NOT EXISTS note_requests (uid TEXT NOT NULL, client_id TEXT NOT NULL, note_id TEXT NOT NULL UNIQUE, request_hash TEXT NOT NULL, PRIMARY KEY(uid,client_id))',
     'CREATE TABLE IF NOT EXISTS feedback (id TEXT PRIMARY KEY, uid TEXT NOT NULL, draft_id TEXT NOT NULL, version_hash TEXT NOT NULL, target_type TEXT NOT NULL, target_id TEXT NOT NULL, quote TEXT NOT NULL, comment TEXT NOT NULL, created_at TEXT NOT NULL)',
+    'CREATE TABLE IF NOT EXISTS feedback_edits (id TEXT PRIMARY KEY, feedback_id TEXT NOT NULL, uid TEXT NOT NULL, revision INTEGER NOT NULL, comment TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(feedback_id,revision))',
     'CREATE TABLE IF NOT EXISTS reviews (id TEXT PRIMARY KEY, uid TEXT NOT NULL, draft_id TEXT NOT NULL, version_hash TEXT NOT NULL, decision TEXT NOT NULL, comment TEXT NOT NULL, created_at TEXT NOT NULL)',
 )
 

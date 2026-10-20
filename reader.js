@@ -102,15 +102,7 @@ function configureReviewNavigation() {
 }
 function figurePage(src) { return documentState?.article?.figurePages?.[src] ?? "?"; }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
-function inlineMarkdown(text) {
-  let html = escapeHtml(text);
-  html = html.replace(/S&lt;sub&gt;([NH])&lt;\/sub&gt;([12])/g, 'S<sub>$1</sub>$2');
-  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1 <span class=ui-arrow-external aria-hidden=true></span></a>');
-  html = html.replace(/\*\*([^\n]+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/(^|[^A-Za-z0-9\u0370-\u03FF\u1F00-\u1FFF])\*([^*\n]+)\*/g, '$1<em>$2</em>');
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-  return html.replace(/\n/g, '<br>');
-}
+function inlineMarkdown(text) { return window.ReadInline.html(text); }
 
 function blockElement(block) {
   const wrap = document.createElement("section");
@@ -1042,8 +1034,8 @@ async function start() {
     $("#article").innerHTML = '<h1 class="article-title">阅读内容暂时无法载入</h1><p>' + (reviewMode ? escapeHtml(error.message || "请返回稿件审核重试。") : '请从文献导航重新选择文章。') + '</p>';
     showPreparationFailure(reviewMode ? error.message || "稿件暂时无法载入，请重试。" : "阅读内容暂时无法载入，请重试。");
   }
-  $("#nav-top").addEventListener("click", () => {readingBottomIntent = false; window.scrollTo({top:0,behavior:"smooth"});});
-  $("#nav-bottom").addEventListener("click", () => {readingBottomIntent = true; window.scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});});
+  $("#nav-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; window.scrollTo({top:0,behavior:"smooth"});});
+  $("#nav-bottom").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("bottom");readingBottomIntent = true; window.scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});});
   window.addEventListener("wheel", event => {if(!event.ctrlKey) readingBottomIntent = false;}, {passive:true});
   window.addEventListener("touchmove", () => {readingBottomIntent = false;}, {passive:true});
   window.addEventListener("keydown", event => {if(["ArrowUp","ArrowDown","PageUp","PageDown","Home","End"," "].includes(event.key)) readingBottomIntent = false;});
@@ -1051,7 +1043,7 @@ async function start() {
   $("#nav-next").addEventListener("click", event => navigateToArticle(event.currentTarget));
   $("#nav-catalog").addEventListener("click", saveReadingState);
   $("#footer-catalog").addEventListener("click", saveReadingState);
-  $("#footer-top").addEventListener("click", () => {readingBottomIntent = false; window.scrollTo({top:0,behavior:"smooth"});});
+  $("#footer-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; window.scrollTo({top:0,behavior:"smooth"});});
   $(".topbar .brand").addEventListener("click", saveReadingState);
   window.addEventListener("pagehide", saveReadingState);
   document.addEventListener("visibilitychange", () => {if(document.visibilityState === "hidden") saveReadingState();});

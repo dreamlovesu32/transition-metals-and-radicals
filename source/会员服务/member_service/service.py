@@ -111,7 +111,7 @@ class MemberService:
             row=tx.one('SELECT * FROM drafts WHERE id=?',(identifier(did),))
             if not row: raise ServiceError(404,'draft_not_found')
             row['assets']=tx.all('SELECT id,mime,version_hash FROM assets WHERE draft_id=?',(did,))
-            row['feedback']=tx.all('SELECT uid,version_hash,target_type,target_id,quote,comment,created_at FROM feedback WHERE draft_id=?',(did,))
+            row['feedback']=self._feedback_records(tx,did)
             row['reviews']=tx.all('SELECT uid,version_hash,decision,comment,created_at FROM reviews WHERE draft_id=?',(did,))
             return row
     def export_plan(self,uid,did,source,vh,plan=None):
@@ -168,6 +168,31 @@ class MemberService:
             fid=uuid.uuid4().hex
             tx.execute('INSERT INTO feedback VALUES (?,?,?,?,?,?,?,?,?)',(fid,uid,did,vh,target['type'],target_id,quote,comment,datetime.now(timezone.utc).isoformat()))
         return {'id':fid,'version_hash':vh,'target':target,'comment':comment}
+    def _feedback_records(self,tx,did):
+        records=tx.all('SELECT * FROM feedback WHERE draft_id=? ORDER BY created_at,id',(did,))
+        for record in records:
+            edit=tx.one('SELECT comment,revision,created_at FROM feedback_edits WHERE feedback_id=? ORDER BY revision DESC LIMIT 1',(record['id'],))
+            record['edit_revision']=edit['revision'] if edit else 0
+            if edit:record.update(comment=edit['comment'],edited_at=edit['created_at'])
+        return records
+    def edit_feedback(self,uid,did,fid,data):
+        vh=version(data.get('version_hash'));comment=bounded(data.get('comment'),10000)
+        revision=data.get('edit_revision')
+        if type(revision) is not int or revision<0:raise ServiceError(400,'invalid_revision')
+        with self.store.transaction() as tx:
+            self._admin(tx,uid)
+            draft=tx.one('SELECT version_hash FROM drafts WHERE id=?',(identifier(did),))
+            if not draft:raise ServiceError(404,'draft_not_found')
+            if draft['version_hash']!=vh:raise ServiceError(409,'stale_feedback')
+            record=tx.one('SELECT * FROM feedback WHERE id=? AND draft_id=?',(identifier(fid),did))
+            if not record:raise ServiceError(404,'feedback_not_found')
+            if record['uid']!=uid:raise ServiceError(403,'feedback_owner_required')
+            if record['version_hash']!=vh:raise ServiceError(409,'stale_feedback')
+            latest=tx.one('SELECT MAX(revision) AS revision FROM feedback_edits WHERE feedback_id=?',(fid,))['revision'] or 0
+            if latest!=revision:raise ServiceError(409,'feedback_conflict')
+            stamp=datetime.now(timezone.utc).isoformat()
+            tx.execute('INSERT INTO feedback_edits VALUES (?,?,?,?,?,?)',(uuid.uuid4().hex,fid,uid,revision+1,comment,stamp))
+        return {**record,'comment':comment,'edit_revision':revision+1,'edited_at':stamp}
     def get_progress(self,uid,aid):
         with self.store.transaction() as tx:
             self._article(tx,aid)
@@ -197,7 +222,9 @@ class MemberService:
     def trusted_export_events(self,tx,after='',after_id=''):
         # Explicit trusted operator path, never routed without admin authentication.
         bounded(after,100,True);bounded(after_id,100,True)
-        rows=tx.all("SELECT * FROM (SELECT id,uid,draft_id,version_hash,decision AS event_type,comment,created_at,'' AS target_type,'' AS target_id,'' AS quote FROM reviews UNION ALL SELECT id,uid,draft_id,version_hash,'feedback' AS event_type,comment,created_at,target_type,target_id,quote FROM feedback) AS event_rows WHERE created_at>? OR (created_at=? AND id>?) ORDER BY created_at,id LIMIT 200",(after,after,after_id))
+        rows=tx.all("SELECT * FROM (SELECT id,uid,draft_id,version_hash,decision AS event_type,comment,created_at,'' AS target_type,'' AS target_id,'' AS quote,NULL AS feedback_id,0 AS edit_revision FROM reviews UNION ALL SELECT id,uid,draft_id,version_hash,'feedback' AS event_type,comment,created_at,target_type,target_id,quote,NULL,0 FROM feedback UNION ALL SELECT e.id,e.uid,f.draft_id,f.version_hash,'feedback_edit',e.comment,e.created_at,f.target_type,f.target_id,f.quote,f.id,e.revision FROM feedback_edits e JOIN feedback f ON f.id=e.feedback_id) AS event_rows WHERE created_at>? OR (created_at=? AND id>?) ORDER BY created_at,id LIMIT 200",(after,after,after_id))
+        for row in rows:
+            if row['feedback_id'] is None:row.pop('feedback_id');row.pop('edit_revision')
         return {'events':rows,'cursor':{'after':rows[-1]['created_at'],'after_id':rows[-1]['id']} if rows else {'after':after,'after_id':after_id}}
     # Trusted ingestion only: no HTTP route, no publishing side effect.
     def import_draft(self,did,title,body,assets,approval_hash=None):

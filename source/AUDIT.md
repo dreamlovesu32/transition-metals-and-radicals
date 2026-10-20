@@ -1,5 +1,29 @@
 # Navigation repair and source isolation audit — 2026-10-20
 
+## Review editor, chemistry formatting and page jumps
+
+The current review reuses one editor for a new selection and an existing note.
+Edits retain the feedback identity and append an immutable revision; the original
+comment remains untouched. The server checks administrator status, the original
+author, the current article hash and the expected edit revision. Concurrent edits
+fail with a conflict. Archived article versions remain read-only. A new
+`feedback_edit` event has its own event ID and carries the original feedback ID
+and article version; original event JSON remains compatible with existing inboxes.
+
+A shared escaped formatter renders ASCII ligand stars as superscripts in reading
+and exports while preserving Markdown bold ranges. Explicit `顶部` and `底部`
+buttons live in the horizontally scrollable toolbar. A jump toggles the active
+button to `返回原位` and restores the original reading anchor without browser
+history changes. No page jump controls overlay article images.
+
+Five new synthetic frontend checks cover formatting, return anchors, historic
+read-only mode, drawer/editor exclusion and reused editor PUT/POST behavior. Three new backend tests cover immutable edits, cursor
+events, ownership, version conflicts and CSRF. The backend suite passes 157 tests.
+An isolated live database transaction verified nine edit/permission/event checks
+under `service_role`, then rolled back all synthetic rows. Browser acceptance is
+recorded separately by the coordinating agent; these tests do not claim a real
+production administrator browser session was exercised.
+
 ## Root cause and correction
 
 The shared navigation renderer had removed the administrator's review link.

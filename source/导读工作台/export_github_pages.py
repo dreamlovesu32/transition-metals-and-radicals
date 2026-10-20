@@ -197,7 +197,7 @@ def build() -> None:
         catalog_html = catalog_html.replace('href="/literature-lookup.css', 'href="./literature-lookup.css').replace('src="/literature-lookup.js', 'src="./literature-lookup.js')
         catalog_html = catalog_html.replace('href="/"', 'href="./index.html"').replace('href="/catalog.css', 'href="./catalog.css').replace('src="/catalog.js', 'src="./catalog.js').replace('href="/member-system/', 'href="./member-system/').replace('src="/member-system/', 'src="./member-system/')
         write_text(stage / "index.html", catalog_html)
-        for name in ("literature-lookup.js", "literature-lookup.css", "reader-chrome.js", "reader-chrome.css"):
+        for name in ("literature-lookup.js", "literature-lookup.css", "reader-chrome.js", "reader-chrome.css", "inline-format.js"):
             content = (ROOT / name).read_text(encoding="utf-8")
             if name.endswith('.js'):
                 content = content.replace("'/api/catalog'", "'./catalog.json'").replace('`/read?article=', '`./read.html?article=')
@@ -243,6 +243,10 @@ def build() -> None:
             present = set()
             for base, dirs, files in os.walk(dest):
                 dirs[:] = [directory for directory in dirs if directory != ".git"]
+                if Path(base) == dest:
+                    # Independently audited repository source is preserved here,
+                    # never copied into the exact CloudBase deployment stage.
+                    dirs[:] = [directory for directory in dirs if directory != "source"]
                 present.update((Path(base) / name).relative_to(dest) for name in files)
             extra = present - expected
             if extra:

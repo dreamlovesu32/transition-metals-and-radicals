@@ -1,6 +1,12 @@
 /* Shared reading chrome. Article text and member permissions stay with their owners. */
+function createReaderJumpController(capture,move,restore,changed){
+ let origin=null,edge=null;
+ return {async jump(next){if(edge===next&&origin){const saved=origin;origin=null;edge=null;changed(null);await restore(saved);return;}if(!origin)origin=capture();edge=next;changed(edge);await move(next);},get edge(){return edge;}};
+}
+if(typeof module!=='undefined')module.exports={createReaderJumpController};
 (() => {
   'use strict';
+  if(typeof document==='undefined')return;
   const q = s => document.querySelector(s);
   if (!q('#article') || !q('.topbar')) return;
   const paths = {
@@ -33,13 +39,19 @@
   const bar=document.createElement('nav');bar.className='reader-toolbar';bar.setAttribute('aria-label','阅读工具');
   const leading=document.createElement('div'),actions=document.createElement('div'),ending=document.createElement('div');
   leading.className=actions.className=ending.className='reader-tool-group';
-  actions.id='reader-member-actions';bar.append(leading,actions,ending);
+  actions.id='reader-member-actions';const scrolling=document.createElement('div');scrolling.className='reader-tool-scroll';scrolling.append(leading,actions);bar.append(scrolling,ending);
   q('.topbar').after(bar);
   const catalog=q('#nav-catalog');if(catalog)q('.brand').after(catalog);
   for(const [id,key,label] of [['nav-prev','prev','上一篇'],['nav-next','next','下一篇']])if(q('#'+id))leading.append(dress(q('#'+id),key,label));
-  const jumps=document.createElement('div');jumps.className='reader-jumps';jumps.setAttribute('aria-label','页面跳转');
-  for(const [id,key,label] of [['nav-top','up','返回顶部'],['nav-bottom','down','前往底部']])if(q('#'+id))jumps.append(dress(q('#'+id),key,label));
-  document.body.append(jumps);q('.reading-navigation')?.remove();
+  const jumps=document.createElement('div');jumps.className='reader-jump-tools';jumps.setAttribute('aria-label','页面跳转');
+  const jumpButtons={};for(const [id,key,label] of [['nav-top','top','顶部'],['nav-bottom','bottom','底部']]){const button=q('#'+id);if(!button)continue;button.className='reader-jump-button';button.textContent=label;button.setAttribute('aria-label','前往页面'+label);button.title='前往页面'+label;jumps.append(button);jumpButtons[key]=button;}
+  leading.append(jumps);q('.reading-navigation')?.remove();
+  const jumpController=createReaderJumpController(
+   ()=>({x:window.scrollX,y:window.scrollY,anchor:typeof readingAnchor==='function'?readingAnchor():null}),
+   edge=>{if(typeof readingBottomIntent!=='undefined')readingBottomIntent=edge==='bottom';window.scrollTo({top:edge==='top'?0:document.documentElement.scrollHeight,behavior:'smooth'});},
+   saved=>{if(typeof readingBottomIntent!=='undefined')readingBottomIntent=!!saved.anchor?.atBottom;if(saved.anchor&&typeof restoreArticleScroll==='function')restoreArticleScroll({scroll:saved.anchor});else window.scrollTo({top:saved.y,left:saved.x,behavior:'smooth'});},
+   active=>{for(const [edge,button]of Object.entries(jumpButtons)){const label=edge==='top'?'顶部':'底部';button.textContent=active===edge?'返回原位':label;button.title=active===edge?'返回跳转前的阅读位置':'前往页面'+label;button.setAttribute('aria-label',button.title);button.setAttribute('aria-pressed',String(active===edge));}}
+  );
   if(new URLSearchParams(location.search).has('review')){
     const badge=document.createElement('span');badge.className='reader-review-badge';badge.textContent='审稿';leading.append(badge);
   }
@@ -68,6 +80,8 @@
     returnFocus?.focus({preventScroll:true});
   }
   async function showPanel(panel,trigger) {
+    // The drawer and a sentence editor share one reading workspace.
+    document.querySelectorAll('.member-review-editor').forEach(editor=>{editor.hidden=true;});
     if(openPanel===panel){await closePanel();return;}
     await closePanel();returnFocus=trigger;openPanel=panel;panel.hidden=false;panel._trigger=trigger;
     panel.querySelectorAll('.reader-panel-body > details').forEach(d=>{d.open=true;});
@@ -179,7 +193,7 @@
     if(!document.body.classList.contains('reader-preparing')){clearInterval(timer);return;}
     if(message&&/^正在准备阅读/.test(message.textContent))message.textContent='正在准备阅读'+'.'.repeat(1+(Math.floor(Date.now()/450)%3));
   },450);
-  window.ReadChrome={closePanel,refresh:tidyMemberTools};
+  window.ReadChrome={closePanel,refresh:tidyMemberTools,jump:edge=>jumpController.jump(edge)};
   window.addEventListener('read-public-update',()=>{
     if(q('.reader-update-notice'))return;
     const update=document.createElement('button');update.type='button';update.className='reader-update-notice';

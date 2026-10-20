@@ -102,15 +102,7 @@ function configureReviewNavigation() {
 }
 function figurePage(src) { return documentState?.article?.figurePages?.[src] ?? "?"; }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
-function inlineMarkdown(text) {
-  let html = escapeHtml(text);
-  html = html.replace(/S&lt;sub&gt;([NH])&lt;\/sub&gt;([12])/g, 'S<sub>$1</sub>$2');
-  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1 <span class=ui-arrow-external aria-hidden=true></span></a>');
-  html = html.replace(/\*\*([^\n]+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/(^|[^A-Za-z0-9\u0370-\u03FF\u1F00-\u1FFF])\*([^*\n]+)\*/g, '$1<em>$2</em>');
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-  return html.replace(/\n/g, '<br>');
-}
+function inlineMarkdown(text) { return window.ReadInline.html(text); }
 
 function blockElement(block) {
   const wrap = document.createElement("section");

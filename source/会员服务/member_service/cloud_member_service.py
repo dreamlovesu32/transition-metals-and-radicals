@@ -25,6 +25,7 @@ class CloudMemberService(CloudAssetMixin):
                 'stale_review': 409, 'stale_feedback': 409,
                 'progress_conflict': 409, 'idempotency_conflict': 409,
                 'asset_not_found': 404, 'stale_asset': 409, 'invalid_asset_offset': 400,
+                'feedback_not_found':404,'feedback_owner_required':403,'feedback_conflict':409,'invalid_input':400,
             }.get(code)
             if status is None:
                 raise RuntimeError('unexpected_database_error')
@@ -96,10 +97,20 @@ class CloudMemberService(CloudAssetMixin):
         return self._call('draft_versions',uid=bounded(uid,256),draft_id=identifier(did))
 
     def draft_version(self, uid, did, vh):
-        return self._call('draft_version_get',uid=bounded(uid,256),draft_id=identifier(did),version_hash=version(vh))
+        result=self._call('draft_version_get',uid=bounded(uid,256),draft_id=identifier(did),version_hash=version(vh))
+        result['feedback']=self._call('feedback_records',uid=uid,draft_id=did,version_hash=vh)['items']
+        return result
 
     def draft(self, uid, did):
-        return self._call('draft_get', uid=bounded(uid, 256), draft_id=identifier(did))
+        result=self._call('draft_get', uid=bounded(uid, 256), draft_id=identifier(did))
+        result['feedback']=self._call('feedback_records',uid=uid,draft_id=did)['items']
+        return result
+
+    def edit_feedback(self,uid,did,fid,data):
+        revision=data.get('edit_revision')
+        if type(revision) is not int or revision<0:raise ServiceError(400,'invalid_revision')
+        return self._call('feedback_edit',uid=bounded(uid,256),draft_id=identifier(did),feedback_id=identifier(fid),
+            version_hash=version(data.get('version_hash')),edit_revision=revision,comment=bounded(data.get('comment'),10000))
 
     def export_plan(self, uid, did, source, vh, plan=None):
         payload={'uid':bounded(uid,256),'draft_id':identifier(did),'source':source,'version_hash':version(vh)}

@@ -19,7 +19,7 @@ REPOSITORY = ROOT / "发布" / "github-pages"
 FRONTEND = (
     "app.css", "app.js", "article_config.py", "catalog.css", "catalog.html",
     "catalog.js", "export_github_pages.py", "index.html", "literature-lookup.css",
-    "literature-lookup.js", "reader-chrome.css", "reader-chrome.js", "server.py",
+    "literature-lookup.js", "reader-chrome.css", "reader-chrome.js", "inline-format.js", "server.py",
     "validate_article.py", "public-site/published-library.js", "public-site/read.html",
     "public-site/reader-boot.js", "public-site/reader-prelude.js",
     "member-system/members.js", "member-system/members.css",
@@ -27,11 +27,13 @@ FRONTEND = (
     "member-system/favorites.html", "member-system/admin.html",
     "templates/article-manifest.example.json", "templates/content-en.example.md",
     "templates/content-zh.example.md",
+    "tests/chemical-inline-export.test.cjs",
 )
 FRONTEND_TESTS = (
     "account-entry.test.cjs", "admin-feedback.test.cjs", "admin-navigation.test.cjs",
     "draft-selection.test.cjs", "members.test.cjs", "navigation-init.test.cjs",
     "review-queue.test.cjs", "review-reader.test.cjs", "session-check.test.cjs",
+    "reader-ui.test.cjs",
 )
 BACKEND_MODULES = (
     "__init__.py", "article_export.py", "cloud_assets.py", "cloud_member_service.py",
@@ -48,6 +50,7 @@ BACKEND_SQL = (
     "asset_operations.sql", "auth_operations.sql", "export_operations.sql",
     "member_operations.sql", "publish_operations.sql", "trusted_operations.sql",
     "version_operations.sql",
+    "feedback_edit_operations.sql",
 )
 BACKEND_TESTS = (
     "test_admin_attestation.py", "test_auth.py", "test_auth_startup_latency.py",
@@ -56,6 +59,7 @@ BACKEND_TESTS = (
     "test_cloudbase_shared_auth.py", "test_deployment.py", "test_idempotence.py",
     "test_publication.py", "test_review_gate.py", "test_scf_handler.py",
     "test_verification_provider.py",
+    "test_feedback_edit.py",
 )
 EXCLUSIONS = (
     "All private configuration, environment values, credentials, administrator bindings and IDs",
@@ -98,6 +102,30 @@ It first audits the allowlist. `--apply` copies reviewed source and creates a lo
 backup of changed files; it never stages, commits, pushes or deploys anything.
 """
 AUDIT = """# Navigation repair and source isolation audit — 2026-10-20
+
+## Review editor, chemistry formatting and page jumps
+
+The current review reuses one editor for a new selection and an existing note.
+Edits retain the feedback identity and append an immutable revision; the original
+comment remains untouched. The server checks administrator status, the original
+author, the current article hash and the expected edit revision. Concurrent edits
+fail with a conflict. Archived article versions remain read-only. A new
+`feedback_edit` event has its own event ID and carries the original feedback ID
+and article version; original event JSON remains compatible with existing inboxes.
+
+A shared escaped formatter renders ASCII ligand stars as superscripts in reading
+and exports while preserving Markdown bold ranges. Explicit `顶部` and `底部`
+buttons live in the horizontally scrollable toolbar. A jump toggles the active
+button to `返回原位` and restores the original reading anchor without browser
+history changes. No page jump controls overlay article images.
+
+Five new synthetic frontend checks cover formatting, return anchors, historic
+read-only mode, drawer/editor exclusion and reused editor PUT/POST behavior. Three new backend tests cover immutable edits, cursor
+events, ownership, version conflicts and CSRF. The backend suite passes 157 tests.
+An isolated live database transaction verified nine edit/permission/event checks
+under `service_role`, then rolled back all synthetic rows. Browser acceptance is
+recorded separately by the coordinating agent; these tests do not claim a real
+production administrator browser session was exercised.
 
 ## Root cause and correction
 

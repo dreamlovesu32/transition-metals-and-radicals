@@ -26,7 +26,7 @@ OPERATIONS = frozenset({
     'note_delete', 'progress_get', 'progress_set', 'drafts_list', 'draft_get',
     'draft_publish', 'public_articles', 'public_article', 'public_asset_chunk',
     'draft_asset_chunk', 'feedback_add', 'review_add', 'feedback_list',
-    'export_plan', 'draft_versions', 'draft_version_get', 'version_asset_chunk',
+    'export_plan', 'draft_versions', 'draft_version_get', 'version_asset_chunk', 'feedback_edit','feedback_records',
 })
 
 

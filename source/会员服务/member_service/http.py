@@ -141,6 +141,7 @@ class MemberApp:
             vh=parse_qs(e.get('QUERY_STRING','')).get('version',[''])[0]
             stream=self.service.version_asset_stream(uid,match[1],vh,match[2]) if vh else self.service.asset_stream(uid,match[1],match[2]); return 200,stream,stream.mime
         elif (match:=re.fullmatch(r'/api/member/admin/drafts/([\w-]+)/feedback',path)) and method=='POST': result=self.service.feedback(uid,match[1],data)
+        elif (match:=re.fullmatch(r'/api/member/admin/drafts/([\w-]+)/feedback/([\w-]+)',path)) and method=='PUT': result=self.service.edit_feedback(uid,match[1],match[2],data)
         elif (match:=re.fullmatch(r'/api/member/admin/drafts/([\w-]+)/publish',path)) and method=='POST': result=self.service.publish(uid,match[1],data)
         elif (match:=re.fullmatch(r'/api/member/admin/drafts/([\w-]+)/reviews',path)) and method=='POST':
             # The current authenticated session, administrator authorization,
