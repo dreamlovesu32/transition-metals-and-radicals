@@ -74,7 +74,7 @@ body[data-reader-layout=desktop] .left-rail,body[data-reader-layout=desktop] .pa
 #member-reader-tools .member-reader-actions:empty{display:none}
 #member-reader-tools .member-review-tools:empty{display:none}
 .member-review-editor{font-family:"Microsoft YaHei","PingFang SC",sans-serif!important}
-#reading-preparation-message{min-width:220px}
+#reading-preparation-message{min-width:0;overflow-wrap:anywhere}
 .reader-review-badge{font:500 12px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;color:#7e8fa1;padding:0 10px}
 .reader-update-notice{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:30;padding:12px 20px;border:1px solid #cbdce9;border-radius:12px;background:#fff;color:#315776;box-shadow:0 4px 24px #17375115;font:14px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;cursor:pointer}
 body.reader-preparing .reader-toolbar,body.reader-preparing .reader-jumps{pointer-events:none;visibility:hidden}

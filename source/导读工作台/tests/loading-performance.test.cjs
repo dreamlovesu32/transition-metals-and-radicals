@@ -144,26 +144,36 @@ test('panel switching retains image and caption until decode; stale and failed r
  const node=s=>{if(!nodes.has(s))nodes.set(s,{textContent:'old',innerHTML:'old',remove(){},naturalWidth:300,dataset:{},alt:'old',replaceWith(next){nodes.set('#panel-figure-image',next);}});return nodes.get(s);};
  class FakeImage{
   constructor(){this.dataset={};this.complete=false;this.naturalWidth=500;this.decodingJob=deferred();images.push(this);}
+  addEventListener(name,handler){this.listeners ||= {}; (this.listeners[name] ||= new Set()).add(handler);}
+  removeEventListener(name,handler){this.listeners?.[name]?.delete(handler);}
+  emit(name){for(const handler of [...(this.listeners?.[name]||[])])handler();}
   getAttribute(name){return name==='src'?this.src:null;}
   decode(){return this.decodingJob.promise;}
   replaceWith(next){nodes.set('#panel-figure-image',next);}
  }
  const ctx={$:node,Image:FakeImage,setTimeout,clearTimeout,panelFigureRequest:0,panelFigureReady:null,backgroundFigureImages:[],imageRetryNumber:0,IMAGE_READY_TIMEOUT_MS:40,articleAsset:x=>x,figureMedia:()=>({}),setPanelFigureState:state=>{node('#figure-stage').state=state;},handlePanelVisibleLoad(){},figurePage:src=>src,inlineMarkdown:text=>text,tr:()=>'',currentFigureIndex:0,figureBlocks:[1,2,3],currentLanguage:'zh'};
  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
- const old=node('#panel-figure-image'),a=ctx.requestPanelFigure({src:'A',text:'captionA'});images[0].onload();
- ctx.currentFigureIndex=1;const b=ctx.requestPanelFigure({src:'B',text:'captionB'});images[1].onload();
+ const old=node('#panel-figure-image'),a=ctx.requestPanelFigure({src:'A',text:'captionA'});images[0].emit("load");
+ ctx.currentFigureIndex=1;const b=ctx.requestPanelFigure({src:'B',text:'captionB'});images[1].emit("load");
  images[0].decodingJob.resolve();assert.equal(await a,'stale');assert.equal(node('#panel-figure-image'),old);assert.equal(node('#panel-figure-caption').innerHTML,'old');
  images[1].decodingJob.resolve();assert.equal(await b,'ready');assert.equal(node('#panel-figure-image').src,'B');assert.equal(node('#panel-figure-caption').innerHTML,'captionB');assert.equal(node('#panel-figure-page').textContent,'B');
- ctx.currentFigureIndex=2;const c=ctx.requestPanelFigure({src:'C',text:'captionC'});images[2].onerror();assert.equal(await c,'error');assert.equal(node('#panel-figure-image').src,'B');assert.equal(node('#panel-figure-caption').innerHTML,'captionB');
+ ctx.currentFigureIndex=2;const c=ctx.requestPanelFigure({src:'C',text:'captionC'});images[2].emit("error");assert.equal(await c,'error');assert.equal(node('#panel-figure-image').src,'B');assert.equal(node('#panel-figure-caption').innerHTML,'captionB');
  const timeout=ctx.requestPanelFigure({src:'D',text:'captionD'});assert.equal(await timeout,'timeout');assert.equal(node('#panel-figure-image').src,'B');
+ ctx.documentState={blocks:[{kind:'figure',src:'E'}]};ctx.currentFigureIndex=0;
+ ctx.primeCurrentFigure();const count=images.length,first=ctx.requestPanelFigure({src:'E',text:'E-old'}),last=ctx.requestPanelFigure({src:'E',text:'E-final'});
+ assert.equal(images.length,count);const original=images.at(-1);original.emit('load');original.decodingJob.resolve();
+ assert.equal(await first,'stale');assert.equal(await last,'ready');assert.equal(node('#panel-figure-image'),original);assert.equal(node('#panel-figure-caption').innerHTML,'E-final');
+ ctx.documentState.blocks=[{kind:'figure',src:'broken'}];ctx.primeCurrentFigure();images.at(-1).complete=true;images.at(-1).naturalWidth=0;
+ assert.equal(await ctx.requestPanelFigure({src:'broken',text:'broken'}),'error');
+
 });
 test('single-column current image waits for decode and reports decode failure',async()=>{
  const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
  const start=source.indexOf('function waitForInlineImage('),end=source.indexOf('\nfunction preloadOtherFigures(',start);
  for(const failed of [false,true]){
   let resolveDecode,rejectDecode;const pending={promise:new Promise((resolve,reject)=>{resolveDecode=resolve;rejectDecode=reject;})},handlers={};let settled=false;
-  const image={complete:true,naturalWidth:400,loading:'lazy',getAttribute:()=>'/current',addEventListener:(k,f)=>handlers[k]=f,removeEventListener(){}};
-  const ctx={setTimeout,clearTimeout,IMAGE_READY_TIMEOUT_MS:100,decodeFigureImage:()=>pending.promise,window:{ReadMedia:{load(){}}}};
+  const image={dataset:{src:'/current'},complete:true,naturalWidth:400,loading:'lazy',getAttribute:()=>'/current',addEventListener:(k,f)=>handlers[k]=f,removeEventListener(){}};
+  const ctx={backgroundFigureImages:[],setTimeout,clearTimeout,IMAGE_READY_TIMEOUT_MS:100,decodeFigureImage:()=>pending.promise,window:{ReadMedia:{load(){}}}};
   vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);
   const job=ctx.waitForInlineImage(image).then(value=>{settled=true;return value;});await Promise.resolve();assert.equal(settled,false);
   failed?rejectDecode(Error('decode')):resolveDecode();assert.equal(await job,failed?'error':'ready');
@@ -281,4 +291,36 @@ test('explicit navigation, auto toggles, reflow and resize all route through imm
  assert.ok(chrome.includes("beginFigureJump(edge==='top'?0:document.documentElement.scrollHeight)"));
  assert.ok(app.includes('if (enabled) syncFigureToScroll(true);'));
  for(const source of [app,boot])assert.ok(source.includes('resetAutoFigureTracking();'));
+});
+
+
+test('classic centered loading card retains its larger vertical R mark below usable navigation',()=>{
+ const css=fs.readFileSync(path.join(__dirname,'../app.css'),'utf8');
+ const finalCard=css.slice(css.lastIndexOf('.reading-preparation-card{width:min(360px'));
+ assert.match(finalCard,/padding:32px;display:block/);assert.match(finalCard,/font:700 38px Georgia/);
+ assert(!finalCard.includes('font-size:22px'));assert(!finalCard.includes('padding:14px 16px'));
+ const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ assert(source.includes('textContent = "正在准备阅读…"'));
+});
+
+test('known restored original starts before DOM and layout recovery and shares one pending decode',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ const at=source.indexOf('async function decodeFigureImage('),end=source.indexOf('function commitPanelFigure(',at);
+ const images=[];let decodeCalls=0;
+ class FakeImage{constructor(){this.dataset={};this.naturalWidth=500;images.push(this);}getAttribute(k){return this[k];}decode(){decodeCalls++;return Promise.resolve();}}
+ const ctx={Image:FakeImage,documentState:{blocks:[{kind:'figure',src:'first'},{kind:'figure',src:'restored'}]},currentFigureIndex:1,backgroundFigureImages:[],articleAsset:x=>x,figureMedia:()=>({width:300,height:400})};
+ vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
+ ctx.primeCurrentFigure();ctx.primeCurrentFigure();assert.equal(images.length,1);assert.equal(images[0].src,'restored');assert.equal(images[0].fetchPriority,'high');
+ await Promise.all([ctx.decodeFigureImage(images[0]),ctx.decodeFigureImage(images[0])]);assert.equal(decodeCalls,1);
+ ctx.documentState.blocks=[];ctx.primeCurrentFigure();assert.equal(images.length,1);
+ for(const file of ['app.js','public-site/reader-boot.js']){const text=fs.readFileSync(path.join(__dirname,'..',file),'utf8'),start=text.slice(text.indexOf('async function start()'));assert(start.indexOf('primeCurrentFigure();')<start.indexOf('renderArticle();'));assert(start.indexOf('primeCurrentFigure();')<start.indexOf('await restoreReadingState(saved)'));}
+});
+
+test('single-column adopts the already requested original instead of starting a second element',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8'),at=source.indexOf('function waitForInlineImage('),end=source.indexOf('function preloadOtherFigures(',at);
+ const requested={dataset:{},complete:true,naturalWidth:300,getAttribute:()=>'/current',addEventListener(){},removeEventListener(){}};let replacement,decoded;
+ const placeholder={dataset:{src:'/current'},alt:'current original',replaceWith:image=>{replacement=image;}};
+ const ctx={backgroundFigureImages:[requested],setTimeout,clearTimeout,IMAGE_READY_TIMEOUT_MS:100,decodeFigureImage:async image=>{decoded=image;},window:{ReadMedia:{load:image=>assert.equal(image,requested)}}};
+ vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
+ assert.equal(await ctx.waitForInlineImage(placeholder),'ready');assert.equal(replacement,requested);assert.equal(decoded,requested);assert.equal(requested.alt,'current original');
 });

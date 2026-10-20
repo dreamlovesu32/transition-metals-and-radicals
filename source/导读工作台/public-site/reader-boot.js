@@ -67,6 +67,7 @@ async function start() {
         inlineFigureScales.set(id, Math.min(5, Math.max(1, Number(position.scale) || 1)));
       }
     }
+    primeCurrentFigure();
     updateReadingChrome();
     renderArticle();
     applyPaneRatio();

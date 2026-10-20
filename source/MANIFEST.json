@@ -355,14 +355,14 @@
     },
     {
       "path": "导读工作台/app.css",
-      "bytes": 46296,
-      "sha256": "b0e657c0c08747139c191c511aa223f3ff49bf65515df67d343ebb2d359ff5cc",
+      "bytes": 46239,
+      "sha256": "94b387c6e5c895f2210ead963e65301938fcfb6d6c55b1abcadd547af8d27989",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/app.js",
-      "bytes": 77022,
-      "sha256": "7236cfeade1f8987be514af86449c203a734f0e8d9cecbf5d9e6b37eaae212b8",
+      "bytes": 78344,
+      "sha256": "d45507f32b602ffce1ac154d30b85d7dc66427be69b59c43420bee11195e8ce9",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -403,8 +403,8 @@
     },
     {
       "path": "导读工作台/export_github_pages.py",
-      "bytes": 17961,
-      "sha256": "6606a58055cd788751ea320723ea8a95b6c73be13819b1cf846bdb0da05198a0",
+      "bytes": 17983,
+      "sha256": "ba87a8efbf9311bae3319219685916f89dfad4338e103933986d2cb3994bae8b",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -547,8 +547,8 @@
     },
     {
       "path": "导读工作台/public-site/published-library.js",
-      "bytes": 4269,
-      "sha256": "30dc4c69c16f2d9a289e2cf19969bf3d2b25935cd92b668699c4d36cbbcd0b82",
+      "bytes": 5091,
+      "sha256": "4e7bc5b98768d2adbef191eb26b1eeea4a936e6330e0da3af1addc9d6f9059f9",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -559,8 +559,8 @@
     },
     {
       "path": "导读工作台/public-site/reader-boot.js",
-      "bytes": 8991,
-      "sha256": "db8b7b4e9b28a22d02b97bc40036e1d961f434fe0c71bad95b7f7b92c03f3e31",
+      "bytes": 9017,
+      "sha256": "58e0583a0759fab5539f6139d23e27bded7bd16eb12f37a9a65a9ab9d5a9210a",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -571,8 +571,8 @@
     },
     {
       "path": "导读工作台/reader-chrome.css",
-      "bytes": 11344,
-      "sha256": "7ba49863f078c62af66730a92c4716244589460e8e56c44b55d4a9d8f9c58c70",
+      "bytes": 11363,
+      "sha256": "d03977e9aaeec94341266639f395ebc77679d0159e8c61e4d9f977dc58980bee",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -619,8 +619,14 @@
     },
     {
       "path": "导读工作台/tests/loading-performance.test.cjs",
-      "bytes": 30931,
-      "sha256": "35241d62b70f63d2c76dcade06b45564f6204231c9fbbe21f3a9adf9e58b7682",
+      "bytes": 35218,
+      "sha256": "4ecac2fe132089c6138845966ed0d284c5d2c8d051d0df231aded91eff61883f",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/published-library.test.cjs",
+      "bytes": 5915,
+      "sha256": "c456d62fcdab4ff056d3acbacd988733ca60c956fe17f96e3a5da2884d175033",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -637,8 +643,8 @@
     },
     {
       "path": "工具/同步网站源码.py",
-      "bytes": 16806,
-      "sha256": "3e2294787828faf45259e06c9173dff969f4a15be70f0d7456667a35ec41af76",
+      "bytes": 16842,
+      "sha256": "477ddb6eb9dfc63060ebe725b2ddb1e5e18e04d98569e5342412484958253ad1",
       "origin": "byte-for-byte source copy"
     }
   ]

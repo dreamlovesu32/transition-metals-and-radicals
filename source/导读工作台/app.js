@@ -431,8 +431,27 @@ function figureImageMarkup(block, alt) {
 async function decodeFigureImage(image) {
   if (!image.naturalWidth) throw new Error("图片无法解码");
   if (image.dataset.decoded === "true") return;
-  if (typeof image.decode === "function") await image.decode();
+  if (typeof image.decode === "function") {
+    if (!image.readDecodePromise) image.readDecodePromise = image.decode().catch(error => {delete image.readDecodePromise; throw error;});
+    await image.readDecodePromise;
+  }
   image.dataset.decoded = "true";
+}
+
+function primeCurrentFigure() {
+  const blocks = documentState?.blocks?.filter(block => block.kind === "figure") || [];
+  const block = blocks[Math.max(0, Math.min(currentFigureIndex, blocks.length - 1))];
+  if (!block) return;
+  const url = articleAsset(block.src);
+  if (backgroundFigureImages.some(image => image.getAttribute("src") === url)) return;
+  const image = new Image();
+  image.decoding = "async"; image.fetchPriority = "high";
+  image.dataset.figureSource = block.src;
+  const media = figureMedia(block);
+  if (media.width && media.height) {image.width = media.width; image.height = media.height;}
+  backgroundFigureImages.push(image);
+  // Start the known current original before building DOM or restoring layout.
+  image.src = url;
 }
 
 function commitPanelFigure(block) {
@@ -448,7 +467,7 @@ function requestPanelFigure(block, retry=false) {
   const requestId = ++panelFigureRequest;
   const base = articleAsset(block.src);
   const url = retry ? `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}` : base;
-  const warm = backgroundFigureImages.find(item => item.getAttribute("src") === url && item.complete && item.naturalWidth && item.dataset.decoded === "true");
+  const warm = backgroundFigureImages.find(item => item.getAttribute("src") === url);
   setPanelFigureState("loading");
   panelFigureReady = new Promise(resolve => {
     const candidate = warm || new Image();
@@ -459,7 +478,7 @@ function requestPanelFigure(block, retry=false) {
     const finish = result => {
       if (settled) return;
       settled = true; clearTimeout(timer);
-      candidate.onload = candidate.onerror = null;
+      candidate.removeEventListener("load", loaded); candidate.removeEventListener("error", failed);
       if (requestId !== panelFigureRequest) {resolve("stale"); return;}
       if (result !== "ready") {setPanelFigureState("failed"); resolve(result); return;}
       candidate.id = "panel-figure-image";
@@ -476,9 +495,10 @@ function requestPanelFigure(block, retry=false) {
       catch {finish("error");}
     };
     const timer = setTimeout(() => finish("timeout"), IMAGE_READY_TIMEOUT_MS);
-    candidate.onload = loaded; candidate.onerror = () => finish("error");
-    if (!warm) candidate.src = url;
-    if (candidate.complete && candidate.naturalWidth) loaded();
+    const failed = () => finish("error");
+    candidate.addEventListener("load", loaded); candidate.addEventListener("error", failed);
+    if (!warm) {candidate.dataset.figureSource = block.src; backgroundFigureImages.push(candidate); candidate.src = url;}
+    if (candidate.complete) candidate.naturalWidth ? loaded() : failed();
   });
   return panelFigureReady;
 }
@@ -1190,6 +1210,11 @@ function currentInlineFigure() {
 
 function waitForInlineImage(image) {
   if (!image) return Promise.resolve("ready");
+  const primed = backgroundFigureImages.find(item => item.getAttribute("src") === image.dataset.src);
+  if (primed && primed !== image) {
+    primed.alt = image.alt; primed.dataset.src = image.dataset.src;
+    image.replaceWith(primed); image = primed;
+  }
   return new Promise(resolve => {
     let settled = false;
     const finish = result => {
@@ -1248,7 +1273,7 @@ function revealReadingContent(attempt) {
 
 async function finishReadingPreparation(retry=false, textOnly=false) {
   const attempt = ++preparationAttempt;
-  $("#reading-preparation-message").textContent = "正在准备阅读：正文与当前原图…";
+  $("#reading-preparation-message").textContent = "正在准备阅读…";
   $("#reading-preparation-retry").hidden = true;
   $("#reading-preparation-continue").hidden = true;
   if (textOnly) {revealReadingContent(attempt); return;}
@@ -1393,6 +1418,7 @@ async function start() {
         inlineFigureScales.set(id, Math.min(5, Math.max(1, Number(position.scale) || 1)));
       }
     }
+    primeCurrentFigure();
     updateLanguageChrome();
     renderArticle();
     applyPaneRatio();

@@ -36,6 +36,11 @@
     if(!validId(id))throw Error('文章编号无效');
     let cached;
     try{const stored=JSON.parse(global.sessionStorage?.getItem('read-public-v1:'+id)||'null');if(stored)cached=validate(stored,id);}catch{}
+    let staticCached;
+    try {
+      const stored=JSON.parse(global.sessionStorage?.getItem('read-public-static-v1:'+id)||'null');
+      if(stored?.article?.id===id && Array.isArray(stored.blocks) && validVersion(stored.version_hash) && !stored.cloudPublished)staticCached=stored;
+    }catch{}
     const liveTask=json(`${endpoint}/${encodeURIComponent(id)}`).then(value=>{
       const checked=validate(value,id);
       try{global.sessionStorage?.setItem('read-public-v1:'+id,JSON.stringify(checked));}catch{}
@@ -43,10 +48,15 @@
     });
     // Attach rejection immediately; a static page can finish before the live request.
     const liveResult=liveTask.then(value=>({value}),()=>({value:null}));
-    const baseTask=cached?Promise.resolve(cached):json(staticUrl).then(value=>{
+    // Retain the static asset route for the same reviewed version. A live
+    // background check must not turn the next visit into dynamic image requests.
+    const sameStatic=staticCached&&(!cached||staticCached.version_hash===cached.version_hash);
+    const baseTask=sameStatic?Promise.resolve(staticCached):json(staticUrl).then(value=>{
       if(value.article?.id!==id||!Array.isArray(value.blocks))throw Error('公开文章信息无效');
+      if(cached && cached.version_hash!==value.version_hash)return cached;
+      if(validVersion(value.version_hash))try{global.sessionStorage?.setItem('read-public-static-v1:'+id,JSON.stringify(value));}catch{}
       return value;
-    });
+    }).catch(error=>{if(cached)return cached;throw error;});
     let base;
     try{base=await baseTask;}catch{}
     if(!base){const live=await liveResult;if(live.value)return live.value;throw Error('文章尚未发布或暂时无法载入');}
