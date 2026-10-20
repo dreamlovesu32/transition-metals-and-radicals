@@ -1,0 +1,567 @@
+{
+  "format": 1,
+  "policy": "exact allowlist; no git or deployment actions",
+  "excluded": [
+    "All private configuration, environment values, credentials, administrator bindings and IDs",
+    "All build archives, dependencies, SDK copies, runtime databases, caches and logs",
+    "All article bodies, article manifests, state snapshots, PDFs, SI, figures and covers",
+    "All original feedback, research records, review data, backups and publication baselines",
+    "Local-demo implementation and data; operational deployment/probe/admin tools",
+    "Tests using real article snapshots, real bibliographic fixtures, cloud sessions or local demo data",
+    "All unlisted files; the CloudBase public-site deployment allowlist is not expanded"
+  ],
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 8,
+      "sha256": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da",
+      "origin": "generated source documentation"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 196,
+      "sha256": "b00ad519d9b7de005583760f8f665a9cb123a092af7bac40e153736e7ba1956f",
+      "origin": "generated source documentation"
+    },
+    {
+      "path": "AUDIT.md",
+      "bytes": 2855,
+      "sha256": "a53df3b33b26026c2324ecafb04ec80c0727662ce6f334333b4ed70781921c9d",
+      "origin": "generated source documentation"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1792,
+      "sha256": "40544242f74067e84a7851034151b2f1e504d2b2ba40b7246fe38a49e7db8a1e",
+      "origin": "generated source documentation"
+    },
+    {
+      "path": "会员服务/.env.example",
+      "bytes": 398,
+      "sha256": "e40b5cef602f04d86842beb8d1042186d6888f9cf6480a7abe7bf7ef904944fc",
+      "origin": "generated neutral example"
+    },
+    {
+      "path": "会员服务/build_scf_bundle.py",
+      "bytes": 9140,
+      "sha256": "bb031cea324f3b6d93d0f7209466d61cef0621cf5e435e6fe1aa6d4a016ba33e",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/deployment.example.yaml",
+      "bytes": 784,
+      "sha256": "358907d76823d63ca23ed183f7532a975f08c1d1c50c4d3ec8870b35053298ac",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/initialize_private_config.py",
+      "bytes": 1466,
+      "sha256": "3f7b88e6fcbdb8fa87e53fdb4d699b2e974187dd46701a4849689c4b2ba0be08",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/load_private_env.py",
+      "bytes": 911,
+      "sha256": "92c55b5628c3f5e0719e6300bfb6b126ee5f1521f65812548c9c5baa6e2a29e4",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/__init__.py",
+      "bytes": 126,
+      "sha256": "9c4494893e1e0a5768a5237fb727c9454ec1e2c53db1e1f7a27ceaf8098970fb",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/article_export.py",
+      "bytes": 1760,
+      "sha256": "e8aeba7390c9a3cbcbca3760d28554c8ea89a53370cec52f2e3f134c0603c761",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/cloud_assets.py",
+      "bytes": 2700,
+      "sha256": "4d8f938e03d69ef9c4710066a58b535b6429aad701798065608ec4849644d4ba",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/cloud_member_service.py",
+      "bytes": 7238,
+      "sha256": "33b7e8c394067ab46a12d6e124da8717a5b6b72548c707b3faa76fd54130ccf1",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/cloud_trusted.py",
+      "bytes": 12065,
+      "sha256": "8a9861f777966eb82ee6d318c7b5d38654ae31d7ad1c04e2b656cb0f418574e3",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/cloudbase_auth.py",
+      "bytes": 20660,
+      "sha256": "ed8721b4fbd3cb72a1a1a1d0d6b75cfd0eff43bf9734b0a4f496c771423f7057",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/cloudbase_pg.py",
+      "bytes": 4796,
+      "sha256": "6dc66df25fe4d9ae0f8e621a573c8ae705ac887a5aef7e3c10cb26bab0d409aa",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/cloudbase_shared_auth.py",
+      "bytes": 10454,
+      "sha256": "cb96706e7c16f7644b30aec18a77ad89ff605ae3639a5ac2ecfe88a4a7826732",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/http.py",
+      "bytes": 11793,
+      "sha256": "a5502a866bd58930c48b0cc6ff6a85518c9a42fb62feaead7f0e723fd6c41534",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/ingest.py",
+      "bytes": 2408,
+      "sha256": "a9bba0b4e6a3ec772a6bfffb274714b118ef6f9d0df685dfcf955d377cb24aad",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/literature.py",
+      "bytes": 8494,
+      "sha256": "308ffa13aa3668287e16db45f6eda00cc04173f0fb5f512246bd564f29218173",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/local_site.py",
+      "bytes": 2615,
+      "sha256": "aefd92af368ed386fd47a971320b54d5132e6c4980b17f11c74d7a52425b82c0",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/runtime.py",
+      "bytes": 4244,
+      "sha256": "7b37a3fc44289228fad1a983b3be91a3477cf99563c665642d0cf9d85d0d3612",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/service.py",
+      "bytes": 15074,
+      "sha256": "d0ca32cc38fe6f1ec8383f3aa9a558da0a4ea2a992563b0d82ef8147c466a2c8",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/member_service/storage.py",
+      "bytes": 5606,
+      "sha256": "cc20b0891fef9cbd414391ca64b173a4fc21d2ffc4cf9cd1986dd13090ecb5a3",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/private_schema_hardening.sql",
+      "bytes": 1414,
+      "sha256": "a8bde4d6536f996c1b80cb92f6387884d13abab11b23e1917733470d4112f035",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/provision_admin.py",
+      "bytes": 2381,
+      "sha256": "329dbd8e79d38d0f973b54464d44eeb37efb8117c6f69a5952c8bc68c43d4c80",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/requirements.txt",
+      "bytes": 83,
+      "sha256": "c314aad699443da2557a1d75598a5f52a728474b1b898cf8f22494f054efb1a1",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/run_local.py",
+      "bytes": 716,
+      "sha256": "b4d93379b8bb2de7cc98250e7225604e3f156c1dcac59f70690d20950c17e3b8",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/scf_handler.py",
+      "bytes": 4950,
+      "sha256": "2c6e55327ed5e7017eb0847dad2dcde4c438eb6ef5ca4783018ce9f1a713dd25",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/sql/asset_operations.sql",
+      "bytes": 1867,
+      "sha256": "423ab4be053fb74fce265f5361e12a1c942a5a2df20a870a0056aa8100d0511e",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/sql/auth_operations.sql",
+      "bytes": 10571,
+      "sha256": "31718e6bbf871744e91d3fbb7a0a33347ff88a2ac253238310742aff2691b1d9",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/sql/export_operations.sql",
+      "bytes": 2834,
+      "sha256": "3ab4de3f545c561708a4567f5ebecbd01ddc04d60e2a58071ea590207bb9c38b",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/sql/member_operations.sql",
+      "bytes": 17790,
+      "sha256": "eff13e6ab0967ef4291105c366796885e1b6d32d4a2693347dd8018b70314fa3",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/sql/publish_operations.sql",
+      "bytes": 7892,
+      "sha256": "fac1df12ac64a01cc0da2feab3253b80446f4c3ec5867b426424c94ba972e336",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/sql/trusted_operations.sql",
+      "bytes": 12252,
+      "sha256": "f9da2546b5ee84b0761e826a499979f0d4dddc55e24229c9b9b41da5e7740f55",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/sql/version_operations.sql",
+      "bytes": 14961,
+      "sha256": "bc892a7501fdc771efb1f3d64f04d01334edbd08e3dd5b9164948b2403c83c1b",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/stage_linux_wheels.py",
+      "bytes": 3010,
+      "sha256": "feabe1d36cb676fc5196ae10ca0c52151cceab601cbd9850f104080330132cc5",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_admin_attestation.py",
+      "bytes": 5311,
+      "sha256": "09ecc6352334b43d16527569885e15e1771076bd64c1ea986afbc18c8d4b72b1",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_auth.py",
+      "bytes": 11332,
+      "sha256": "03b9836a36a728215f5b1a211af23b6aadeca53192ef8997bf1f2641483b90e6",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_auth_startup_latency.py",
+      "bytes": 4095,
+      "sha256": "7b391eeff5250692ea26a0cc02d009eca46d7ab2200bc1ff4ed1fa6dcc05a03c",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_business.py",
+      "bytes": 8266,
+      "sha256": "f58b3f4f2b2f17272027cf006d5332af346f22e4ca97c1c51bf7a28b12f89645",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_cloud_assets.py",
+      "bytes": 1560,
+      "sha256": "f90f3e1b6e21f683cd3051f8e760992ecead4a7cca0dda0880fce446f5e64f8b",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_cloud_member_service.py",
+      "bytes": 2301,
+      "sha256": "e5f1f97d50a298fe53153a0d20af5a61c6cc6d856565b2d6ee2812ea26f9e191",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_cloud_runtime.py",
+      "bytes": 3130,
+      "sha256": "d0b8f18916fd9f521c4593b94a3316944f24468a8c9006f3694c5adcd90cec82",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_cloud_trusted.py",
+      "bytes": 3264,
+      "sha256": "ae9430109a22eb7e5e14b86fb42ec5ec73fdf491a661a185e861b8ae3f190430",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_cloudbase_pg.py",
+      "bytes": 2886,
+      "sha256": "0ed433f6a8d702357cddb4246c206301d0fa979d3582a2bfd57c3c3ae0d07549",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_cloudbase_shared_auth.py",
+      "bytes": 6133,
+      "sha256": "20bcc64b620133fe468989889306afa7a3e508a953565ab7d7ea57dc0372053d",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_deployment.py",
+      "bytes": 5710,
+      "sha256": "3fc87225a5732d8653488b05bf0d224264637fdee044cfd73eb2f76d4a948e3b",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_idempotence.py",
+      "bytes": 2531,
+      "sha256": "116bd57d8137e49d1a342858f9854db8258e07461604e1807e6942e373ba4c85",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_publication.py",
+      "bytes": 2165,
+      "sha256": "b03e88785c9f40c59d341c991f7fd5640f37f504bcaba9a0205547efcf90dd04",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_review_gate.py",
+      "bytes": 6072,
+      "sha256": "7e5c81a7b331a6f662b3e00af3256816cb27a45b12a13e00361e42c0fbb91279",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_scf_handler.py",
+      "bytes": 4619,
+      "sha256": "f8719474481b1028640b28356d26bcb8606a15be9cb12f20a77338478c9df94d",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/tests/test_verification_provider.py",
+      "bytes": 6258,
+      "sha256": "500263f2d0e145cc916b0bad51e91973530e5667fd6c3fc880099f7daee78b27",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "会员服务/verify_review.py",
+      "bytes": 9007,
+      "sha256": "270d6d0172a7c8c9d37b0466a268c8a84aca2ac6e40e1f0bec603d39e0dc4a6e",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/app.css",
+      "bytes": 44895,
+      "sha256": "68555521974738210fd5b9f54e4205fce90c7fc718ad9f36e025d6b678d080e9",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/app.js",
+      "bytes": 67647,
+      "sha256": "c8b878f0b5e668223cd4b8a081cf462495bf8e531c529235c6b52bd12eed758a",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/article_config.py",
+      "bytes": 6681,
+      "sha256": "da81a60b8857721e682f768fa470019266593be494f6e15a9309b57c4f8680ec",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/catalog.css",
+      "bytes": 9031,
+      "sha256": "b857aad0b2011f49a8cf626f61185dead1227f7a6c4829cd108d199eeeab007a",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/catalog.html",
+      "bytes": 3270,
+      "sha256": "872bda07f530fab7feff4e872742149b14aa01d2e1b947d1f99e693c79386230",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/catalog.js",
+      "bytes": 6676,
+      "sha256": "f3c6056e61f2000117fcbd54efb3940310c5fcb5057976a36083970d1ad48738",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/export_github_pages.py",
+      "bytes": 16261,
+      "sha256": "f6a11a3c382d72c8951f7de2d76cba16bce0a618574a2d78d5eb6969b31940b6",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/index.html",
+      "bytes": 8313,
+      "sha256": "24062a508d611b8d62bb6b49a52afdbb3147a61ca0f21f9e534f276de6f8b2cc",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/literature-lookup.css",
+      "bytes": 4564,
+      "sha256": "07bb4f6a311c4bd33dd88f37155bfbda459b297e1e492908943882eac0176348",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/literature-lookup.js",
+      "bytes": 10771,
+      "sha256": "d8c1dc4850f65601806c00a1e39cbb8d6e10757405150d04f0c500981d6592df",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/account-entry.test.cjs",
+      "bytes": 2127,
+      "sha256": "75da9ed5aa91015e8284030bad3553e4aa2e9cd9ddc4490e49d56853adf061e9",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/account.html",
+      "bytes": 698,
+      "sha256": "a0d3000a6a8719b330a2d3a57cd4998b5ffa4b535e9a7ed7ab7107a8630377d8",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/admin-feedback.test.cjs",
+      "bytes": 1988,
+      "sha256": "1d1b7ab314f3f8b61578e240f09edd6565a6b4d441c7cc2a53e4d25c27560fcf",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/admin-navigation.test.cjs",
+      "bytes": 7373,
+      "sha256": "ee7c614d70aa65a02387ece7f72cb7d36cb61e8cc6fb468d00821dce4ef1bc0e",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/admin.html",
+      "bytes": 664,
+      "sha256": "51a0f8be498602e1243036fc949b8a3ef05a64e0ae92246099bd35a57b250981",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/article-export.js",
+      "bytes": 15883,
+      "sha256": "72999c1b7bd79822dd69dbcd6c85886004da5cf158d670d7550f281360df2370",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/draft-selection.test.cjs",
+      "bytes": 818,
+      "sha256": "561de205e49a693b431975a98d5e0a01f6b3e71d2ba7f4f9a679ed1b32f33543",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/favorites.html",
+      "bytes": 668,
+      "sha256": "2d24c5ca410e045e54e530e3e50d0545d1a67fb44a1deb90f7000d82e3b06b15",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/members.css",
+      "bytes": 16161,
+      "sha256": "65ff930c6c7f33efb6323c850dca3b433b1f9f36006a511ce7eafa88cbe0be31",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/members.js",
+      "bytes": 72276,
+      "sha256": "dd095e4acb96693dbd89adfa5eb201a4c36f8561c4b4669a5a77a5ec72664d9c",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/members.test.cjs",
+      "bytes": 10053,
+      "sha256": "5ec296b86e95ce6b78d56459af5b0df8f18a4fb2a848b3ab3917fd99c107910c",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/navigation-init.test.cjs",
+      "bytes": 4247,
+      "sha256": "88b65d562ae796869af7b55a47a4ac44bea46799b35e245b49a86451de824dbf",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/review-queue.test.cjs",
+      "bytes": 661,
+      "sha256": "657d96c93c7ffa8e1d8be7614132b4f6c7ae91995108bc96129f50d2cf776cd7",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/review-reader.test.cjs",
+      "bytes": 1723,
+      "sha256": "d8d137423cfad64346ff0845dcec09f4b29c641bfe67a6a3c6be37ef9a440bb4",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/member-system/session-check.test.cjs",
+      "bytes": 2671,
+      "sha256": "277ed3f5bcdf45c60106e860528cc6293dfc44900a639933505fdfaabf13d3c2",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/public-site/published-library.js",
+      "bytes": 3968,
+      "sha256": "45a2d142945d23562b4e26830c82ceb8f1a93f8c44e9d66f0454403b06251b47",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/public-site/read.html",
+      "bytes": 5447,
+      "sha256": "c70f5451b9fe372e10b8675bda1db2933d40faa477998d6fb7628ac669d168b9",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/public-site/reader-boot.js",
+      "bytes": 10472,
+      "sha256": "8b62afd46a3db303cb2491aa9752a1c94ddecc22a59eac9f01efcaf6ae42fa83",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/public-site/reader-prelude.js",
+      "bytes": 11323,
+      "sha256": "7d9bc76b1b370601d00ae998e780dd98f59dadfe22ad6eac55a93ee4d82f1668",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/reader-chrome.css",
+      "bytes": 9847,
+      "sha256": "7f7b9dcf0f80728243d82d19b2b338369aeb1e0428a80b3ccca5416bb2194ef3",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/reader-chrome.js",
+      "bytes": 12235,
+      "sha256": "9a29e4528dbbd9c7c72dee9b008dc267d2c0e75a5bb596f9a5f7d7d2a010cbf6",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/server.py",
+      "bytes": 15099,
+      "sha256": "bc14dde1b532f86eab12620ae754f8c7bfce66b3b69acc4680718b30303adcc2",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/templates/article-manifest.example.json",
+      "bytes": 747,
+      "sha256": "27b0c44ea3c6d568de9ffa9385e8fbf0f3eaee6677bc3a01cb5aa9395b3118e8",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/templates/content-en.example.md",
+      "bytes": 320,
+      "sha256": "8c490345f489d8f28447619218dc579b6c070e4210367f0e09f4b22676851772",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/templates/content-zh.example.md",
+      "bytes": 291,
+      "sha256": "b2035d12f468513b19045b868376b321ad4e22ad08caf612ebbcc296711ea0f8",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/validate_article.py",
+      "bytes": 2316,
+      "sha256": "1e98e5ad736ba124413f886627be2bda12d23e8ba3c0a8e73c09ff040a95679f",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "工具/test_source_sync.py",
+      "bytes": 4171,
+      "sha256": "4cda71d08a8158f5a6b053c104e8520a8d7092807a149fd796676c1601d48d94",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "工具/同步网站源码.py",
+      "bytes": 14856,
+      "sha256": "415b8759435ab8f2a0f47c6d34196b489ae447ea12dc840b132539a08b3e3153",
+      "origin": "byte-for-byte source copy"
+    }
+  ]
+}

@@ -8,27 +8,105 @@ let figureAuto = true;
 let figureFillPane = false;
 let figureScale = 1;
 const inlineFigureScales = new Map();
+const activeFigureTouchPointers = new Set();
 let figureObserver = null;
 let scrollQueued = false;
 const DEFAULT_PANE_RATIO = .45;
 let paneRatio = DEFAULT_PANE_RATIO;
+let layoutPreference = "auto";
+let paneSide = "right";
+let changingLayout = false;
 let panePointerId = null;
 let paneFitQueued = false;
 let restoringReadingState = false;
+let readingRestoreInterrupted = false;
+let restoreStartScrollY = 0;
 let readingSaveTimer = null;
 let readingBottomIntent = false;
+let panelFigureRequest = 0;
+let panelFigureReady = Promise.resolve("ready");
+let pendingPanelViewport = null;
+let pendingInlinePositions = null;
+let readingPreparationSaved = null;
+let readingPrepared = false;
+let preparationAttempt = 0;
+let imageRetryNumber = 0;
+const backgroundFigureImages = [];
+const IMAGE_READY_TIMEOUT_MS = 12000;
 const $ = selector => document.querySelector(selector);
 const requestedArticleId = new URLSearchParams(location.search).get("article");
+const reviewMode = new URLSearchParams(location.search).get("review") === "1";
+const requestedVersion = new URLSearchParams(location.search).get("version");
+let reviewDraft = null;
+let reviewIdentity = null;
+async function reviewMemberBridge() {
+  // The reader precedes members.js in the deferred script queue.
+  if (!window.ReadMembers && document.readyState !== "complete") await new Promise(resolve => document.addEventListener("DOMContentLoaded", resolve, {once:true}));
+  if (!window.ReadMembers) throw new Error("账号组件暂时无法载入，请刷新重试");
+  return window.ReadMembers;
+}
+function assertReviewIdentity() {
+  const state = window.ReadMembers?.state;
+  if (!reviewIdentity || state?.expired || state?.user?.role !== "admin" || state.epoch !== reviewIdentity.epoch || state.user.id !== reviewIdentity.uid) throw new Error("登录状态已变化，请使用管理员账号重新打开稿件");
+}
+function clearPrivateReview() {
+  if (!reviewMode) return;
+  restoringReadingState = true;
+  panelFigureRequest += 1;
+  preparationAttempt += 1;
+  reviewDraft = null;
+  documentState = null;
+  figureBlocks = [];
+  figureObserver?.disconnect();
+  backgroundFigureImages.forEach(img => img.removeAttribute("src"));
+  backgroundFigureImages.length = 0;
+  document.querySelectorAll("#article img, #panel-figure-image").forEach(img => img.removeAttribute("src"));
+  $("#article").replaceChildren();
+  $("#toc").replaceChildren();
+  $("#member-reader-tools").replaceChildren();
+  $("#panel-figure-caption").textContent = "";
+  showPreparationFailure("登录状态已变化，请使用管理员账号重新打开稿件。");
+}
 const ui = {zh:{source:"原文 / 第",page:"页",figureNote:"论文原图裁切 · 下方按钮缩放，放大后可双向滚动"}};
 function tr(key) { return ui.zh[key]; }
 function articleId() { return documentState?.article?.id || requestedArticleId; }
-function articleAsset(path) { return `./figures/${encodeURIComponent(articleId())}/${encodeURIComponent(path.split("/").pop())}`; }
+function articleAsset(path) {
+  if (reviewMode) {
+    const assetId = documentState?.asset_map?.[path];
+    if (!assetId || !/^[\w-]+$/.test(assetId)) throw new Error("稿件图片尚未就绪");
+    return requestedVersion ? `/api/member/admin/drafts/${encodeURIComponent(articleId())}/versions/${encodeURIComponent(requestedVersion)}/assets/${encodeURIComponent(assetId)}` : `/api/member/admin/drafts/${encodeURIComponent(articleId())}/assets/${encodeURIComponent(assetId)}`;
+  }
+  if(documentState?.cloudPublished)return window.ReadPublished.asset(articleId(),documentState.asset_map?.[path],documentState.review_version_hash);
+  return `./figures/${encodeURIComponent(articleId())}/${encodeURIComponent(path.split("/").pop())}`;
+}
+
+function adaptReviewDraft(draft, expectedId) {
+  const content = typeof draft.body === "string" ? JSON.parse(draft.body) : draft.body;
+  if ((requestedVersion && draft.version_hash !== requestedVersion) || draft.id !== expectedId || content?.article?.id !== expectedId || !Array.isArray(content.blocks) || !draft.version_hash) throw new Error("稿件信息不完整，请重新打开");
+  const assets = new Set((draft.assets || []).map(asset => asset.id));
+  for (const block of content.blocks) {
+    if (block.kind === "figure" && !assets.has(content.asset_map?.[block.src])) throw new Error("稿件图片尚未就绪");
+  }
+  return {...content, version_hash:draft.version_hash};
+}
+
+function configureReviewNavigation() {
+  for (const selector of ["#nav-catalog", "#footer-catalog", ".topbar .brand", ".reading-preparation-actions a"]) {
+    const link = $(selector);
+    link.href = "./member-system/admin.html";
+    link.setAttribute("aria-label", "返回稿件审核");
+    if (selector !== ".topbar .brand") link.textContent = "返回稿件审核";
+  }
+  for (const selector of ["#nav-prev", "#nav-next"]) { $(selector).disabled = true; $(selector).hidden = true; }
+  document.body.dataset.reviewMode = "true";
+}
 function figurePage(src) { return documentState?.article?.figurePages?.[src] ?? "?"; }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
 function inlineMarkdown(text) {
   let html = escapeHtml(text);
+  html = html.replace(/S&lt;sub&gt;([NH])&lt;\/sub&gt;([12])/g, 'S<sub>$1</sub>$2');
   html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1 <span class=ui-arrow-external aria-hidden=true></span></a>');
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*\*([^\n]+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/(^|[^A-Za-z0-9\u0370-\u03FF\u1F00-\u1FFF])\*([^*\n]+)\*/g, '$1<em>$2</em>');
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   return html.replace(/\n/g, '<br>');
@@ -62,8 +140,17 @@ function blockElement(block) {
   }
   wrap.innerHTML = content;
   if (block.kind === "figure") {
+    installDragPan(wrap.querySelector(".inline-figure-stage"));
     const image = wrap.querySelector(".inline-figure-canvas img");
-    image.addEventListener("load", () => applyInlineFigureScale(wrap, false));
+    image.addEventListener("load", () => {
+      applyInlineFigureScale(wrap, false);
+      const position = pendingInlinePositions?.[wrap.dataset.blockId];
+      if (position) requestAnimationFrame(() => {
+        const viewport = wrap.querySelector(".inline-figure-stage");
+        restoreScrollFraction(viewport,"x",position.x);
+        restoreScrollFraction(viewport,"y",position.y);
+      });
+    });
     wrap.querySelector(".inline-zoom-out").addEventListener("click", () => setInlineFigureScale(wrap, inlineFigureScale(wrap) / 1.25));
     wrap.querySelector(".inline-zoom-in").addEventListener("click", () => setInlineFigureScale(wrap, inlineFigureScale(wrap) * 1.25));
     wrap.querySelector(".inline-zoom-fit").addEventListener("click", () => setInlineFigureScale(wrap, 1));
@@ -95,9 +182,10 @@ function renderArticle() {
       if (!sectionStarted) { article.append(meta); sectionStarted = true; }
       body.append(node);
     }
-    if (block.kind === "heading" && (block.level || 2) <= 2 && /^\d+\./.test(block.text)) {
+    if (block.kind === "heading") {
       const link = document.createElement("a");
       link.className = "toc-link";
+      link.dataset.level = String(block.level || 2);
       link.href = "#section-" + block.id;
       link.textContent = block.text.replace(/\*|`/g, "");
       $("#toc").append(link);
@@ -113,11 +201,11 @@ function renderArticle() {
 function updateReadingChrome() {
   document.documentElement.lang = "zh-CN";
   document.title = `${documentState.article.title.zh} · 文献导读`;
+  $(".eyebrow").innerHTML = `<span class="eyebrow-line"></span> ${documentState.article.kind === "review" ? "综述" : "研究论文"} <span class="separator">/</span> 导读`;
   $(".top-link").href = documentState.article.sourceUrl;
   $(".figure-panel-head .rail-kicker").textContent = `原文配图 / ${documentState.article.displayNumber}`;
-  const zoomHint = "Ctrl＋滚轮缩放图片";
-  $("#figure-stage").title = zoomHint;
-  $(".figure-scale-controls").title = zoomHint;
+  $("#figure-stage").removeAttribute("title");
+  $(".figure-scale-controls").removeAttribute("title");
   setFigureAuto(figureAuto);
   setFigureFillPane(figureFillPane);
   setFigureScale(figureScale);
@@ -127,7 +215,7 @@ function inlineFigureScale(wrap) {
   return inlineFigureScales.get(wrap.dataset.blockId) || 1;
 }
 
-function applyInlineFigureScale(wrap, preserveCenter=true) {
+function applyInlineFigureScale(wrap, preserveCenter=true, anchor=null, immediate=false) {
   const stage = wrap.querySelector(".inline-figure-stage");
   const canvas = wrap.querySelector(".inline-figure-canvas");
   const image = canvas.querySelector("img");
@@ -137,26 +225,127 @@ function applyInlineFigureScale(wrap, preserveCenter=true) {
     (stage.scrollLeft + stage.clientWidth / 2) / stage.scrollWidth : .5;
   const centerY = preserveCenter && stage.scrollHeight > stage.clientHeight ?
     (stage.scrollTop + stage.clientHeight / 2) / stage.scrollHeight : .5;
+  const oldCanvas = canvas.getBoundingClientRect();
+  const point = anchor && oldCanvas.width && oldCanvas.height ? {
+    x: anchor.x, y: anchor.y,
+    targetX: anchor.targetX ?? anchor.x,
+    targetY: anchor.targetY ?? anchor.y,
+    fractionX: Math.min(1, Math.max(0, (anchor.x - oldCanvas.left) / oldCanvas.width)),
+    fractionY: Math.min(1, Math.max(0, (anchor.y - oldCanvas.top) / oldCanvas.height))
+  } : null;
   const style = getComputedStyle(stage);
   const width = stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
   const height = stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
   const fit = Math.min(width / image.naturalWidth, height / image.naturalHeight) * .98;
   canvas.style.width = `${Math.max(1, Math.floor(image.naturalWidth * fit * scale))}px`;
   canvas.style.height = `${Math.max(1, Math.floor(image.naturalHeight * fit * scale))}px`;
-  stage.style.overflow = scale <= 1 ? "hidden" : "auto";
-  requestAnimationFrame(() => {
-    stage.scrollLeft = centerX * stage.scrollWidth - stage.clientWidth / 2;
-    stage.scrollTop = centerY * stage.scrollHeight - stage.clientHeight / 2;
-  });
+  stage.style.overflow = "auto";
+  const finish = () => {
+    if (point) {
+      const resized = canvas.getBoundingClientRect();
+      stage.scrollLeft += resized.left + point.fractionX * resized.width - point.targetX;
+      stage.scrollTop += resized.top + point.fractionY * resized.height - point.targetY;
+    } else {
+      stage.scrollLeft = centerX * stage.scrollWidth - stage.clientWidth / 2;
+      stage.scrollTop = centerY * stage.scrollHeight - stage.clientHeight / 2;
+    }
+    updateDragPanState(stage);
+  };
+  if (immediate) finish();
+  else requestAnimationFrame(finish);
 }
 
-function setInlineFigureScale(wrap, value) {
+function updateDragPanState(stage) {
+  const ready = stage.id !== "figure-stage" || stage.dataset.imageState === "ready";
+  const overflow = stage.scrollWidth > stage.clientWidth + 1 || stage.scrollHeight > stage.clientHeight + 1;
+  stage.classList.toggle("can-drag", ready && overflow);
+}
+
+function installDragPan(stage) {
+  let pointerId = null;
+  let originX = 0, originY = 0, scrollX = 0, scrollY = 0;
+  let pinch = null;
+  let pinchFrame = 0;
+  const touchScale = () => stage.id === "figure-stage" ? figureScale : inlineFigureScale(stage.closest(".block"));
+  const flushPinch = () => {
+    pinchFrame = 0;
+    if (!pinch || pinch.startDistance <= 2 || pinch.distance <= 2) return;
+    const next = pinch.startScale * pinch.distance / pinch.startDistance;
+    const anchor = {x:pinch.lastX, y:pinch.lastY, targetX:pinch.x, targetY:pinch.y};
+    if (stage.id === "figure-stage") setFigureScale(next, anchor, true);
+    else setInlineFigureScale(stage.closest(".block"), next, anchor, true);
+    pinch.lastX = pinch.x;
+    pinch.lastY = pinch.y;
+  };
+  // Leave every one-finger gesture to the browser: momentum and scroll chaining
+  // must not be reconstructed with pointer capture or script-driven page scrolling.
+  const touchPair = event => [...event.targetTouches].slice(0, 2);
+  const startPinch = event => {
+    if (event.targetTouches.length < 2 || (stage.id === "figure-stage" && stage.dataset.imageState !== "ready")) return;
+    if (event.cancelable) event.preventDefault();
+    const [a,b] = touchPair(event);
+    pinch = {startDistance:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),startScale:touchScale(),distance:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),x:(a.clientX+b.clientX)/2,y:(a.clientY+b.clientY)/2,lastX:(a.clientX+b.clientX)/2,lastY:(a.clientY+b.clientY)/2};
+  };
+  stage.addEventListener("touchstart", startPinch, {passive:false});
+  stage.addEventListener("touchmove", event => {
+    if (event.targetTouches.length < 2) return;
+    if (stage.id === "figure-stage" && stage.dataset.imageState !== "ready") return;
+    if (!pinch) startPinch(event);
+    if (event.cancelable) event.preventDefault();
+    const [a,b] = touchPair(event);
+    pinch.distance = Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+    pinch.x = (a.clientX+b.clientX)/2;
+    pinch.y = (a.clientY+b.clientY)/2;
+    if (!pinchFrame) pinchFrame = requestAnimationFrame(flushPinch);
+  }, {passive:false});
+  const finishPinch = event => {
+    if (event.type !== "touchcancel" && event.targetTouches.length >= 2) return;
+    if (pinchFrame) {cancelAnimationFrame(pinchFrame);flushPinch();}
+    pinch = null;
+    updateDragPanState(stage);
+  };
+  stage.addEventListener("touchend", finishPinch, {passive:true});
+  stage.addEventListener("touchcancel", finishPinch, {passive:true});
+  stage.addEventListener("pointerenter", () => updateDragPanState(stage));
+  stage.addEventListener("dragstart", event => event.preventDefault());
+  stage.addEventListener("pointerdown", event => {
+    updateDragPanState(stage);
+    if (event.pointerType === "touch") return;
+    if (event.pointerType !== "mouse" || event.button !== 0 || !stage.classList.contains("can-drag")) return;
+    event.preventDefault();
+    pointerId = event.pointerId;
+    originX = event.clientX; originY = event.clientY;
+    scrollX = stage.scrollLeft; scrollY = stage.scrollTop;
+    stage.setPointerCapture(pointerId);
+    stage.classList.add("is-dragging");
+  });
+  stage.addEventListener("pointermove", event => {
+    if (event.pointerType === "touch") return;
+    if (event.pointerId !== pointerId) return;
+    event.preventDefault();
+    stage.scrollLeft = scrollX - (event.clientX - originX);
+    stage.scrollTop = scrollY - (event.clientY - originY);
+  });
+  const finish = event => {
+    if (event.pointerType === "touch") return;
+    if (event.pointerId !== pointerId) return;
+    pointerId = null;
+    stage.classList.remove("is-dragging");
+    if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+    updateDragPanState(stage);
+  };
+  stage.addEventListener("pointerup", finish);
+  stage.addEventListener("pointercancel", finish);
+  stage.addEventListener("lostpointercapture", finish);
+}
+
+function setInlineFigureScale(wrap, value, anchor=null, immediate=false) {
   const scale = Math.min(5, Math.max(1, value));
   inlineFigureScales.set(wrap.dataset.blockId, scale);
   wrap.querySelector(".inline-zoom-out").disabled = scale <= 1;
   wrap.querySelector(".inline-zoom-in").disabled = scale >= 5;
   wrap.querySelector(".inline-zoom-fit").disabled = scale <= 1;
-  applyInlineFigureScale(wrap);
+  applyInlineFigureScale(wrap, true, anchor, immediate);
   scheduleReadingSave();
 }
 
@@ -170,18 +359,73 @@ function applyAllInlineFigureScales() {
   });
 }
 
+function setPanelFigureState(state) {
+  const stage = $("#figure-stage");
+  const status = $("#panel-figure-status");
+  stage.dataset.imageState = state;
+  updateDragPanState(stage);
+  status.hidden = state === "ready";
+  $("#panel-figure-status-message").textContent = state === "failed" ? "图片暂时无法载入" : "图片加载中…";
+  $("#panel-figure-retry").hidden = state !== "failed";
+  $("#figure-zoom-out").disabled = state !== "ready" || figureScale <= 1;
+  $("#figure-detail-zoom").disabled = state !== "ready" || figureScale >= 5;
+  $("#figure-fit").disabled = state !== "ready" || figureScale <= 1;
+  $("#figure-zoom").disabled = state !== "ready";
+}
+
+function handlePanelVisibleLoad() {
+  applyFigureScale(false);
+  if (pendingPanelViewport) requestAnimationFrame(() => {
+    restoreScrollFraction($("#figure-stage"),"x",pendingPanelViewport.x);
+    restoreScrollFraction($("#figure-stage"),"y",pendingPanelViewport.y);
+    pendingPanelViewport = null;
+  });
+}
+
+function requestPanelFigure(block, retry=false) {
+  const requestId = ++panelFigureRequest;
+  const image = $("#panel-figure-image");
+  const base = articleAsset(block.src);
+  const url = retry ? `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}` : base;
+  setPanelFigureState("loading");
+  panelFigureReady = new Promise(resolve => {
+    const candidate = new Image();
+    let settled = false;
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (requestId !== panelFigureRequest) { resolve("stale"); return; }
+      if (result !== "ready") { setPanelFigureState("failed"); resolve(result); return; }
+      candidate.id = "panel-figure-image";
+      candidate.alt = image.alt;
+      image.replaceWith(candidate);
+      handlePanelVisibleLoad();
+      setPanelFigureState("ready");
+      resolve("ready");
+    };
+    const timer = setTimeout(() => finish("timeout"), IMAGE_READY_TIMEOUT_MS);
+    candidate.onload = () => finish("ready");
+    candidate.onerror = () => finish("error");
+    candidate.src = url;
+  });
+  return panelFigureReady;
+}
+
+function retryPanelFigure() {
+  if (figureBlocks[currentFigureIndex]) requestPanelFigure(figureBlocks[currentFigureIndex], true);
+}
+
 function showFigure(index, force=false) {
   if (!figureBlocks.length) return;
   const nextIndex = Math.max(0, Math.min(index, figureBlocks.length - 1));
   if (!force && nextIndex === currentFigureIndex) return;
-  const imageChanged = nextIndex !== currentFigureIndex;
   currentFigureIndex = nextIndex;
   const block = figureBlocks[currentFigureIndex];
   const page = figurePage(block.src);
   const image = $("#panel-figure-image");
-  image.src = articleAsset(block.src);
-  if (imageChanged || force) requestAnimationFrame(() => applyFigureScale(false));
   image.alt = `${tr("source")}${page}${tr("page")}`;
+  requestPanelFigure(block);
   $("#figure-position").textContent = `${String(currentFigureIndex + 1).padStart(2,"0")} / ${String(figureBlocks.length).padStart(2,"0")}`;
   $("#panel-figure-page").textContent = `${tr("source")}${page}${tr("page")}`;
   $("#panel-figure-caption").innerHTML = inlineMarkdown(block.text);
@@ -190,7 +434,16 @@ function showFigure(index, force=false) {
   $("#figure-next").disabled = currentFigureIndex === figureBlocks.length - 1;
   $("#figure-edge-prev").disabled = currentFigureIndex === 0;
   $("#figure-edge-next").disabled = currentFigureIndex === figureBlocks.length - 1;
-  $("#figure-list").querySelectorAll("button").forEach((button, i) => button.setAttribute("aria-pressed", String(i === currentFigureIndex)));
+  const list = $("#figure-list");
+  const buttons = list.querySelectorAll("button");
+  buttons.forEach((button, i) => button.setAttribute("aria-pressed", String(i === currentFigureIndex)));
+  const selected = buttons[currentFigureIndex];
+  if (selected) {
+    const item = selected.getBoundingClientRect();
+    const viewport = list.getBoundingClientRect();
+    if (item.left < viewport.left) list.scrollLeft += item.left - viewport.left - 5;
+    else if (item.right > viewport.right) list.scrollLeft += item.right - viewport.right + 5;
+  }
 }
 
 function setFigureFillPane(enabled) {
@@ -205,12 +458,12 @@ function setFigureFillPane(enabled) {
   scheduleReadingSave();
 }
 
-function applyFigureScale(preserveCenter=true, anchor=null) {
+function applyFigureScale(preserveCenter=true, anchor=null, immediate=false) {
   const stage = $("#figure-stage");
   const image = $("#panel-figure-image");
   const canvas = $("#figure-canvas");
   if (!image.naturalWidth || !stage.clientWidth || !stage.clientHeight) return;
-  stage.style.overflow = figureScale <= 1 ? "hidden" : "auto";
+  stage.style.overflow = "auto";
   const centerX = preserveCenter && stage.scrollWidth > stage.clientWidth ?
     (stage.scrollLeft + stage.clientWidth / 2) / stage.scrollWidth : .5;
   const centerY = preserveCenter && stage.scrollHeight > stage.clientHeight ?
@@ -219,6 +472,8 @@ function applyFigureScale(preserveCenter=true, anchor=null) {
   const point = anchor && oldCanvas.width && oldCanvas.height ? {
     x: anchor.x,
     y: anchor.y,
+    targetX: anchor.targetX ?? anchor.x,
+    targetY: anchor.targetY ?? anchor.y,
     fractionX: Math.min(1, Math.max(0, (anchor.x - oldCanvas.left) / oldCanvas.width)),
     fractionY: Math.min(1, Math.max(0, (anchor.y - oldCanvas.top) / oldCanvas.height))
   } : null;
@@ -228,24 +483,28 @@ function applyFigureScale(preserveCenter=true, anchor=null) {
   const fit = Math.min(availableWidth / image.naturalWidth, availableHeight / image.naturalHeight) * .98;
   canvas.style.width = `${Math.max(1, Math.floor(image.naturalWidth * fit * figureScale))}px`;
   canvas.style.height = `${Math.max(1, Math.floor(image.naturalHeight * fit * figureScale))}px`;
-  requestAnimationFrame(() => {
+  const finish = () => {
     if (point) {
       const resized = canvas.getBoundingClientRect();
-      stage.scrollLeft += resized.left + point.fractionX * resized.width - point.x;
-      stage.scrollTop += resized.top + point.fractionY * resized.height - point.y;
+      stage.scrollLeft += resized.left + point.fractionX * resized.width - point.targetX;
+      stage.scrollTop += resized.top + point.fractionY * resized.height - point.targetY;
     } else {
       stage.scrollLeft = centerX * stage.scrollWidth - stage.clientWidth / 2;
       stage.scrollTop = centerY * stage.scrollHeight - stage.clientHeight / 2;
     }
-  });
+    updateDragPanState(stage);
+  };
+  if (immediate) finish();
+  else requestAnimationFrame(finish);
 }
 
-function setFigureScale(value, anchor=null) {
+function setFigureScale(value, anchor=null, immediate=false) {
   figureScale = Math.min(5, Math.max(1, value));
-  $("#figure-zoom-out").disabled = figureScale <= 1;
-  $("#figure-detail-zoom").disabled = figureScale >= 5;
-  $("#figure-fit").disabled = figureScale <= 1;
-  applyFigureScale(true, anchor);
+  const ready = $("#figure-stage").dataset.imageState === "ready";
+  $("#figure-zoom-out").disabled = !ready || figureScale <= 1;
+  $("#figure-detail-zoom").disabled = !ready || figureScale >= 5;
+  $("#figure-fit").disabled = !ready || figureScale <= 1;
+  applyFigureScale(true, anchor, immediate);
   scheduleReadingSave();
 }
 
@@ -259,6 +518,7 @@ function handleFigureWheel(event) {
   if (!event.ctrlKey || !event.currentTarget.contains(event.target)) return;
   event.preventDefault();
   const stage = $("#figure-stage");
+  if (stage.dataset.imageState !== "ready") return;
   const delta = wheelDeltaPixels(event, stage);
   if (!Number.isFinite(delta) || delta === 0) return;
   const factor = Math.exp(-Math.max(-300, Math.min(300, delta)) * .0025);
@@ -278,7 +538,7 @@ function schedulePaneFigureFit() {
 }
 
 function applyPaneRatio(requested=paneRatio) {
-  if (!window.matchMedia("(min-width: 901px)").matches || document.body.classList.contains("source-pending")) return;
+  if (!isDesktopLayout() || document.body.classList.contains("source-pending")) return;
   const layout = $(".layout");
   const divider = $("#pane-divider");
   const available = layout.getBoundingClientRect().width - divider.offsetWidth;
@@ -292,8 +552,8 @@ function applyPaneRatio(requested=paneRatio) {
   divider.setAttribute("aria-valuemax", String(Number((max * 100).toFixed(1))));
   divider.setAttribute("aria-valuenow", String(Number((paneRatio * 100).toFixed(1))));
   divider.setAttribute("aria-valuetext", currentLanguage === "zh" ?
-    `原图${leftPercent}%，正文${100 - leftPercent}%` :
-    `Figure ${leftPercent}%, article ${100 - leftPercent}%`);
+    `原图在${paneSide === "left" ? "左" : "右"}侧，占${leftPercent}%；正文占${100 - leftPercent}%` :
+    `Figure on ${paneSide}, ${leftPercent}%; article ${100 - leftPercent}%`);
   schedulePaneFigureFit();
   scheduleReadingSave();
 }
@@ -303,7 +563,9 @@ function paneRatioAt(clientX) {
   const divider = $("#pane-divider");
   const rect = layout.getBoundingClientRect();
   const available = rect.width - divider.offsetWidth;
-  return (clientX - rect.left - divider.offsetWidth / 2) / available;
+  return paneSide === "right" ?
+    (rect.right - clientX - divider.offsetWidth / 2) / available :
+    (clientX - rect.left - divider.offsetWidth / 2) / available;
 }
 
 function endPaneDrag(event) {
@@ -318,8 +580,8 @@ function endPaneDrag(event) {
 function handlePaneKey(event) {
   let requested;
   if (event.key === "Home") requested = DEFAULT_PANE_RATIO;
-  else if (event.key === "ArrowLeft") requested = paneRatio - (event.shiftKey ? .05 : .02);
-  else if (event.key === "ArrowRight") requested = paneRatio + (event.shiftKey ? .05 : .02);
+  else if (event.key === "ArrowLeft") requested = paneRatio + (paneSide === "right" ? 1 : -1) * (event.shiftKey ? .05 : .02);
+  else if (event.key === "ArrowRight") requested = paneRatio + (paneSide === "right" ? -1 : 1) * (event.shiftKey ? .05 : .02);
   else return;
   event.preventDefault();
   applyPaneRatio(requested);
@@ -357,7 +619,7 @@ function renderFigurePanel() {
 }
 
 function syncFigureToScroll() {
-  if (restoringReadingState || !figureAuto || !figureBlocks.length || !matchMedia("(min-width: 901px)").matches) return;
+  if (restoringReadingState || !figureAuto || !figureBlocks.length || !isDesktopLayout()) return;
   const anchors = [...document.querySelectorAll(".block[data-figure-index]")];
   const threshold = window.innerHeight * (documentState.article?.scrollThreshold ?? .52);
   let index = 0;
@@ -373,12 +635,80 @@ function observeFigures() {
   requestAnimationFrame(syncFigureToScroll);
 }
 
+function isDesktopLayout() {
+  return !window.ReadOutlineOpen && layoutPreference !== "single" && window.innerWidth >= 901;
+}
+
+function applyLayoutPreference() {
+  const mode = isDesktopLayout() ? "desktop" : "single";
+  document.body.dataset.readerLayout = mode;
+  document.body.dataset.paneSide = paneSide;
+  const control = $("#layout-mode");
+  if (control) {
+    control.value = layoutPreference;
+    control.title = layoutPreference === "double" && mode === "single" ?
+      "双栏需至少 901 像素宽；当前为单栏，窗口变宽后自动切换" : "选择阅读布局";
+  }
+  const swap = $("#pane-swap");
+  if (swap) {
+    swap.hidden = mode !== "desktop";
+    swap.title = paneSide === "left" ? "把原图移到右侧" : "把原图移到左侧";
+  }
+  return mode;
+}
+
+function loadLayoutPreference() {
+  try {
+    const stored = localStorage.getItem("reading-desk:layout");
+    layoutPreference = ["auto", "double", "single"].includes(stored) ? stored : "auto";
+    paneSide = localStorage.getItem("reading-desk:pane-side") === "left" ? "left" : "right";
+  } catch(error) { layoutPreference = "auto"; paneSide = "right"; }
+  applyLayoutPreference();
+}
+
+async function reflowReaderLayout(nextPreference=layoutPreference, nextPaneSide=paneSide) {
+  if (changingLayout || !documentState?.article) return;
+  const before = captureReadingState();
+  saveReadingState();
+  changingLayout = true;
+  restoringReadingState = true;
+  layoutPreference = nextPreference;
+  paneSide = nextPaneSide;
+  try {
+    localStorage.setItem("reading-desk:layout", layoutPreference);
+    localStorage.setItem("reading-desk:pane-side", paneSide);
+  } catch(error) {}
+  applyLayoutPreference();
+  const modePositions = storedReadingState();
+  const panelPosition = before.mode === "desktop" ? before.figure : modePositions?.figure || before.figure;
+  const inlinePositions = before.mode === "single" ? before.inline : modePositions?.inline || before.inline;
+  await animationFrame();
+  applyPaneRatio();
+  applyFigureScale(false);
+  applyAllInlineFigureScales();
+  await animationFrame();
+  restoreArticleScroll(before);
+  restoreScrollFraction($("#figure-stage"), "x", panelPosition.x);
+  restoreScrollFraction($("#figure-stage"), "y", panelPosition.y);
+  document.querySelectorAll("#article .block[data-figure-index]").forEach(wrap => {
+    const position = inlinePositions[wrap.dataset.blockId];
+    if (!position) return;
+    const stage = wrap.querySelector(".inline-figure-stage");
+    restoreScrollFraction(stage, "x", position.x);
+    restoreScrollFraction(stage, "y", position.y);
+  });
+  restoringReadingState = false;
+  changingLayout = false;
+  syncFigureToScroll();
+  scheduleReadingSave();
+}
+
 function readingMode() {
-  return matchMedia("(min-width: 901px)").matches ? "desktop" : "single";
+  return document.body.dataset.readerLayout || (isDesktopLayout() ? "desktop" : "single");
 }
 
 function readingKey() {
-  return `reading-desk:v1:${articleId()}:${readingMode()}`;
+  return `${window.ReadMembers?.state.user?.id || "guest"}:reading-desk:v1:${reviewMode ? "review:" + documentState.version_hash + ":" : ""}${articleId()}:${readingMode()}`;
 }
 
 function scrollFraction(element, axis) {
@@ -427,8 +757,10 @@ function captureReadingState() {
 function saveReadingState() {
   clearTimeout(readingSaveTimer);
   readingSaveTimer = null;
-  if (restoringReadingState || !documentState?.article) return;
-  try { localStorage.setItem(readingKey(), JSON.stringify(captureReadingState())); }
+  if (window.ReadProgressPending || restoringReadingState || !documentState?.article) return;
+  const captured = captureReadingState();
+  if (!reviewMode && window.ReadMembers) window.ReadMembers.saveProgress(articleId(),documentState.version_hash,captured);
+  try { localStorage.setItem(readingKey(), JSON.stringify(captured)); }
   catch(error) { /* Reading remains usable if local storage is unavailable. */ }
 }
 
@@ -459,6 +791,18 @@ function imageSettled(image) {
   });
 }
 
+function handleReadingScroll() {
+  if (changingLayout) return;
+  if (restoringReadingState && documentState?.article && Math.abs(window.scrollY - restoreStartScrollY) > 5) {
+    readingRestoreInterrupted = true;
+    restoringReadingState = false;
+    readingBottomIntent = false;
+  }
+  if (scrollQueued) return;
+  scrollQueued = true;
+  requestAnimationFrame(() => { scrollQueued = false; syncFigureToScroll(); scheduleReadingSave(); });
+}
+
 function restoreArticleScroll(saved) {
   const scroll = saved?.scroll;
   if (!scroll) return;
@@ -474,13 +818,14 @@ function restoreArticleScroll(saved) {
 async function restoreReadingState(saved) {
   if (!saved) { restoringReadingState = false; return; }
   await document.fonts?.ready;
-  await imageSettled($("#panel-figure-image"));
+  if (readingRestoreInterrupted) return;
   await animationFrame();
   applyPaneRatio();
   applyFigureScale(false);
   applyAllInlineFigureScales();
   await animationFrame();
   await animationFrame();
+  if (readingRestoreInterrupted) return;
   restoreArticleScroll(saved);
   if (saved.scroll?.atBottom) {
     const keepBottom = () => {
@@ -501,6 +846,93 @@ async function restoreReadingState(saved) {
   restoringReadingState = false;
 }
 
+function currentInlineFigure() {
+  const anchors = [...document.querySelectorAll("#article .block[data-figure-index]")];
+  const threshold = innerHeight * (documentState.article?.scrollThreshold ?? .52);
+  let index = 0;
+  anchors.forEach((anchor, i) => { if (anchor.getBoundingClientRect().top <= threshold) index = i; });
+  return anchors[index] || null;
+}
+
+function waitForInlineImage(image) {
+  if (!image) return Promise.resolve("ready");
+  image.loading = "eager";
+  if (image.complete) return Promise.resolve(image.naturalWidth ? "ready" : "error");
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      image.removeEventListener("load", loaded);
+      image.removeEventListener("error", failed);
+      resolve(result);
+    };
+    const loaded = () => finish("ready");
+    const failed = () => finish("error");
+    const timer = setTimeout(() => finish("timeout"), IMAGE_READY_TIMEOUT_MS);
+    image.addEventListener("load", loaded);
+    image.addEventListener("error", failed);
+  });
+}
+
+function preloadOtherFigures() {
+  if (backgroundFigureImages.length) return;
+  const order = [...figureBlocks.slice(currentFigureIndex + 1), ...figureBlocks.slice(0, currentFigureIndex)];
+  (async () => {
+    for (const block of order) {
+      const image = new Image();
+      image.decoding = "async"; image.fetchPriority = "low";
+      backgroundFigureImages.push(image);
+      await new Promise(resolve => {
+        const timer = setTimeout(resolve, 12000);
+        image.onload = image.onerror = () => { clearTimeout(timer); resolve(); };
+        image.src = articleAsset(block.src);
+      });
+    }
+  })();
+}
+
+function showPreparationFailure(message) {
+  $("#reading-preparation-message").textContent = message;
+  $("#reading-preparation-retry").hidden = false;
+}
+
+async function finishReadingPreparation(retry=false) {
+  const attempt = ++preparationAttempt;
+  $("#reading-preparation-message").textContent = "正在准备阅读…";
+  $("#reading-preparation-retry").hidden = true;
+  let result = "ready";
+  if (isDesktopLayout()) {
+    if (retry) retryPanelFigure();
+    for (let tries = 0; tries < 3; tries++) {
+      result = await panelFigureReady;
+      if (result !== "stale") break;
+    }
+  } else {
+    const wrap = currentInlineFigure();
+    const image = wrap?.querySelector(".inline-figure-canvas img");
+    if (retry && image) {
+      const base = articleAsset(figureBlocks[Number(wrap.dataset.figureIndex)].src);
+      image.src = `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}`;
+    }
+    result = await waitForInlineImage(image);
+    if (result === "ready" && wrap) applyInlineFigureScale(wrap, false);
+  }
+  if (attempt !== preparationAttempt) return;
+  if (result !== "ready") {
+    showPreparationFailure(result === "timeout" ? "图片加载较慢，请重试。" : "图片暂时无法载入，请重试。");
+    return;
+  }
+  if (readingPreparationSaved?.scroll?.atBottom) window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
+  readingPrepared = true;
+  $(".topbar").inert = false;
+  $(".layout").inert = false;
+  document.body.classList.remove("reader-preparing");
+  $("#reading-preparation").hidden = true;
+  setTimeout(preloadOtherFigures, 0);
+}
+
 function configureReadingNavigation(articles) {
   const index = articles.findIndex(item => item.id === articleId());
   const prev = $("#nav-prev");
@@ -519,17 +951,45 @@ function navigateToArticle(button) {
 
 async function start() {
   history.scrollRestoration = "manual";
+  window.ReadProgressPending = !reviewMode;
+  let readerTouched = false;
+  const touched = () => { readerTouched = true; };
+  for (const type of ["wheel","touchstart","pointerdown","keydown"]) window.addEventListener(type,touched,{once:true,passive:true});
+  if (reviewMode) {
+    configureReviewNavigation();
+    document.addEventListener("read-members-expired", clearPrivateReview);
+  }
+  loadLayoutPreference();
+  $("#panel-figure-retry").addEventListener("click", retryPanelFigure);
+  $("#reading-preparation-retry").addEventListener("click", () => {
+    if (!documentState?.article) location.reload();
+    else finishReadingPreparation(true);
+  });
   try {
-    const catalogResponse = await fetch("./catalog.json", {cache:"no-store"});
-    if (!catalogResponse.ok) throw new Error("Catalog unavailable");
-    const {articles} = await catalogResponse.json();
-    if (!articles.some(item => item.id === requestedArticleId)) throw new Error("Article unavailable");
+    let articles = [];
+    if (reviewMode) {
+      if (!requestedArticleId || !/^[\w-]+$/.test(requestedArticleId)) throw new Error("稿件编号无效");
+      await reviewMemberBridge();
+      await (window.ReadMembers.authReady || window.ReadMembers.ready);
+      reviewIdentity = {epoch:window.ReadMembers.state.epoch, uid:window.ReadMembers.state.user?.id};
+      assertReviewIdentity();
+      const response = await fetch(`/api/member/admin/drafts/${encodeURIComponent(requestedArticleId)}${requestedVersion ? "?version="+encodeURIComponent(requestedVersion) : ""}`, {credentials:"same-origin", cache:"no-store", signal:AbortSignal.timeout(15000)});
+      if (!response.ok) throw new Error([401,403].includes(response.status) ? "请使用管理员账号登录后查看稿件" : "稿件暂时无法载入，请重试");
+      reviewDraft = await response.json();
+      assertReviewIdentity();
+      documentState = adaptReviewDraft(reviewDraft, requestedArticleId);
+    } else {
+    window.ReadPublished.catalog('./catalog.json').then(data => {
+      articles = data.articles; configureReadingNavigation(articles);
+    }).catch(() => {});
+    documentState = await window.ReadPublished.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
+    }
     restoringReadingState = true;
-    const response = await fetch(`./data/${encodeURIComponent(requestedArticleId)}.json`, {cache:"no-store"});
-    if (!response.ok) throw new Error("Article unavailable");
-    documentState = await response.json();
-    if (documentState.article.id !== requestedArticleId) throw new Error("Article mismatch");
-    const saved = storedReadingState();
+    const localSaved = reviewMode || window.ReadMembers?.state.authStatus === "ready" ? storedReadingState() : null;
+    const saved = localSaved;
+    readingPreparationSaved = saved;
+    pendingPanelViewport = saved?.figure || null;
+    pendingInlinePositions = {...(saved?.inline || {})};
     if (saved) {
       readingBottomIntent = saved.scroll?.atBottom === true;
       paneRatio = Number.isFinite(saved.paneRatio) ? saved.paneRatio : DEFAULT_PANE_RATIO;
@@ -544,12 +1004,43 @@ async function start() {
     updateReadingChrome();
     renderArticle();
     applyPaneRatio();
+    restoreStartScrollY = window.scrollY;
+    window.addEventListener("scroll", handleReadingScroll, {passive:true});
     await restoreReadingState(saved);
-    if (!saved) syncFigureToScroll();
-    configureReadingNavigation(articles);
+    syncFigureToScroll();
+    await finishReadingPreparation();
+    if (reviewMode) assertReviewIdentity();
+    if (!reviewMode) configureReadingNavigation(articles);
+    if (window.ReadMembers) {
+      (async () => {
+      if (!reviewMode) await window.ReadMembers.ready;
+      const mount = reviewMode ? window.ReadMembers.mountReviewReader : window.ReadMembers.mountReader;
+      if (!mount) throw new Error("阅读工具版本已更新，请刷新重试");
+      mount({articleId:articleId(), revision:documentState.version_hash, snapshot:documentState, metadata:articles.find(a=>a.id===articleId()), assetUrl:articleAsset, root:$("#article"), toolbar:$("#member-reader-tools"), figureRoot:$(".left-rail"), draft:reviewDraft});
+      if (!reviewMode) {
+        const remote = await window.ReadMembers.loadProgress(articleId(),documentState.version_hash,storedReadingState(),readingMode());
+        if (remote && !readerTouched && !readingRestoreInterrupted) {
+          restoringReadingState = true;
+          readingBottomIntent = remote.scroll?.atBottom === true;
+          paneRatio = Number.isFinite(remote.paneRatio) ? remote.paneRatio : DEFAULT_PANE_RATIO;
+          pendingPanelViewport = remote.figure || null;
+          pendingInlinePositions = {...(remote.inline || {})};
+          figureAuto = remote.figure?.auto !== false;
+          figureFillPane = remote.figure?.fill === true;
+          figureScale = Math.min(5, Math.max(1, Number(remote.figure?.scale) || 1));
+          for (const [id,position] of Object.entries(remote.inline || {})) inlineFigureScales.set(id,Math.min(5,Math.max(1,Number(position.scale)||1)));
+          showFigure(Number.isInteger(remote.figure?.index) ? remote.figure.index : 0);
+          setFigureAuto(figureAuto);setFigureFillPane(figureFillPane);
+          await restoreReadingState(remote);
+        }
+      }
+      })().catch(error => console.warn("Reading tools unavailable", error)).finally(() => { window.ReadProgressPending=false; });
+    } else window.ReadProgressPending=false;
   } catch(error) {
+    console.error("Reader preparation failed", error);
     restoringReadingState = false;
-    $("#article").innerHTML = '<h1 class="article-title">阅读内容暂时无法载入</h1><p>请从文献导航重新选择文章。</p>';
+    $("#article").innerHTML = '<h1 class="article-title">阅读内容暂时无法载入</h1><p>' + (reviewMode ? escapeHtml(error.message || "请返回稿件审核重试。") : '请从文献导航重新选择文章。') + '</p>';
+    showPreparationFailure(reviewMode ? error.message || "稿件暂时无法载入，请重试。" : "阅读内容暂时无法载入，请重试。");
   }
   $("#nav-top").addEventListener("click", () => {readingBottomIntent = false; window.scrollTo({top:0,behavior:"smooth"});});
   $("#nav-bottom").addEventListener("click", () => {readingBottomIntent = true; window.scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});});
@@ -566,21 +1057,23 @@ async function start() {
   document.addEventListener("visibilitychange", () => {if(document.visibilityState === "hidden") saveReadingState();});
   $("#article").addEventListener("scroll", scheduleReadingSave, true);
   $("#figure-stage").addEventListener("scroll", scheduleReadingSave, {passive:true});
+  installDragPan($("#figure-stage"));
   $("#article").addEventListener("click", scheduleReadingSave);
   $("#figure-zoom").addEventListener("click", () => setFigureFillPane(!figureFillPane));
   $("#figure-detail-zoom").addEventListener("click", () => setFigureScale(figureScale * 1.25));
   $("#figure-zoom-out").addEventListener("click", () => setFigureScale(figureScale / 1.25));
   $("#figure-fit").addEventListener("click", () => setFigureScale(1));
-  $("#panel-figure-image").addEventListener("load", () => applyFigureScale(false));
   $("#figure-prev").addEventListener("click", () => chooseFigure(currentFigureIndex - 1));
   $("#figure-next").addEventListener("click", () => chooseFigure(currentFigureIndex + 1));
   $("#figure-edge-prev").addEventListener("click", () => chooseFigure(currentFigureIndex - 1));
   $("#figure-edge-next").addEventListener("click", () => chooseFigure(currentFigureIndex + 1));
   $("#figure-auto").addEventListener("click", () => setFigureAuto(!figureAuto));
+  $("#layout-mode").addEventListener("change", event => reflowReaderLayout(event.currentTarget.value));
+  $("#pane-swap").addEventListener("click", () => reflowReaderLayout(layoutPreference, paneSide === "left" ? "right" : "left"));
   $(".left-rail").addEventListener("wheel", handleFigureWheel, {passive:false});
   const divider = $("#pane-divider");
   divider.addEventListener("pointerdown", event => {
-    if (event.button !== 0 || !window.matchMedia("(min-width: 901px)").matches) return;
+    if (event.button !== 0 || !isDesktopLayout()) return;
     event.preventDefault();
     panePointerId = event.pointerId;
     divider.setPointerCapture(event.pointerId);
@@ -597,12 +1090,11 @@ async function start() {
   divider.addEventListener("lostpointercapture", endPaneDrag);
   divider.addEventListener("dblclick", event => {event.preventDefault();applyPaneRatio(DEFAULT_PANE_RATIO);});
   divider.addEventListener("keydown", handlePaneKey);
-  window.addEventListener("scroll", () => {
-    if (scrollQueued) return;
-    scrollQueued = true;
-    requestAnimationFrame(() => {scrollQueued = false;syncFigureToScroll();scheduleReadingSave();});
-  }, {passive:true});
-  window.addEventListener("resize", () => {applyPaneRatio();syncFigureToScroll();applyFigureScale();applyAllInlineFigureScales();if(readingBottomIntent)window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});});
+  window.addEventListener("resize", () => {
+    if (readingMode() !== (isDesktopLayout() ? "desktop" : "single")) {reflowReaderLayout();return;}
+    applyPaneRatio();syncFigureToScroll();applyFigureScale();applyAllInlineFigureScales();
+    if(readingBottomIntent)window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
+  });
 }
 
 start();

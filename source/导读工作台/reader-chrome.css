@@ -1,0 +1,99 @@
+/* Quiet, two-level navigation shared by public reading and review. */
+body{--reader-header:112px;--reader-ink:#274461;--reader-line:#e2e9f0}
+body .topbar{height:60px;min-height:60px;padding:0 clamp(16px,3vw,48px);gap:24px;flex-wrap:nowrap;box-shadow:none!important}
+.topbar #nav-catalog{font:500 14px/1.3 "Microsoft YaHei","PingFang SC",sans-serif;color:#50657a;text-decoration:none;white-space:nowrap}
+.topbar [data-member-nav]{margin-left:auto}
+.topbar .top-actions[hidden]{display:none!important}
+.topbar .member-navigation{gap:20px!important;font-size:14px!important;flex-wrap:nowrap}
+.topbar .member-navigation a{font:500 14px/1.4 "Microsoft YaHei","PingFang SC",sans-serif!important;white-space:nowrap}
+.reader-toolbar{position:sticky;top:60px;height:52px;z-index:19;display:flex;align-items:center;gap:12px;padding:0 clamp(16px,3vw,48px);border-bottom:1px solid var(--reader-line);background:rgba(255,255,255,.98);color:var(--reader-ink)}
+.reader-tool-group{display:flex;align-items:center;gap:4px;min-width:0}
+.reader-tool-group+.reader-tool-group:not(:empty){border-left:1px solid var(--reader-line);padding-left:12px}
+.reader-tool-group:last-child{margin-left:auto}
+.reader-tool,.reader-toolbar .reader-tool{box-sizing:border-box;display:inline-flex!important;align-items:center;justify-content:center;flex:none;width:44px;height:44px;padding:11px!important;border:1px solid transparent!important;border-radius:8px;background:transparent!important;color:var(--reader-ink)!important;cursor:pointer;list-style:none;text-decoration:none}
+.reader-tool svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.reader-tool:hover{background:#f0f5fa!important}
+.reader-tool:focus-visible{outline:2px solid #6b96bf;outline-offset:1px}
+.reader-tool[aria-pressed=true],.reader-tool[aria-expanded=true]{background:#eaf2fa!important;color:#245e8f!important}
+.reader-tool:disabled{opacity:.3;cursor:default}
+.reader-tool[hidden]{display:none!important}
+.reader-tool::-webkit-details-marker{display:none}
+.reader-layout-menu{position:relative}
+.reader-layout-options{position:absolute;right:0;top:46px;padding:18px;min-width:190px;border:1px solid var(--reader-line);border-radius:12px;background:white;box-shadow:0 12px 35px #19385415;display:grid;gap:14px;font:14px/1.5 "Microsoft YaHei","PingFang SC",sans-serif}
+.reader-layout-options .layout-choice{display:flex;justify-content:space-between;gap:18px}
+.reader-layout-options button,.reader-layout-options select{font:inherit}
+.reader-jumps{position:fixed;right:14px;bottom:24px;display:grid;gap:3px;padding:3px;border:1px solid var(--reader-line);border-radius:12px;background:#fffffff0;box-shadow:0 4px 20px #1737510a;z-index:15}
+body[data-reader-layout=desktop] .left-rail,body[data-reader-layout=desktop] .pane-divider{top:var(--reader-header);height:calc(100dvh - var(--reader-header))}
+#article h2,#article h3,#article h4{scroll-margin-top:135px}
+.reader-panel{position:fixed;z-index:40;top:var(--reader-header);bottom:0;right:0;width:min(360px,100vw);background:white;border-left:1px solid var(--reader-line);box-shadow:-8px 0 40px #1838520b;display:flex;flex-direction:column;color:var(--reader-ink);font:14px/1.7 "Microsoft YaHei","PingFang SC",sans-serif}
+.reader-panel[hidden],.reader-panel-shade[hidden]{display:none!important}
+.reader-panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 14px 24px;border-bottom:1px solid var(--reader-line);flex:none}
+.reader-panel-head h2{font:600 18px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;margin:0}
+.reader-panel-close{width:44px;height:44px}
+.reader-panel-close svg{width:26px;height:26px;stroke-width:1.7}
+.reader-panel-body{padding:20px 24px;overflow:auto;overscroll-behavior:contain;min-height:0;flex:1}
+.reader-outline{left:0;right:auto;border-left:0;border-right:1px solid var(--reader-line)}
+.reader-outline details{margin-bottom:12px}
+.reader-outline summary{display:list-item;cursor:pointer;color:#91a3b5}
+.reader-outline a{display:inline-block;padding:6px 0;color:#566b7f;text-decoration:none;font-weight:500;line-height:1.8}
+.reader-outline a[aria-current=location]{color:#225d91;font-weight:700}
+.reader-outline a:hover{color:#225d91}
+.reader-outline a.reader-outline-child{display:block;margin-left:16px;font-size:13px;font-weight:400}
+.reader-panel-body .member-notes-panel,.reader-panel-body .member-export-panel,.reader-panel-body .member-review-decisions{border:0!important;background:transparent!important;padding:0!important;margin:0!important;font:inherit}
+.reader-panel-body summary[hidden]{display:none}
+.reader-panel-body button,.member-review-editor button{font:500 14px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;border:1px solid #cedde9;background:#f7faff;color:#315776;border-radius:7px;padding:9px 14px;cursor:pointer;margin:4px 4px 4px 0}
+.reader-panel-body input,.reader-panel-body select,.reader-panel-body textarea,.member-review-editor textarea{font:inherit}
+.reader-panel-body .member-note{padding:12px 0;border-bottom:1px solid var(--reader-line)}
+.reader-panel-body blockquote{margin:8px 0;border-left:3px solid #b3cbe1;padding-left:12px;color:#5f7385;font-size:13px}
+.reader-versions .reader-panel-body{padding:20px 18px 64px;background:#f8fafc}
+.reader-versions .member-version-panel{margin:0;border:0;padding:0;background:transparent}
+.reader-version-list{display:grid;gap:14px}
+.reader-versions a.reader-version-card{display:flex;flex-direction:column;gap:9px;min-height:132px;box-sizing:border-box;margin:0;padding:18px 18px 15px;border:1px solid #dce5ee;border-radius:12px;background:#fff;color:#334f68;text-decoration:none;line-height:1.65;font:400 14px/1.65 "Microsoft YaHei","PingFang SC",sans-serif;transition:border-color .15s,background .15s}
+.reader-versions a.reader-version-card:hover{border-color:#8eafcc;background:#fbfdff}
+.reader-versions a.reader-version-card:focus-visible{outline:2px solid #527ea5;outline-offset:3px}
+.reader-versions a.reader-version-card[data-viewing=true]{border-color:#7da6cb;background:#eef5fc;box-shadow:inset 3px 0 #6e99c0;color:#264e70}
+.reader-version-card-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 10px}
+.reader-version-card-heading strong{font-size:16px;font-weight:600;letter-spacing:.01em}
+.reader-version-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:5px;background:#eaf1f7;color:#56718a;font-size:11px;font-weight:500;white-space:nowrap}
+.reader-version-card[data-viewing=true] .reader-version-tag{background:#dceaf7;color:#315f87}
+.reader-version-card time{font-size:12px;color:#788a9b}
+.reader-version-card p{margin:0!important;font:inherit!important;text-align:left!important;color:#536b80}
+.reader-version-card small{margin-top:auto;padding-top:7px;border-top:1px solid #e8eef4;font-size:12px;color:#70869a}
+.reader-historical-status{display:flex;align-items:center;gap:10px;margin-left:8px;padding-left:12px;border-left:1px solid var(--reader-line);font:12px/1.4 "Microsoft YaHei","PingFang SC",sans-serif;white-space:nowrap;color:#7c6947}
+.reader-historical-status strong{font-weight:500}
+.reader-historical-status a{display:inline-flex;align-items:center;min-height:44px;color:#35668f;text-decoration:none;font-weight:500}
+.reader-historical-status a:hover{text-decoration:underline}
+@media(max-width:700px){
+ .reader-versions .reader-panel-body{padding:16px 14px 72px}
+ .reader-versions a.reader-version-card{min-height:126px;padding:16px}
+ .reader-historical-status{gap:6px;margin-left:2px;padding-left:6px;font-size:11px}
+}
+.reader-dialog{top:50%;bottom:auto;left:50%;right:auto;transform:translate(-50%,-50%);width:min(680px,calc(100vw - 32px));max-height:85dvh;border:1px solid var(--reader-line);border-radius:16px;box-shadow:0 20px 80px #0c23392b}
+.reader-panel-shade{position:fixed;inset:0;background:#182c4333;z-index:39}
+#member-reader-tools:empty{display:none}
+#member-reader-tools .member-reader-actions:empty{display:none}
+#member-reader-tools .member-review-tools:empty{display:none}
+.member-review-editor{font-family:"Microsoft YaHei","PingFang SC",sans-serif!important}
+#reading-preparation-message{min-width:220px}
+.reader-review-badge{font:500 12px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;color:#7e8fa1;padding:0 10px}
+.reader-update-notice{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:30;padding:12px 20px;border:1px solid #cbdce9;border-radius:12px;background:#fff;color:#315776;box-shadow:0 4px 24px #17375115;font:14px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;cursor:pointer}
+body.reader-preparing .reader-toolbar,body.reader-preparing .reader-jumps{pointer-events:none;visibility:hidden}
+@media(min-width:1200px){body.reader-outline-open .layout{margin-left:360px;max-width:none}body.reader-outline-open #main{max-width:880px;margin:auto;width:100%}}
+@media(min-width:901px) and (max-width:1199px){.reader-outline{width:300px}body.reader-outline-open .layout{margin-left:300px;max-width:none}}
+@media(max-width:700px){
+  body .topbar{gap:12px;padding:0 14px}
+  .topbar .brand>span:last-child{display:none}
+  .topbar #nav-catalog{font-size:12px}
+  .topbar .member-navigation{gap:12px!important}
+  .topbar .member-navigation a{font-size:12px!important}
+  .reader-toolbar{padding:0 8px;gap:3px}
+  .reader-tool-group{gap:0}
+  .reader-tool-group+.reader-tool-group:not(:empty){padding-left:3px}
+  .reader-toolbar .reader-tool{width:44px;padding:11px!important}
+  .reader-toolbar #reader-member-actions{overflow-x:auto;scrollbar-width:none}
+  .reader-tool-group:last-child{flex:none}
+  .reader-jumps{right:7px;bottom:16px}
+  .reader-jumps .reader-tool{width:32px;height:32px;padding:7px!important}
+  .reader-panel{width:min(360px,90vw)}
+  .reader-dialog{width:calc(100vw - 24px)}
+}

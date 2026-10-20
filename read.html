@@ -1,29 +1,36 @@
 <!doctype html>
 <html lang="zh-CN" data-theme="mono">
-<head>
+<head><script defer src="./published-library.js?v=45a2d142945d2356"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>文献导读</title>
-  <link rel="stylesheet" href="./app.css">
-  <script src="./reader.js" defer></script>
+  <link rel="stylesheet" href="./app.css?v=7dc52a5f080f3953">
+  <script src="./reader.js?v=0786f719d9a6a76e" defer></script>
+  <link rel="stylesheet" href="./member-system/members.css?v=2b1a128981b2e57e">
+  <script src="./member-system/members.js?v=d1d6bdde0023047b" defer></script>
+  <link rel="stylesheet" href="./literature-lookup.css?v=bb92c21dfa9e3234">
+  <script src="./literature-lookup.js?v=046f50b800edc2ae" defer></script>
+  <link rel="stylesheet" href="./reader-chrome.css?v=7f7b9dcf0f807282">
+  <script src="./reader-chrome.js?v=3e4a42db60103ddb" defer></script>
 </head>
-<body>
-  <header class="topbar">
+<body class="reader-preparing">
+  <div id="reading-preparation" class="reading-preparation" role="status" aria-live="polite"><div class="reading-preparation-card"><span class="reading-preparation-mark" aria-hidden="true">R<span>·</span></span><p id="reading-preparation-message">正在准备阅读…</p><div class="reading-preparation-actions"><button id="reading-preparation-retry" type="button" hidden>重试</button><a href="./index.html">返回文献导航</a></div></div></div>
+  <header class="topbar" inert>
     <a class="brand" href="./index.html" aria-label="返回文献目录"><span class="brand-mark">R<span>·</span></span><span>文献导读</span></a>
     <nav class="reading-navigation" aria-label="阅读导航"><div class="reading-main-nav"><a id="nav-catalog" href="./index.html">文献导航</a><button id="nav-prev" type="button" disabled>上一篇</button><button id="nav-next" type="button" disabled>下一篇</button></div><div class="reading-jump-nav"><button id="nav-top" type="button">顶部</button><button id="nav-bottom" type="button">底部</button></div></nav>
-    <div class="top-actions"><a class="top-link" href="#" target="_blank" rel="noopener">原文链接 <span class="ui-arrow-external" aria-hidden="true"></span></a></div>
+    <div data-member-nav></div><div class="top-actions"><label class="layout-choice"><span>布局</span><select id="layout-mode" aria-label="阅读布局"><option value="auto">自动</option><option value="double">双栏</option><option value="single">单栏</option></select></label><button id="pane-swap" class="pane-swap" type="button" hidden>左右互换</button><a class="top-link" href="#" target="_blank" rel="noopener">原文链接 <span class="ui-arrow-external" aria-hidden="true"></span></a></div>
   </header>
-  <div class="layout">
+  <div class="layout" inert>
     <aside class="left-rail" aria-label="原文配图">
       <div class="figure-panel-head"><span class="rail-kicker">原文配图</span><div class="figure-head-actions"><button id="figure-auto" class="figure-auto" type="button" aria-pressed="true">自动</button><button id="figure-zoom" type="button" aria-pressed="false">铺满</button><div class="figure-scale-controls" role="group" aria-label="图片缩放"><button id="figure-zoom-out" type="button" aria-label="缩小图片">−</button><button id="figure-detail-zoom" type="button" aria-label="放大图片">＋</button><button id="figure-fit" type="button">适应</button></div></div><span id="figure-position"></span></div>
-      <div class="figure-stage-wrap"><div class="figure-stage" id="figure-stage" tabindex="0" aria-label="原文配图，放大后可横向和纵向滚动"><div id="figure-canvas"><img id="panel-figure-image" alt=""></div></div><button id="figure-edge-prev" class="figure-edge-nav prev" type="button" aria-label="上一张原图"><span class="ui-arrow-left" aria-hidden="true"></span></button><button id="figure-edge-next" class="figure-edge-nav next" type="button" aria-label="下一张原图"><span class="ui-arrow-right" aria-hidden="true"></span></button></div>
+      <div class="figure-stage-wrap"><div class="figure-stage" id="figure-stage" tabindex="0" aria-label="原文配图，放大后可横向和纵向滚动"><div id="figure-canvas"><img id="panel-figure-image" alt=""></div><div id="panel-figure-status" class="figure-image-status" role="status" aria-live="polite" hidden><span id="panel-figure-status-message">图片加载中…</span><button id="panel-figure-retry" type="button" hidden>重试图片</button></div></div><button id="figure-edge-prev" class="figure-edge-nav prev" type="button" aria-label="上一张原图"><span class="ui-arrow-left" aria-hidden="true"></span></button><button id="figure-edge-next" class="figure-edge-nav next" type="button" aria-label="下一张原图"><span class="ui-arrow-right" aria-hidden="true"></span></button></div>
       <div class="figure-panel-meta"><span id="panel-figure-page"></span><p id="panel-figure-caption"></p><span id="panel-figure-note"></span></div>
       <div class="figure-controls"><button id="figure-prev" type="button" aria-label="上一张原图"><span class="ui-arrow-left" aria-hidden="true"></span></button><div id="figure-list" class="figure-list" role="group" aria-label="选择原文配图"></div><button id="figure-next" type="button" aria-label="下一张原图"><span class="ui-arrow-right" aria-hidden="true"></span></button></div>
     </aside>
     <div id="pane-divider" class="pane-divider" role="separator" aria-label="调整原图与正文宽度" aria-orientation="vertical" aria-controls="figure-stage main" aria-valuemin="30" aria-valuemax="70" aria-valuenow="45" aria-valuetext="原图45%，正文55%" tabindex="0" title="拖动调整宽度；双击恢复45%/55%；方向键微调"></div>
     <aside class="old-navigation" hidden aria-label="文章导航"><nav id="toc"></nav></aside>
-    <main id="main"><div class="article-head"><div class="eyebrow"><span class="eyebrow-line"></span> 研究论文 <span class="separator">/</span> 导读</div><div id="article"></div></div><footer class="article-footer" aria-label="阅读结束导航"><button id="footer-top" type="button">返回顶部 <span class="ui-arrow-up" aria-hidden="true"></span></button><a id="footer-catalog" href="./index.html">返回导航 <span class="ui-arrow-right" aria-hidden="true"></span></a></footer></main>
+    <main id="main"><div class="article-head"><div class="eyebrow"><span class="eyebrow-line"></span> 研究论文 <span class="separator">/</span> 导读</div><div id="member-reader-tools"></div><div id="article"></div></div><footer class="article-footer" aria-label="阅读结束导航"><button id="footer-top" type="button">返回顶部 <span class="ui-arrow-up" aria-hidden="true"></span></button><a id="footer-catalog" href="./index.html">返回导航 <span class="ui-arrow-right" aria-hidden="true"></span></a></footer></main>
   </div>
 </body>
 </html>

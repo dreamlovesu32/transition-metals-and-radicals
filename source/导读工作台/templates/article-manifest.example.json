@@ -1,0 +1,24 @@
+{
+  "id": "replace-with-article-id",
+  "readingId": "R-YYYYMMDD-02",
+  "displayNumber": "02",
+  "title": {
+    "zh": "填写已核对的中文论文题名",
+    "en": "Enter the verified English paper title"
+  },
+  "content": {
+    "zh": "articles/replace-with-article-id/content-zh.md",
+    "en": "articles/replace-with-article-id/content-en.md"
+  },
+  "state": {
+    "zh": "data/replace-with-article-id/state-zh.json",
+    "en": "data/replace-with-article-id/state-en.json"
+  },
+  "sourcePdf": "原文/YYYY-MM-DD/02/paper.pdf",
+  "sourceUrl": "https://doi.org/10.xxxx/replace-with-verified-doi",
+  "figuresDir": "articles/replace-with-article-id/figures",
+  "figures": [
+    {"file": "figure-01.png", "page": 1}
+  ],
+  "scrollThreshold": 0.52
+}

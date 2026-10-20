@@ -1,0 +1,17 @@
+**/__pycache__/
+**/.private/
+**/.env
+**/.env.*
+!**/.env.example
+**/runtime/
+**/build/
+**/node_modules/
+**/data/
+**/articles/
+**/figures/
+**/covers/
+**/*.sqlite*
+**/*.db
+**/*.pdf
+**/*.zip
+**/*.bak

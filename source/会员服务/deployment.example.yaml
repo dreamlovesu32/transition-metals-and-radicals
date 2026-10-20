@@ -1,0 +1,13 @@
+# 模板而非部署指令；本轮不部署、不改变IAM/数据库权限。
+# 目标Python3.10 Linux x86_64；仍需在目标SCF运行时实测依赖ABI和网关契约。
+runtime: Python3.10
+handler: scf_handler.main_handler
+memorySize: 256
+timeout: 60
+installDependency: false
+# 仅可上传经审查的Linux x86_64依赖包，禁止打包Windows site-packages。
+# 路由 /api/member/* -> 此函数；同域HTTPS，headers.Set-Cookie单字符串。
+# 多个Set-Cookie会安全失败；不假设AWS multiValueHeaders在此平台可用。
+# body按SCF集成响应base64输出；requestContext.sourceIp须目标网关实测。
+# 适配器请求体32KiB、响应二进制4MiB上限，平台实际限额另需验证。
+# 服务端凭据仅运行时secret/env注入，不在zip内。

@@ -1,14 +1,69 @@
 {
   "articles": [
     {
+      "id": "r20261018-01",
+      "readingId": "R-20261018-01",
+      "title": "Scholl反应的电化学控制：芳鎓离子路径与自由基阳离子路径",
+      "journal": "Angewandte Chemie International Edition",
+      "published": "2026.10",
+      "firstPublishedOn": "2026-10-10",
+      "updatedAt": "2026-10-19T10:53:34+08:00",
+      "kind": "research",
+      "doi": "10.1002/anie.2052342",
+      "cover": "./covers/r20261018-01.png",
+      "reviewStatus": "approved"
+    },
+    {
+      "id": "r20261017-04",
+      "readingId": "R-20261017-04",
+      "title": "光催化氢原子转移中调控选择性的催化阴离子取代基效应",
+      "journal": "Angewandte Chemie International Edition",
+      "published": "2026.09",
+      "firstPublishedOn": "2026-09-19",
+      "updatedAt": "2026-10-17T15:33:29+08:00",
+      "kind": "review",
+      "doi": "10.1002/anie.9361104",
+      "cover": "./covers/r20261017-04.png",
+      "reviewStatus": "proofreading"
+    },
+    {
       "id": "r20261017-01",
       "readingId": "R-20261017-01",
       "title": "通过硼自由基裂解实现N-烷基氮杂环丙烷的发散式开环与官能团化",
       "journal": "Nature Chemistry",
       "published": "2026.09",
+      "firstPublishedOn": "2026-09-23",
+      "updatedAt": "2026-10-17T15:33:29+08:00",
       "kind": "research",
       "doi": "10.1038/s41557-026-02247-x",
-      "cover": "./covers/r20261017-01.png"
+      "cover": "./covers/r20261017-01.png",
+      "reviewStatus": "existing-public-baseline"
+    },
+    {
+      "id": "r20261017-02",
+      "readingId": "R-20261017-02",
+      "title": "通过杂原子均裂取代合成二烷基醚",
+      "journal": "Nature",
+      "published": "2026.08",
+      "firstPublishedOn": "2026-08-20",
+      "updatedAt": "2026-10-17T15:33:29+08:00",
+      "kind": "research",
+      "doi": "10.1038/s41586-026-11043-z",
+      "cover": "./covers/r20261017-02.png",
+      "reviewStatus": "approved"
+    },
+    {
+      "id": "r20261017-05",
+      "readingId": "R-20261017-05",
+      "title": "用于金介导氮宾转移的光照产生的三重态金氮宾",
+      "journal": "Nature Chemistry",
+      "published": "2026.07",
+      "firstPublishedOn": "2026-07-21",
+      "updatedAt": "2026-10-17T15:05:04+08:00",
+      "kind": "research",
+      "doi": "10.1038/s41557-026-02152-3",
+      "cover": "./covers/r20261017-05.png",
+      "reviewStatus": "approved"
     },
     {
       "id": "paper01",
@@ -16,9 +71,12 @@
       "title": "催化不对称自由基–极性交叉氢烷氧基化",
       "journal": "Journal of the American Chemical Society",
       "published": "2019.10",
+      "firstPublishedOn": "2019-10",
+      "updatedAt": "2026-10-17T15:33:29+08:00",
       "kind": "research",
       "doi": "10.1021/jacs.9b10645",
-      "cover": "./covers/paper01.png"
+      "cover": "./covers/paper01.png",
+      "reviewStatus": "existing-public-baseline"
     }
   ]
 }
