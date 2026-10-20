@@ -104,6 +104,7 @@ def load_catalog() -> list[dict]:
 
 
 def catalog_entry(article: dict, cover: str) -> dict:
+    public_ids=json.loads((ROOT / "publication-baseline.json").read_text(encoding="utf-8"))["articles"]
     state = json.loads(article["state"]["zh"].read_text(encoding="utf-8"))
     updated_at = state.get("updatedAt")
     if not isinstance(updated_at, str):
@@ -113,19 +114,26 @@ def catalog_entry(article: dict, cover: str) -> dict:
              "title": article["title"]["zh"], "journal": article["journal"],
              "published": article["published"], "firstPublishedOn": article["firstPublishedOn"],
              "updatedAt": updated_at, "kind": article["kind"],
-             "doi": article["doi"], "cover": cover,
+             "doi": article["doi"], "sourceUrl": article.get("sourceUrl"), "cover": cover, "public": article["id"] in public_ids,
              "reviewStatus": article.get("reviewStatus", "existing-public-baseline")}
 
 
 def public_catalog() -> list[dict]:
-    return [catalog_entry(article, f"/covers/{article['id']}.png") for article in load_catalog()]
+    from media_assets import dimensions
+    return [{**catalog_entry(article, f"/covers/{article['id']}.png"),
+             "coverDisplay": f"/media/{article['id']}/cover.webp",
+             "coverPreview": f"/media/{article['id']}/cover-small.webp",
+             "coverWidth": dimensions(article["cover"])["width"],
+             "coverHeight": dimensions(article["cover"])["height"]} for article in load_catalog()]
 
 
 def public_article(config: dict) -> dict:
+    from media_assets import article_media
     return {"id": config["id"], "readingId": config["readingId"],
             "displayNumber": config["displayNumber"], "title": config["title"],
             "sourceUrl": config.get("sourceUrl"),
             "journal": config["journal"], "published": config["published"],
             "kind": config["kind"], "doi": config["doi"],
             "figurePages": {f"figures/{f['file']}": f["page"] for f in config["figures"]},
-            "scrollThreshold": config["scrollThreshold"]}
+            "scrollThreshold": config["scrollThreshold"],
+            "figureMedia": article_media(config, f"/media/{config['id']}")}

@@ -14,7 +14,24 @@
       "figures/figure-1.png": 3,
       "figures/table-1.png": 4
     },
-    "scrollThreshold": 0.52
+    "scrollThreshold": 0.52,
+    "figureMedia": {
+      "figures/scheme-1.png": {
+        "width": 740,
+        "height": 907,
+        "preview": "./media/r20261018-01/scheme-1.webp"
+      },
+      "figures/figure-1.png": {
+        "width": 1522,
+        "height": 1327,
+        "preview": "./media/r20261018-01/figure-1.webp"
+      },
+      "figures/table-1.png": {
+        "width": 1522,
+        "height": 968,
+        "preview": "./media/r20261018-01/table-1.webp"
+      }
+    }
   },
   "blocks": [
     {

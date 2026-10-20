@@ -290,3 +290,12 @@ body.reader-preparing .layout{visibility:hidden;pointer-events:none}
 .figure-image-status[hidden],.figure-image-status button[hidden]{display:none}
 .figure-image-status button{border:1px solid #b9d0e4;border-radius:5px;background:#fff;color:#24577f;padding:7px 11px;font:700 12px Arial,sans-serif;cursor:pointer}
 .figure-image-status button:hover{background:#eaf3fc}
+
+/* Preparation reserves the final reading layout; it never hides loaded text. */
+body.reader-preparing .layout{visibility:visible;pointer-events:none}
+.reading-preparation{inset:78px 20px auto auto;padding:0;background:transparent;display:block;pointer-events:none}
+.reading-preparation-card{width:auto;max-width:320px;padding:10px 16px;display:flex;align-items:center;gap:10px;border-color:#e2e5e7;background:#faf9f5;box-shadow:0 4px 18px #0f2a4908;text-align:left}
+.reading-preparation-mark{font-size:22px}.reading-preparation-card p{margin:0;font-size:12px;font-weight:400;font-family:inherit;line-height:1.5;color:#627183}
+.reading-preparation-actions{gap:6px;pointer-events:auto}.reading-preparation-actions a{display:none}
+.reading-preparation-actions button{padding:5px 9px}
+@media(max-width:700px){.reading-preparation{top:auto;bottom:18px;right:16px}.reading-preparation-card{max-width:calc(100vw - 32px)}}

@@ -163,8 +163,18 @@ class Handler(DemoMixin, BaseHTTPRequestHandler):
             return self.file_response(ROOT / "catalog.css", "text/css; charset=utf-8")
         if path == "/catalog.js":
             return self.file_response(ROOT / "catalog.js", "text/javascript; charset=utf-8")
-        if path in ('/literature-lookup.js', '/literature-lookup.css', '/reader-chrome.js', '/reader-chrome.css'):
+        if path in ('/literature-lookup.js', '/literature-lookup.css', '/reader-chrome.js', '/reader-chrome.css', '/progressive-media.js', '/progressive-media.css', '/card-actions.js', '/card-actions.css'):
             return self.file_response(ROOT / path[1:])
+        media = re.fullmatch(r"/media/([a-z0-9-]+)/([a-zA-Z0-9][a-zA-Z0-9._-]*\.webp)", path)
+        if media and media.group(1) in CATALOG_IDS:
+            from media_assets import preview
+            config = load_article(media.group(1))
+            name = media.group(2)
+            if name in ("cover.webp", "cover-small.webp"):
+                return self.file_response(preview(config["cover"], 96 if name == "cover-small.webp" else 640), "image/webp")
+            figure = next((f for f in config["figures"] if Path(f["file"]).stem + ".webp" == name), None)
+            if figure:
+                return self.file_response(preview(config["figuresDir"] / figure["file"], 320), "image/webp")
         if path == '/api/member/literature':
             import sys
             member_root = str(ROOT.parent / '会员服务')

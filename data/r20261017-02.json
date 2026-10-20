@@ -16,7 +16,34 @@
       "figures/fig4.png": 7,
       "figures/fig5.png": 8
     },
-    "scrollThreshold": 0.52
+    "scrollThreshold": 0.52,
+    "figureMedia": {
+      "figures/fig1.png": {
+        "width": 1303,
+        "height": 1516,
+        "preview": "./media/r20261017-02/fig1.webp"
+      },
+      "figures/fig2.png": {
+        "width": 1263,
+        "height": 1551,
+        "preview": "./media/r20261017-02/fig2.webp"
+      },
+      "figures/fig3.png": {
+        "width": 1305,
+        "height": 1483,
+        "preview": "./media/r20261017-02/fig3.webp"
+      },
+      "figures/fig4.png": {
+        "width": 1305,
+        "height": 1546,
+        "preview": "./media/r20261017-02/fig4.webp"
+      },
+      "figures/fig5.png": {
+        "width": 1305,
+        "height": 1603,
+        "preview": "./media/r20261017-02/fig5.webp"
+      }
+    }
   },
   "blocks": [
     {

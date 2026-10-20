@@ -34,7 +34,8 @@ function fixture(surface){
  const document={body,currentScript:{src:'http://navigation.test/member-system/members.js'},activeElement:null,createElement:tag=>new Element(tag),createTextNode:text=>new Element('text',text),querySelector:s=>body.querySelector(s),querySelectorAll:s=>body.querySelectorAll(s),addEventListener(){},dispatchEvent(){}};
  let reloads=0;
  const context={document,URL,URLSearchParams,AbortSignal,structuredClone,setTimeout,clearTimeout,CustomEvent:class{},location:{origin:'http://navigation.test',href:'http://navigation.test/',pathname:surface==='reader'?'/read.html':'/',search:'',reload(){reloads++;}},localStorage:{getItem:()=>'{"role":"admin","user":{"id":"cached","role":"admin"},"favorites":[],"annotations":[]}'},addEventListener(){},requestAnimationFrame:fn=>fn(),fetch:async url=>{
-  let data;if(String(url).endsWith('/session'))data=await identity.promise;
+  let data;if(String(url).includes('/reader-context'))data={session:await identity.promise,favorites:[],notes:[],progress:null};
+  else if(String(url).endsWith('/session'))data=await identity.promise;
   else if(/\/(notes|favorites)$/.test(String(url))){await library.promise;data={items:[]};}
   else if(String(url).endsWith('catalog.json'))data={articles:[]};
   else throw Error('Unexpected request '+url);
@@ -48,7 +49,7 @@ const named=(node,label)=>node.querySelectorAll('a').filter(n=>n.textContent===l
 for(const surface of ['catalog','favorites','account','reader'])test(surface+': delayed admin is restored before private library and survives repeated/late menu mounts',async()=>{
  const h=fixture(surface);assert.equal(named(h.nav,'审稿').length,0);assert.equal(named(h.nav,'登录 / 注册').length,1);
  h.identity.resolve({configured:true,user:{id:'server-admin',email:'reader@example.invalid',role:'admin'},csrfToken:'csrf'});await tick();
- assert.equal(h.members.state.libraryReady,false);assert.equal(named(h.nav,'审稿').length,1);assert.match(named(h.nav,'审稿')[0].href,/member-system\/admin.html$/);
+ assert.equal(h.members.state.libraryReady,['reader','favorites'].includes(surface));assert.equal(named(h.nav,'审稿').length,1);assert.match(named(h.nav,'审稿')[0].href,/member-system\/admin.html$/);
  await named(h.nav,'我的账户')[0].emit('click');assert.equal(named(h.body.querySelector('dialog'),'稿件审核').length,1);
  if(surface==='account')assert.equal(named(h.root,'稿件审核').length,1);
  const late=new Element('div');late.setAttribute('data-member-nav','');h.body.append(late);h.members.mountNavigation(late);h.members.mountNavigation(late);

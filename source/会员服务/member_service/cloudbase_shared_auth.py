@@ -174,7 +174,7 @@ class CloudBaseSharedAuth(CloudBaseAuth):
         # The persisted row merely selects a lookup candidate; it never grants
         # access. Both responses are checked against the live identity below.
         path = e.get('PATH_INFO', '')
-        needs_admin = path == '/api/member/session' or path.startswith('/api/member/admin/')
+        needs_admin = path in ('/api/member/session', '/api/member/reader-context') or path.startswith('/api/member/admin/')
         binding = getattr(self, 'admin_binding', None)
         lookup = getattr(self, 'admin_status_lookup', None)
         candidate = (needs_admin and isinstance(binding, dict) and callable(lookup)

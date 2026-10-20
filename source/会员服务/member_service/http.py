@@ -70,13 +70,22 @@ class MemberApp:
             if not isinstance(auth_data,dict):raise ServiceError(400,'object_required')
             return 200,self.auth.handle(e,path,auth_data),jsonmime
         identity=self.auth.authenticate(e) if configured else None
-        if path=='/api/member/session' and method=='GET':
+        if path in ('/api/member/session','/api/member/reader-context') and method=='GET':
             user=None; csrf=None
             if identity:
                 me=self.service.me(identity.uid)
                 user={'id':identity.uid,'email':identity.email,'role':'admin' if me['admin'] and ((identity.email_verified and identity.active) or identity.operator_admin_attested) else 'member'}; csrf=identity.csrf_token
             if not csrf and configured and hasattr(self.auth,'preauth_csrf'):csrf=self.auth.preauth_csrf(e)
-            return 200,{'configured':configured,'user':user,'csrfToken':csrf},jsonmime
+            session={'configured':configured,'user':user,'csrfToken':csrf,'softTtlMs':30000}
+            if path.endswith('/session'):return 200,session,jsonmime
+            query=parse_qs(e.get('QUERY_STRING',''),max_num_fields=4)
+            aid=query.get('article',[''])[0]
+            if aid and not re.fullmatch(r'[\w-]+',aid):raise ServiceError(400,'invalid_article')
+            return 200,{'session':session,
+                        'favorites':self.service.favorites(identity.uid) if identity else [],
+                        'notes':self.service.notes(identity.uid,None) if identity else [],
+                        'article':aid,
+                        'progress':self.service.get_progress(identity.uid,aid) if identity and aid else None},jsonmime
         if not identity: raise ServiceError(401,'authentication_required')
         uid=identity.uid
         if path.startswith('/api/member/admin/') and not ((identity.email_verified and identity.active) or identity.operator_admin_attested):raise ServiceError(403,'verified_active_email_required')

@@ -32,6 +32,7 @@ let readingPrepared = false;
 let preparationAttempt = 0;
 let imageRetryNumber = 0;
 const backgroundFigureImages = [];
+let figurePreloadActive=false,figurePreloadQueued=false;
 const IMAGE_READY_TIMEOUT_MS = 12000;
 const $ = selector => document.querySelector(selector);
 const requestedArticleId = new URLSearchParams(location.search).get("article");
@@ -64,6 +65,7 @@ function clearPrivateReview() {
   $("#article").replaceChildren();
   $("#toc").replaceChildren();
   $("#member-reader-tools").replaceChildren();
+  $("#figure-canvas .panel-media-preview")?.remove();
   $("#panel-figure-caption").textContent = "";
   showPreparationFailure("登录状态已变化，请使用管理员账号重新打开稿件。");
 }
@@ -125,7 +127,7 @@ function blockElement(block) {
       const page = figurePage(block.src);
       const number = Number(wrap.dataset.figureIndex) + 1;
       const label = `原图 ${number}`;
-      content = `<figure class="source-figure"><div class="inline-figure-stage" tabindex="0" aria-label="${label}，放大后可双向滚动"><div class="inline-figure-canvas"><img src="${articleAsset(block.src)}" alt="${tr("source")}${page}${tr("page")}" loading="lazy"></div></div><div class="inline-figure-toolbar" role="group" aria-label="${label}缩放"><button type="button" class="inline-zoom-out" aria-label="${label}缩小">−</button><button type="button" class="inline-zoom-in" aria-label="${label}放大">＋</button><button type="button" class="inline-zoom-fit" aria-label="${label}适应">适应</button></div><figcaption class="figure-caption"><span class="figure-label">${tr("source")}${page}${tr("page")}</span><p>${inlineMarkdown(block.text)}</p></figcaption><div class="figure-source">${tr("figureNote")}</div></figure>`;
+      content = `<figure class="source-figure"><div class="inline-figure-stage progressive-media" tabindex="0" aria-label="${label}，放大后可双向滚动"><div class="inline-figure-canvas">${figureImageMarkup(block, `${tr("source")}${page}${tr("page")}`)}</div></div><div class="inline-figure-toolbar" role="group" aria-label="${label}缩放"><button type="button" class="inline-zoom-out" aria-label="${label}缩小">−</button><button type="button" class="inline-zoom-in" aria-label="${label}放大">＋</button><button type="button" class="inline-zoom-fit" aria-label="${label}适应">适应</button></div><figcaption class="figure-caption"><span class="figure-label">${tr("source")}${page}${tr("page")}</span><p>${inlineMarkdown(block.text)}</p></figcaption><div class="figure-source">${tr("figureNote")}</div></figure>`;
       break;
     }
     default: content = `<p>${inlineMarkdown(block.text)}</p>`;
@@ -135,6 +137,7 @@ function blockElement(block) {
     installDragPan(wrap.querySelector(".inline-figure-stage"));
     const image = wrap.querySelector(".inline-figure-canvas img");
     image.addEventListener("load", () => {
+      window.ReadMedia?.reveal(image);
       applyInlineFigureScale(wrap, false);
       const position = pendingInlinePositions?.[wrap.dataset.blockId];
       if (position) requestAnimationFrame(() => {

@@ -13,7 +13,9 @@
     for(const item of live||[]){
       if(!validId(item.id)||item.article?.id!==item.id||!validVersion(item.review_version_hash)||!item.asset_map?.cover)continue;
       const prior=rows.get(item.id)||{},a=item.article;
-      rows.set(item.id,{...prior,...a,title:a.title?.zh||item.title,cover:asset(item.id,item.asset_map.cover,item.review_version_hash),reviewStatus:'approved',updatedAt:item.published_at,firstPublishedOn:a.firstPublishedOn||prior.firstPublishedOn,version_hash:item.version_hash});
+      const unchanged=prior.reviewVersion===item.review_version_hash;
+      const media=unchanged?{}:{coverDisplay:undefined,coverPreview:undefined,coverWidth:undefined,coverHeight:undefined};
+      rows.set(item.id,{...prior,...a,...media,public:true,title:a.title?.zh||item.title,cover:unchanged?prior.cover:asset(item.id,item.asset_map.cover,item.review_version_hash),reviewStatus:prior.reviewStatus==='proofreading'?'proofreading':'approved',updatedAt:unchanged?prior.updatedAt:item.published_at,firstPublishedOn:a.firstPublishedOn||prior.firstPublishedOn,version_hash:item.version_hash,reviewVersion:item.review_version_hash});
     }
     return [...rows.values()];
   }
@@ -48,10 +50,8 @@
     let base;
     try{base=await baseTask;}catch{}
     if(!base){const live=await liveResult;if(live.value)return live.value;throw Error('文章尚未发布或暂时无法载入');}
-    let timer;
-    const quick=await Promise.race([liveResult,new Promise(resolve=>{timer=setTimeout(()=>resolve({value:null}),350);})]);
-    clearTimeout(timer);
-    if(quick.value)return quick.value;
+    // Immediately display verified cache/static content. Network revalidation is
+    // independent of the reading path and never delays a warm page.
     // Never replace a document underneath an active selection or saved annotation.
     liveResult.then(({value})=>{
       if(value&&value.version_hash!==base.version_hash&&typeof global.dispatchEvent==='function'){

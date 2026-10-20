@@ -4,8 +4,10 @@ const $ = selector => document.querySelector(selector);
 let catalogArticles = [];
 
 function articleCard(article) {
+  const card = document.createElement("article");
+  card.className = "catalog-card";
   const link = document.createElement("a");
-  link.className = "catalog-card";
+  link.className = "catalog-main-link";
   link.target = "_blank";
   link.rel = "noopener";
   link.href = `./read.html?article=${encodeURIComponent(article.id)}`;
@@ -18,6 +20,7 @@ function articleCard(article) {
   image.alt = `${article.journal} 论文首页题名与作者截图`;
   image.loading = "lazy";
   cover.append(image);
+  window.ReadMedia?.cover(image, article);
   const body = document.createElement("div");
   body.className = "catalog-card-body";
   const meta = document.createElement("div");
@@ -45,7 +48,9 @@ function articleCard(article) {
   foot.append(doi, read);
   body.append(meta, title, foot);
   link.append(cover, body);
-  return link;
+  card.append(link);
+  window.ReadCardActions?.mount(card, article);
+  return card;
 }
 
 async function startCatalog() {
@@ -59,8 +64,10 @@ async function startCatalog() {
     }
     const data = window.ReadPublished ? await window.ReadPublished.catalog("./catalog.json") : await (await fetch("./catalog.json", {cache:"no-store"})).json();
     const {articles} = data;
-    catalogArticles = articles;
-    renderCatalog();
+    if (JSON.stringify(catalogArticles) !== JSON.stringify(articles)) {
+      catalogArticles = articles;
+      renderCatalog();
+    }
   } catch(error) {
     $("#research-list").textContent = "目录暂时无法载入，请刷新页面重试。";
   }
@@ -86,9 +93,14 @@ function updateTrackControls(kind) {
 }
 
 function renderCatalog() {
+  window.ReadMembers?.setPublicCatalog(catalogArticles);
+  document.querySelector('.catalog-main')?.removeAttribute('aria-busy');
   for (const kind of ["research", "review"]) {
     const articles = sortedArticles(kind);
     const track = $(`#${kind}-list`);
+    const displayKey = JSON.stringify(articles.map(a => [a.id,a.title,a.journal,a.published,a.doi,a.coverDisplay||a.cover,a.coverPreview,a.reviewStatus,a.updatedAt,a.sourceUrl,a.public]));
+    if (track.dataset.catalogKey === displayKey) continue;
+    track.dataset.catalogKey = displayKey;
     track.replaceChildren(...articles.map(articleCard));
     track.scrollLeft = 0;
     $(`#${kind}-count`).textContent = `${articles.length} 篇`;
@@ -99,6 +111,7 @@ function renderCatalog() {
     section.querySelector(".catalog-expand").hidden = articles.length === 0;
     requestAnimationFrame(() => { updateTrackControls(kind); prepareCovers(track); });
   }
+  window.ReadCardActions?.hydrate(catalogArticles);
 }
 
 function moveTrack(kind, direction) {
@@ -135,6 +148,7 @@ window.addEventListener("resize", () => {updateTrackControls("research");updateT
 startCatalog();
 
 function prepareCovers(track) {
+  if (window.ReadMedia) { window.ReadMedia.prepare(track); return; }
   const images = [...track.querySelectorAll('img[data-src]')];
   const load = (image, priority) => {
     if (image.getAttribute('src')) return;

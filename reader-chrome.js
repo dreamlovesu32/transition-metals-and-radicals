@@ -145,29 +145,32 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
   },{passive:true});
   new MutationObserver(buildOutline).observe(q('#article'),{childList:true,subtree:true});buildOutline();
   const source=q('#member-reader-tools');
-  let notesPanel=null;
+  let notesPanel=null,annotationButton=null,notesTrigger=null;
   function convertDetails(detail,title,key,dialog) {
     if(detail.dataset.chrome)return;detail.dataset.chrome='true';
     const box=panel(title,dialog);box.querySelector('.reader-panel-body').append(detail);
     if(key==='notes')notesPanel=box;
     if(key==='versions'){box.classList.add('reader-outline','reader-versions');box.dataset.outline='true';}
     detail.querySelector(':scope > summary').hidden=true;
-    const trigger=tool(key,title,()=>showPanel(box,trigger));trigger.setAttribute('aria-expanded','false');actions.append(trigger);
+    if(key==='notes'&&annotationButton){notesTrigger=null;return;}
+    const trigger=tool(key,key==='notes'?'批注记录':title,()=>showPanel(box,trigger));trigger.setAttribute('aria-expanded','false');actions.append(trigger);
+    if(key==='notes')notesTrigger=trigger;
   }
   function tidyMemberTools() {
     if(!source)return;
     source.querySelectorAll('.member-reader-actions button').forEach(b=>{
       if(b.dataset.chrome)return;
       const label=b.textContent.trim();
-      const key=label.includes('收藏')?'star':label==='荧光笔'?'pen':null;
+      const key=label.includes('收藏')?'star':['荧光笔','批注'].includes(label)?'pen':null;
       if(!key)return;
       b.dataset.chrome='true';b.dataset.controlLabel=label;actions.append(b);dress(b,key,label);
+      if(key==='pen'){annotationButton=b;dress(b,'pen','荧光笔');b.addEventListener('pointerdown',event=>event.preventDefault());}
       if(key==='star'){
         const update=()=>{if(b.querySelector('svg'))return;const text=b.textContent;dress(b,'star',text);b.setAttribute('aria-pressed',String(text==='已收藏'));};
         b.setAttribute('aria-pressed',String(label==='已收藏'));new MutationObserver(update).observe(b,{childList:true});
       }
     });
-    source.querySelectorAll('.member-notes-panel').forEach(d=>convertDetails(d,'批注与笔记','notes',false));
+    source.querySelectorAll('.member-notes-panel').forEach(d=>convertDetails(d,'批注','notes',false));
     source.querySelectorAll('.member-version-panel').forEach(d=>convertDetails(d,'版本记录','versions',false));
     source.querySelectorAll('.reader-historical-banner').forEach(n=>{n.classList.add('reader-historical-status');actions.prepend(n);});
     source.querySelectorAll('.member-export-panel').forEach(d=>convertDetails(d,'导出素材','export',true));
@@ -184,6 +187,7 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
     void closePanel();
     document.querySelectorAll('.reader-panel:not(.reader-outline)').forEach(n=>n.remove());
     actions.replaceChildren();
+    notesPanel=annotationButton=notesTrigger=null;
     if(new URLSearchParams(location.search).has('review')){
       outlineBody.replaceChildren();headingNodes=[];outlineButton.disabled=true;
     }
@@ -193,7 +197,7 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
     if(!document.body.classList.contains('reader-preparing')){clearInterval(timer);return;}
     if(message&&/^正在准备阅读/.test(message.textContent))message.textContent='正在准备阅读'+'.'.repeat(1+(Math.floor(Date.now()/450)%3));
   },450);
-  window.ReadChrome={closePanel,refresh:tidyMemberTools,jump:edge=>jumpController.jump(edge)};
+  window.ReadChrome={closePanel,refresh:tidyMemberTools,openNotes:trigger=>notesPanel&&showPanel(notesPanel,trigger||notesTrigger||annotationButton),jump:edge=>jumpController.jump(edge)};
   window.addEventListener('read-public-update',()=>{
     if(q('.reader-update-notice'))return;
     const update=document.createElement('button');update.type='button';update.className='reader-update-notice';

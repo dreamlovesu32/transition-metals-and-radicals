@@ -16,7 +16,34 @@
       "figures/table-2.png": 5,
       "figures/figure-3.png": 6
     },
-    "scrollThreshold": 0.52
+    "scrollThreshold": 0.52,
+    "figureMedia": {
+      "figures/figure-1.png": {
+        "width": 1594,
+        "height": 858,
+        "preview": "./media/r20261017-01/figure-1.webp"
+      },
+      "figures/figure-2.png": {
+        "width": 1594,
+        "height": 1364,
+        "preview": "./media/r20261017-01/figure-2.webp"
+      },
+      "figures/table-1.png": {
+        "width": 1594,
+        "height": 1074,
+        "preview": "./media/r20261017-01/table-1.webp"
+      },
+      "figures/table-2.png": {
+        "width": 1594,
+        "height": 1952,
+        "preview": "./media/r20261017-01/table-2.webp"
+      },
+      "figures/figure-3.png": {
+        "width": 1594,
+        "height": 2088,
+        "preview": "./media/r20261017-01/figure-3.webp"
+      }
+    }
   },
   "blocks": [
     {

@@ -41,6 +41,7 @@ let readingPrepared = false;
 let preparationAttempt = 0;
 let imageRetryNumber = 0;
 const backgroundFigureImages = [];
+let figurePreloadActive=false,figurePreloadQueued=false;
 const IMAGE_READY_TIMEOUT_MS = 12000;
 function assertReviewIdentity() {
   const state = window.ReadMembers?.state;
@@ -62,6 +63,7 @@ function clearPrivateReview() {
   $("#article").replaceChildren();
   $("#toc").replaceChildren();
   $("#member-reader-tools").replaceChildren();
+  $("#figure-canvas .panel-media-preview")?.remove();
   $("#panel-figure-caption").textContent = "";
   showPreparationFailure("登录状态已变化，请使用管理员账号重新打开稿件。");
 }
@@ -152,7 +154,7 @@ function blockElement(block, metadata=false) {
       const number = Number(wrap.dataset.figureIndex) + 1;
       const label = currentLanguage === "zh" ? `原图 ${number}` : `Source figure ${number}`;
       const fit = currentLanguage === "zh" ? "适应" : "Fit";
-      content = `<figure class="source-figure"><div class="inline-figure-stage" tabindex="0" aria-label="${label}，放大后可双向滚动"><div class="inline-figure-canvas"><img src="${articleAsset(block.src)}" alt="${tr("source")}${page}${tr("page")}" loading="lazy"></div></div><div class="inline-figure-toolbar" role="group" aria-label="${label}缩放"><button type="button" class="inline-zoom-out" aria-label="${label}缩小">−</button><button type="button" class="inline-zoom-in" aria-label="${label}放大">＋</button><button type="button" class="inline-zoom-fit" aria-label="${label}适应">${fit}</button></div><figcaption class="figure-caption"><span class="figure-label">${tr("source")}${page}${tr("page")}</span><p>${inlineMarkdown(block.text)}</p></figcaption><div class="figure-source">${tr("figureNote")}</div></figure>`;
+      content = `<figure class="source-figure"><div class="inline-figure-stage progressive-media" tabindex="0" aria-label="${label}，放大后可双向滚动"><div class="inline-figure-canvas">${figureImageMarkup(block, `${tr("source")}${page}${tr("page")}`)}</div></div><div class="inline-figure-toolbar" role="group" aria-label="${label}缩放"><button type="button" class="inline-zoom-out" aria-label="${label}缩小">−</button><button type="button" class="inline-zoom-in" aria-label="${label}放大">＋</button><button type="button" class="inline-zoom-fit" aria-label="${label}适应">${fit}</button></div><figcaption class="figure-caption"><span class="figure-label">${tr("source")}${page}${tr("page")}</span><p>${inlineMarkdown(block.text)}</p></figcaption><div class="figure-source">${tr("figureNote")}</div></figure>`;
       break;
     }
     default: content = `<p>${inlineMarkdown(block.text)}</p>`;
@@ -171,6 +173,7 @@ function blockElement(block, metadata=false) {
     installDragPan(wrap.querySelector(".inline-figure-stage"));
     const image = wrap.querySelector(".inline-figure-canvas img");
     image.addEventListener("load", () => {
+      window.ReadMedia?.reveal(image);
       applyInlineFigureScale(wrap, false);
       const position = pendingInlinePositions?.[wrap.dataset.blockId];
       if (position) requestAnimationFrame(() => {
@@ -414,14 +417,39 @@ function handlePanelVisibleLoad() {
   });
 }
 
+function figureMedia(block) {
+  return documentState?.article?.figureMedia?.[block.src] || {};
+}
+
+function figureImageMarkup(block, alt) {
+  const media = figureMedia(block);
+  const dimensions = media.width && media.height ? ` width="${media.width}" height="${media.height}"` : "";
+  return `<img data-src="${articleAsset(block.src)}"${media.preview ? ` data-preview="${media.preview}"` : ""} alt="${alt}"${dimensions} decoding="async" loading="lazy">`;
+}
+
 function requestPanelFigure(block, retry=false) {
   const requestId = ++panelFigureRequest;
   const image = $("#panel-figure-image");
   const base = articleAsset(block.src);
   const url = retry ? `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}` : base;
+  const warm=backgroundFigureImages.find(item=>item.getAttribute("src")===url&&item.complete&&item.naturalWidth);
+  if(warm){
+    warm.id="panel-figure-image";warm.alt=image.alt;image.replaceWith(warm);
+    $("#figure-canvas .panel-media-preview")?.remove();handlePanelVisibleLoad();setPanelFigureState("ready");
+    panelFigureReady=Promise.resolve("ready");return panelFigureReady;
+  }
   setPanelFigureState("loading");
+  $("#figure-canvas .panel-media-preview")?.remove();
+  const media = figureMedia(block);
+  if (media.preview) {
+    const small = new Image(); small.className = "panel-media-preview"; small.alt = "";
+    small.setAttribute("aria-hidden", "true"); small.decoding = "async"; small.src = media.preview;
+    $("#figure-canvas").append(small);
+  }
   panelFigureReady = new Promise(resolve => {
     const candidate = new Image();
+    candidate.decoding = "async"; candidate.fetchPriority = "high";
+    if (media.width && media.height) {candidate.width = media.width; candidate.height = media.height;}
     let settled = false;
     const finish = result => {
       if (settled) return;
@@ -432,6 +460,9 @@ function requestPanelFigure(block, retry=false) {
       candidate.id = "panel-figure-image";
       candidate.alt = image.alt;
       image.replaceWith(candidate);
+      candidate.dataset.figureSource=block.src;
+      if(!backgroundFigureImages.includes(candidate))backgroundFigureImages.push(candidate);
+      $("#figure-canvas .panel-media-preview")?.remove();
       handlePanelVisibleLoad();
       setPanelFigureState("ready");
       resolve("ready");
@@ -440,6 +471,7 @@ function requestPanelFigure(block, retry=false) {
     candidate.onload = () => finish("ready");
     candidate.onerror = () => finish("error");
     candidate.src = url;
+    if (candidate.complete && candidate.naturalWidth) finish("ready");
   });
   return panelFigureReady;
 }
@@ -457,7 +489,7 @@ function showFigure(index, force=false) {
   const page = figurePage(block.src);
   const image = $("#panel-figure-image");
   image.alt = `${tr("source")}${page}${tr("page")}`;
-  requestPanelFigure(block);
+  requestPanelFigure(block).then(()=>{if(readingPrepared)preloadOtherFigures();});
   $("#figure-position").textContent = `${String(currentFigureIndex + 1).padStart(2,"0")} / ${String(figureBlocks.length).padStart(2,"0")}`;
   $("#panel-figure-page").textContent = `${tr("source")}${page}${tr("page")}`;
   $("#panel-figure-caption").innerHTML = inlineMarkdown(block.text);
@@ -1088,6 +1120,7 @@ function currentInlineFigure() {
 
 function waitForInlineImage(image) {
   if (!image) return Promise.resolve("ready");
+  window.ReadMedia?.load(image, "high");
   image.loading = "eager";
   if (image.complete) return Promise.resolve(image.naturalWidth ? "ready" : "error");
   return new Promise(resolve => {
@@ -1109,20 +1142,21 @@ function waitForInlineImage(image) {
 }
 
 function preloadOtherFigures() {
-  if (backgroundFigureImages.length) return;
-  const order = [...figureBlocks.slice(currentFigureIndex + 1), ...figureBlocks.slice(0, currentFigureIndex)];
-  (async () => {
+  if(isDesktopLayout()&&$("#figure-stage").dataset.imageState!=="ready")return;
+  if (figurePreloadActive) {figurePreloadQueued=true;return;}
+  const snapshot=documentState;
+  const order=figureBlocks.slice(currentFigureIndex+1,currentFigureIndex+3);
+  figurePreloadActive=true;
+  (async()=>{
     for (const block of order) {
-      const image = new Image();
-      image.decoding = "async"; image.fetchPriority = "low";
-      backgroundFigureImages.push(image);
-      await new Promise(resolve => {
-        const timer = setTimeout(resolve, 12000);
-        image.onload = image.onerror = () => { clearTimeout(timer); resolve(); };
-        image.src = articleAsset(block.src);
-      });
+      if(documentState!==snapshot)break;
+      if(reviewMode){try{assertReviewIdentity();}catch{break;}}
+      if(backgroundFigureImages.some(image=>image.dataset.figureSource===block.src))continue;
+      const image=new Image();image.dataset.figureSource=block.src;
+      image.decoding='async';image.fetchPriority='low';backgroundFigureImages.push(image);
+      await new Promise(resolve=>{const timer=setTimeout(resolve,12000);image.onload=image.onerror=()=>{clearTimeout(timer);resolve();};image.src=articleAsset(block.src);});
     }
-  })();
+  })().finally(()=>{figurePreloadActive=false;if(figurePreloadQueued){figurePreloadQueued=false;preloadOtherFigures();}});
 }
 
 function showPreparationFailure(message) {
@@ -1134,13 +1168,12 @@ async function finishReadingPreparation(retry=false) {
   const attempt = ++preparationAttempt;
   $("#reading-preparation-message").textContent = "正在准备阅读…";
   $("#reading-preparation-retry").hidden = true;
-  let result = "ready";
+  // The text, reading position and fixed picture viewport are usable now.
+  // Full-resolution image completion must not gate reading or account tools.
+  let pictureReady;
   if (isDesktopLayout()) {
     if (retry) retryPanelFigure();
-    for (let tries = 0; tries < 3; tries++) {
-      result = await panelFigureReady;
-      if (result !== "stale") break;
-    }
+    pictureReady = panelFigureReady;
   } else {
     const wrap = currentInlineFigure();
     const image = wrap?.querySelector(".inline-figure-canvas img");
@@ -1148,26 +1181,60 @@ async function finishReadingPreparation(retry=false) {
       const base = articleAsset(figureBlocks[Number(wrap.dataset.figureIndex)].src);
       image.src = `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}`;
     }
-    result = await waitForInlineImage(image);
-    if (result === "ready" && wrap) applyInlineFigureScale(wrap, false);
+    pictureReady = waitForInlineImage(image);
+    pictureReady.then(result => {if (result === "ready" && wrap) applyInlineFigureScale(wrap, false);});
   }
   if (attempt !== preparationAttempt) return;
-  if (result !== "ready") {
-    showPreparationFailure(result === "timeout" ? "图片加载较慢，请重试。" : "图片暂时无法载入，请重试。");
-    return;
-  }
   if (readingPreparationSaved?.scroll?.atBottom) window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
   readingPrepared = true;
   $(".topbar").inert = false;
   $(".layout").inert = false;
   document.body.classList.remove("reader-preparing");
   $("#reading-preparation").hidden = true;
-  setTimeout(preloadOtherFigures, 0);
+  window.ReadContentReady = true;
+  document.dispatchEvent(new CustomEvent("read-content-ready"));
+  if (window.ReadMedia) window.ReadMedia.inline($("#article"));
+  pictureReady.then(() => {if(attempt === preparationAttempt)preloadOtherFigures();});
+}
+
+async function resumeRemoteProgress(readerTouched) {
+  if (reviewMode || !window.ReadMembers) return;
+  await window.ReadMembers.ready;
+  const remote = await window.ReadMembers.loadProgress(articleId(),documentState.version_hash,storedReadingState(),readingMode());
+  if (!remote || readerTouched() || readingRestoreInterrupted) return;
+  restoringReadingState = true;
+  readingBottomIntent = remote.scroll?.atBottom === true;
+  paneRatio = Number.isFinite(remote.paneRatio) ? remote.paneRatio : DEFAULT_PANE_RATIO;
+  pendingPanelViewport = remote.figure || null;
+  pendingInlinePositions = {...(remote.inline || {})};
+  figureAuto = remote.figure?.auto !== false;
+  figureFillPane = remote.figure?.fill === true;
+  figureScale = Math.min(5,Math.max(1,Number(remote.figure?.scale)||1));
+  for (const [id,position] of Object.entries(remote.inline||{})) inlineFigureScales.set(id,Math.min(5,Math.max(1,Number(position.scale)||1)));
+  showFigure(Number.isInteger(remote.figure?.index)?remote.figure.index:0);
+  setFigureAuto(figureAuto);setFigureFillPane(figureFillPane);
+  await restoreReadingState(remote);
+}
+
+function mountReadingTools(metadata, readerTouched) {
+  const placeholder=document.createElement("span");
+  placeholder.className="reader-tools-pending";placeholder.textContent="正在连接阅读工具…";
+  $("#member-reader-tools").append(placeholder);
+  (async()=>{
+    if (!window.ReadMembers && document.readyState !== "complete") await new Promise(resolve=>document.addEventListener("DOMContentLoaded",resolve,{once:true}));
+    if (!window.ReadMembers) {placeholder.remove();return;}
+    await window.ReadMembers.ready;
+    placeholder.remove();
+    const mount=reviewMode?window.ReadMembers.mountReviewReader:window.ReadMembers.mountReader;
+    mount({draft:reviewDraft,articleId:articleId(),revision:documentState.version_hash,snapshot:documentState,assetUrl:articleAsset,metadata,root:$("#article"),toolbar:$("#member-reader-tools"),figureRoot:$(".left-rail")});
+    await resumeRemoteProgress(readerTouched);
+  })().catch(error=>{placeholder.textContent="阅读工具暂未连接";console.warn("Reading tools unavailable",error);}).finally(()=>{window.ReadProgressPending=false;});
 }
 
 async function configureReadingNavigation() {
   const {articles} = await request("/api/catalog");
   catalogArticles = articles;
+  window.ReadMembers?.setPublicCatalog?.(articles);
   const index = articles.findIndex(item => item.id === articleId());
   const prev = $("#nav-prev");
   const next = $("#nav-next");
@@ -1185,6 +1252,9 @@ function navigateToArticle(button) {
 
 async function start() {
   history.scrollRestoration = "manual";
+  window.ReadProgressPending = !reviewMode;
+  let readerTouched = false;
+  for (const type of ["wheel","touchstart","pointerdown","keydown"]) window.addEventListener(type,()=>{readerTouched=true;},{once:true,passive:true});
   loadLayoutPreference();
   $("#panel-figure-retry").addEventListener("click", retryPanelFigure);
   $("#reading-preparation-retry").addEventListener("click", () => {
@@ -1198,9 +1268,7 @@ async function start() {
       await (window.ReadMembers.authReady||window.ReadMembers.ready);reviewIdentity={epoch:window.ReadMembers.state.epoch,uid:window.ReadMembers.state.user?.id};assertReviewIdentity();
       reviewDraft=await request(`/api/member/admin/drafts/${encodeURIComponent(requestedArticleId)}${requestedVersion?'?version='+encodeURIComponent(requestedVersion):''}`,{credentials:'same-origin',cache:'no-store'});assertReviewIdentity();documentState=adaptReviewDraft(reviewDraft,requestedArticleId);configureReviewNavigation();document.addEventListener('read-members-expired',clearPrivateReview);
     }else documentState = await request(`/api/document?lang=zh${requestedArticleId ? `&article=${encodeURIComponent(requestedArticleId)}` : ""}`, {signal:AbortSignal.timeout(15000)});
-    if (window.ReadMembers) await window.ReadMembers.ready;
-    const localSaved = storedReadingState();
-    const saved = !reviewMode && window.ReadMembers ? await window.ReadMembers.loadProgress(articleId(),documentState.version_hash,localSaved,readingMode()) : localSaved;
+    const saved = reviewMode || window.ReadMembers?.state.authStatus === "ready" ? storedReadingState() : null;
     readingPreparationSaved = saved;
     pendingPanelViewport = saved?.figure || null;
     pendingInlinePositions = {...(saved?.inline || {})};
@@ -1224,11 +1292,8 @@ async function start() {
     await restoreReadingState(saved);
     syncFigureToScroll();
     await finishReadingPreparation();
-    if(!reviewMode)await configureReadingNavigation().catch(() => {});
-    if (window.ReadMembers) {
-      await window.ReadMembers.ready;
-      (reviewMode?window.ReadMembers.mountReviewReader:window.ReadMembers.mountReader)({draft:reviewDraft, articleId:articleId(), revision:documentState.version_hash, snapshot:documentState, assetUrl:articleAsset, metadata:catalogArticles.find(item=>item.id===articleId()), root:$("#article"), toolbar:$("#member-reader-tools"), figureRoot:$(".left-rail")});
-    }
+    if(!reviewMode)configureReadingNavigation().catch(() => {});
+    mountReadingTools(catalogArticles.find(item=>item.id===articleId()),()=>readerTouched);
   } catch(error) {
     restoringReadingState = false;
     $("#article").innerHTML = '<h1 class="article-title">Unable to load this reading desk</h1><p>Please check that the local server is running.</p>';

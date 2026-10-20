@@ -18,7 +18,44 @@
       "figures/scheme-mechanism.png": 3,
       "figures/scheme-1.png": 4
     },
-    "scrollThreshold": 0.52
+    "scrollThreshold": 0.52,
+    "figureMedia": {
+      "figures/figure-1.png": {
+        "width": 630,
+        "height": 239,
+        "preview": "./media/paper01/figure-1.webp"
+      },
+      "figures/table-1.png": {
+        "width": 622,
+        "height": 1440,
+        "preview": "./media/paper01/table-1.webp"
+      },
+      "figures/table-2.png": {
+        "width": 626,
+        "height": 1295,
+        "preview": "./media/paper01/table-2.webp"
+      },
+      "figures/table-3.png": {
+        "width": 621,
+        "height": 436,
+        "preview": "./media/paper01/table-3.webp"
+      },
+      "figures/figure-2.png": {
+        "width": 622,
+        "height": 336,
+        "preview": "./media/paper01/figure-2.webp"
+      },
+      "figures/scheme-mechanism.png": {
+        "width": 622,
+        "height": 262,
+        "preview": "./media/paper01/scheme-mechanism.webp"
+      },
+      "figures/scheme-1.png": {
+        "width": 620,
+        "height": 380,
+        "preview": "./media/paper01/scheme-1.webp"
+      }
+    }
   },
   "blocks": [
     {

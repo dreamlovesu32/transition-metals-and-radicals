@@ -10,8 +10,16 @@
       "updatedAt": "2026-10-19T10:53:34+08:00",
       "kind": "research",
       "doi": "10.1002/anie.2052342",
+      "sourceUrl": "https://doi.org/10.1002/anie.2052342",
       "cover": "./covers/r20261018-01.png",
-      "reviewStatus": "approved"
+      "public": true,
+      "reviewStatus": "approved",
+      "coverDisplay": "./media/r20261018-01/cover.webp",
+      "coverPreview": "./media/r20261018-01/cover-small.webp",
+      "coverWidth": 1275,
+      "coverHeight": 453,
+      "reviewVersion": "f8d133f11cc71439b603b9a2ed1a7b43c5a42ef2fe796eaccfcac6a620f1ab8b",
+      "version_hash": "2927480dfa6dcebd6191f23da04a0e4837dfcc2347695c2d98d3d8e0a38c5744"
     },
     {
       "id": "r20261017-04",
@@ -23,8 +31,16 @@
       "updatedAt": "2026-10-17T15:33:29+08:00",
       "kind": "review",
       "doi": "10.1002/anie.9361104",
+      "sourceUrl": "https://onlinelibrary.wiley.com/doi/10.1002/anie.9361104",
       "cover": "./covers/r20261017-04.png",
-      "reviewStatus": "proofreading"
+      "public": true,
+      "reviewStatus": "proofreading",
+      "coverDisplay": "./media/r20261017-04/cover.webp",
+      "coverPreview": "./media/r20261017-04/cover-small.webp",
+      "coverWidth": 1266,
+      "coverHeight": 573,
+      "reviewVersion": "d1af9cb3b8146f0e6f56153e5cfec6fa593cb66b8d1b52556b3a0e399b379c5a",
+      "version_hash": "00f67a5ba4d07cb31e594028ade558f44224cc344e3701ca0c06a0a96139e694"
     },
     {
       "id": "r20261017-01",
@@ -36,8 +52,16 @@
       "updatedAt": "2026-10-17T15:33:29+08:00",
       "kind": "research",
       "doi": "10.1038/s41557-026-02247-x",
+      "sourceUrl": "https://www.nature.com/articles/s41557-026-02247-x",
       "cover": "./covers/r20261017-01.png",
-      "reviewStatus": "existing-public-baseline"
+      "public": true,
+      "reviewStatus": "existing-public-baseline",
+      "coverDisplay": "./media/r20261017-01/cover.webp",
+      "coverPreview": "./media/r20261017-01/cover-small.webp",
+      "coverWidth": 1594,
+      "coverHeight": 756,
+      "reviewVersion": "756f17d803827decb003f74984511ab042ba56247dd8b4298d54a10e0ca74fd7",
+      "version_hash": "c317a17878d094020100041f0d658eb116ad46bcf224229892818b081c081043"
     },
     {
       "id": "r20261017-02",
@@ -49,8 +73,16 @@
       "updatedAt": "2026-10-17T15:33:29+08:00",
       "kind": "research",
       "doi": "10.1038/s41586-026-11043-z",
+      "sourceUrl": "https://www.nature.com/articles/s41586-026-11043-z",
       "cover": "./covers/r20261017-02.png",
-      "reviewStatus": "approved"
+      "public": true,
+      "reviewStatus": "approved",
+      "coverDisplay": "./media/r20261017-02/cover.webp",
+      "coverPreview": "./media/r20261017-02/cover-small.webp",
+      "coverWidth": 1308,
+      "coverHeight": 375,
+      "reviewVersion": "fc4db1239d8518f6bc69c5045152e01a73a668aca6aee5ce784fdc2300518e0b",
+      "version_hash": "cd82dbc494d733c814ed13a0780f2517a34db858015bf0fd291bae21bbcd8cbf"
     },
     {
       "id": "r20261017-05",
@@ -62,8 +94,16 @@
       "updatedAt": "2026-10-17T15:05:04+08:00",
       "kind": "research",
       "doi": "10.1038/s41557-026-02152-3",
+      "sourceUrl": "https://www.nature.com/articles/s41557-026-02152-3",
       "cover": "./covers/r20261017-05.png",
-      "reviewStatus": "approved"
+      "public": true,
+      "reviewStatus": "approved",
+      "coverDisplay": "./media/r20261017-05/cover.webp",
+      "coverPreview": "./media/r20261017-05/cover-small.webp",
+      "coverWidth": 1310,
+      "coverHeight": 541,
+      "reviewVersion": "67e7c9d88684e3ec0780b6f90be7d11cffbc6d600df81f33f2b72b0ab3a6377c",
+      "version_hash": "030cf9b67bbc9309a133240528190d96c56b9076311c2ff89836f8da569cd71a"
     },
     {
       "id": "paper01",
@@ -75,8 +115,16 @@
       "updatedAt": "2026-10-17T15:33:29+08:00",
       "kind": "research",
       "doi": "10.1021/jacs.9b10645",
+      "sourceUrl": "https://pubs.acs.org/doi/10.1021/jacs.9b10645",
       "cover": "./covers/paper01.png",
-      "reviewStatus": "existing-public-baseline"
+      "public": true,
+      "reviewStatus": "existing-public-baseline",
+      "coverDisplay": "./media/paper01/cover.webp",
+      "coverPreview": "./media/paper01/cover-small.webp",
+      "coverWidth": 1345,
+      "coverHeight": 300,
+      "reviewVersion": "1a641f10e04e8c7c423c2f442668aaf5759ebd1469c4220aaf5aafc4888943bd",
+      "version_hash": "afd8fe7b50caa45dfd514da37417e6695a1c8381eb8f422fabf7fbc0d7f79483"
     }
   ]
 }

@@ -26,7 +26,84 @@
       "figures/scheme-14.png": 9,
       "figures/scheme-15.png": 10
     },
-    "scrollThreshold": 0.52
+    "scrollThreshold": 0.52,
+    "figureMedia": {
+      "figures/scheme-01.png": {
+        "width": 980,
+        "height": 844,
+        "preview": "./media/r20261017-04/scheme-01.webp"
+      },
+      "figures/scheme-02.png": {
+        "width": 980,
+        "height": 1764,
+        "preview": "./media/r20261017-04/scheme-02.webp"
+      },
+      "figures/scheme-03.png": {
+        "width": 980,
+        "height": 1256,
+        "preview": "./media/r20261017-04/scheme-03.webp"
+      },
+      "figures/scheme-04.png": {
+        "width": 980,
+        "height": 872,
+        "preview": "./media/r20261017-04/scheme-04.webp"
+      },
+      "figures/scheme-05.png": {
+        "width": 980,
+        "height": 1196,
+        "preview": "./media/r20261017-04/scheme-05.webp"
+      },
+      "figures/scheme-06.png": {
+        "width": 980,
+        "height": 1228,
+        "preview": "./media/r20261017-04/scheme-06.webp"
+      },
+      "figures/scheme-07.png": {
+        "width": 980,
+        "height": 1196,
+        "preview": "./media/r20261017-04/scheme-07.webp"
+      },
+      "figures/scheme-08.png": {
+        "width": 980,
+        "height": 752,
+        "preview": "./media/r20261017-04/scheme-08.webp"
+      },
+      "figures/scheme-09.png": {
+        "width": 980,
+        "height": 456,
+        "preview": "./media/r20261017-04/scheme-09.webp"
+      },
+      "figures/scheme-10.png": {
+        "width": 980,
+        "height": 1708,
+        "preview": "./media/r20261017-04/scheme-10.webp"
+      },
+      "figures/scheme-11.png": {
+        "width": 980,
+        "height": 660,
+        "preview": "./media/r20261017-04/scheme-11.webp"
+      },
+      "figures/scheme-12.png": {
+        "width": 980,
+        "height": 1728,
+        "preview": "./media/r20261017-04/scheme-12.webp"
+      },
+      "figures/scheme-13.png": {
+        "width": 980,
+        "height": 736,
+        "preview": "./media/r20261017-04/scheme-13.webp"
+      },
+      "figures/scheme-14.png": {
+        "width": 980,
+        "height": 1424,
+        "preview": "./media/r20261017-04/scheme-14.webp"
+      },
+      "figures/scheme-15.png": {
+        "width": 2024,
+        "height": 1032,
+        "preview": "./media/r20261017-04/scheme-15.webp"
+      }
+    }
   },
   "blocks": [
     {

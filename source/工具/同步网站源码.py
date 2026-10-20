@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = ROOT / "发布" / "github-pages"
 FRONTEND = (
-    "app.css", "app.js", "article_config.py", "catalog.css", "catalog.html",
+    "app.css", "app.js", "media_assets.py", "progressive-media.js", "progressive-media.css", "card-actions.js", "card-actions.css", "article_config.py", "catalog.css", "catalog.html",
     "catalog.js", "export_github_pages.py", "index.html", "literature-lookup.css",
     "literature-lookup.js", "reader-chrome.css", "reader-chrome.js", "inline-format.js", "server.py",
     "validate_article.py", "public-site/published-library.js", "public-site/read.html",
@@ -27,7 +27,7 @@ FRONTEND = (
     "member-system/favorites.html", "member-system/admin.html",
     "templates/article-manifest.example.json", "templates/content-en.example.md",
     "templates/content-zh.example.md",
-    "tests/chemical-inline-export.test.cjs",
+    "tests/chemical-inline-export.test.cjs", "tests/loading-performance.test.cjs", "tests/card-actions.test.cjs",
 )
 FRONTEND_TESTS = (
     "account-entry.test.cjs", "admin-feedback.test.cjs", "admin-navigation.test.cjs",
@@ -59,7 +59,7 @@ BACKEND_TESTS = (
     "test_cloudbase_shared_auth.py", "test_deployment.py", "test_idempotence.py",
     "test_publication.py", "test_review_gate.py", "test_scf_handler.py",
     "test_verification_provider.py",
-    "test_feedback_edit.py",
+    "test_feedback_edit.py", "test_reader_context.py",
 )
 EXCLUSIONS = (
     "All private configuration, environment values, credentials, administrator bindings and IDs",

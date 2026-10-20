@@ -10,6 +10,7 @@ import uuid
 from pathlib import Path
 
 from article_config import ROOT, catalog_entry, load_article
+from media_assets import export_media, dimensions
 
 
 DEST = ROOT.parent / "发布" / "github-pages"
@@ -31,7 +32,7 @@ READER_FUNCTIONS = (
     "storedReadingState", "animationFrame", "imageSettled", "handleReadingScroll",
     "restoreArticleScroll", "restoreReadingState", "currentInlineFigure",
     "waitForInlineImage", "preloadOtherFigures", "showPreparationFailure",
-    "finishReadingPreparation",
+    "finishReadingPreparation", "figureMedia", "figureImageMarkup", "resumeRemoteProgress", "mountReadingTools",
 )
 
 
@@ -156,13 +157,20 @@ def export_article(stage: Path, article: dict) -> dict:
         "sourceUrl": article["sourceUrl"],
         "figurePages": {f"figures/{figure['file']}": figure["page"] for figure in article["figures"]},
         "scrollThreshold": article["scrollThreshold"],
+        "figureMedia": export_media(stage, article),
     }
     write_text(stage / "data" / f"{article_id}.json", json.dumps({"article": public, "blocks": blocks, "version_hash": hashlib.sha256(json.dumps(blocks, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()}, ensure_ascii=False, indent=2) + "\n")
     shutil.copyfile(article["cover"], stage / "covers" / f"{article_id}.png")
     (stage / "figures" / article_id).mkdir(parents=True, exist_ok=True)
     for figure in article["figures"]:
         shutil.copyfile(article["figuresDir"] / figure["file"], stage / "figures" / article_id / figure["file"])
-    return catalog_entry(article, f"./covers/{article_id}.png")
+    return {**catalog_entry(article, f"./covers/{article_id}.png"),
+            "coverDisplay": f"./media/{article_id}/cover.webp",
+            "coverPreview": f"./media/{article_id}/cover-small.webp",
+            "coverWidth": dimensions(article["cover"])["width"],
+            "coverHeight": dimensions(article["cover"])["height"],
+            "reviewVersion": BASELINE[article_id]["sourceBundleSha256"],
+            "version_hash": BASELINE[article_id]["publicBlocksSha256"]}
 
 
 def export_members(stage: Path) -> None:
@@ -194,10 +202,12 @@ def build() -> None:
         catalog = [export_article(stage, article) for article in articles]
         write_text(stage / "catalog.json", json.dumps({"articles": catalog}, ensure_ascii=False, indent=2) + "\n")
         catalog_html = (ROOT / "catalog.html").read_text(encoding="utf-8")
+        catalog_html = catalog_html.replace('href="/card-actions.css', 'href="./card-actions.css').replace('src="/card-actions.js', 'src="./card-actions.js')
+        catalog_html = catalog_html.replace('href="/progressive-media.css', 'href="./progressive-media.css').replace('src="/progressive-media.js', 'src="./progressive-media.js')
         catalog_html = catalog_html.replace('href="/literature-lookup.css', 'href="./literature-lookup.css').replace('src="/literature-lookup.js', 'src="./literature-lookup.js')
         catalog_html = catalog_html.replace('href="/"', 'href="./index.html"').replace('href="/catalog.css', 'href="./catalog.css').replace('src="/catalog.js', 'src="./catalog.js').replace('href="/member-system/', 'href="./member-system/').replace('src="/member-system/', 'src="./member-system/')
         write_text(stage / "index.html", catalog_html)
-        for name in ("literature-lookup.js", "literature-lookup.css", "reader-chrome.js", "reader-chrome.css", "inline-format.js"):
+        for name in ("literature-lookup.js", "literature-lookup.css", "reader-chrome.js", "reader-chrome.css", "inline-format.js", "progressive-media.js", "progressive-media.css", "card-actions.js", "card-actions.css"):
             content = (ROOT / name).read_text(encoding="utf-8")
             if name.endswith('.js'):
                 content = content.replace("'/api/catalog'", "'./catalog.json'").replace('`/read?article=', '`./read.html?article=')

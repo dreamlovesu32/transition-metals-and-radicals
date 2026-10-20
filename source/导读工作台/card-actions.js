@@ -1,0 +1,65 @@
+/* Independent controls: never nest actions inside the article link. */
+(function(global){
+  'use strict';
+  function updatedToday(value,now=new Date()){
+    if(typeof value!=='string'||!/[T ].*(?:Z|[+-]\d{2}:\d{2})$/.test(value))return false;
+    const date=new Date(value);if(!Number.isFinite(date.getTime()))return false;
+    const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'});
+    return day.format(date)===day.format(now);
+  }
+  function sourceUrl(article){
+    if(typeof article.sourceUrl==='string'){try{const url=new URL(article.sourceUrl);if(url.protocol==='https:')return url.href;}catch{}}
+    const doi=String(article.doi||'').trim().replace(/^https?:\/\/(?:dx\.)?doi\.org\//i,'');
+    return /^10\.\d{4,9}\/\S+$/.test(doi)?'https://doi.org/'+doi.split('/').map(encodeURIComponent).join('/'):null;
+  }
+  const svg=(path)=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
+  const star='m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z';
+  const arrow='M7 17 18 6M7 6h11v11';
+  function refresh(){
+    if(typeof document==='undefined')return;
+    const state=global.ReadMembers?.state;
+    document.querySelectorAll('[data-favorite-article]').forEach(button=>{
+      const active=Boolean(state?.library?.favorites.includes(button.dataset.favoriteArticle));
+      const was=button.getAttribute('aria-pressed')==='true';button.setAttribute('aria-pressed',String(active));
+      button.setAttribute('aria-label',active?'取消收藏':'收藏文章');button.title=active?'取消收藏':'收藏文章';
+      if(was&&!active)button.favoriteRemoved?.();
+    });
+  }
+  function mount(card,article,{onRemoved}={}){
+    const actions=document.createElement('div');actions.className='card-actions';
+    const favorite=document.createElement('button');favorite.type='button';favorite.className='card-favorite';favorite.dataset.favoriteArticle=article.id;
+    favorite.setAttribute('aria-pressed','false');favorite.setAttribute('aria-label','收藏文章');favorite.title='收藏文章';favorite.innerHTML=svg(star);favorite.favoriteRemoved=onRemoved;
+    if(article.public===false){favorite.disabled=true;favorite.title='未公开稿件不加入收藏';favorite.setAttribute('aria-label',favorite.title);}
+    favorite.addEventListener('click',async event=>{
+      event.preventDefault();event.stopPropagation();if(favorite.disabled)return;favorite.disabled=true;favorite.setAttribute('aria-busy','true');
+      card.querySelector('.card-action-error')?.remove();
+      try{
+        if(!global.ReadMembers&&document.readyState!=='complete')await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
+        if(!global.ReadMembers)throw Error('收藏工具暂未载入，请重试。');
+        await global.ReadMembers.ready;
+        await global.ReadMembers.toggleFavorite(article.id);refresh();
+      }catch(error){const notice=document.createElement('span');notice.className='card-action-error';notice.setAttribute('role','status');notice.textContent=error.message||'收藏未完成，请重试。';card.append(notice);refresh();}
+      finally{favorite.disabled=false;favorite.removeAttribute('aria-busy');}
+    });
+    actions.append(favorite);
+    const original=sourceUrl(article);
+    if(original){const link=document.createElement('a');link.className='card-source-link';link.href=original;link.target='_blank';link.rel='noopener';link.title='查看原文';link.setAttribute('aria-label','查看原文');link.innerHTML=svg(arrow);link.addEventListener('click',event=>event.stopPropagation());actions.append(link);}
+    card.append(actions);
+    if(updatedToday(article.updatedAt)){const badge=document.createElement('span');badge.className='card-new';badge.textContent='New!';badge.setAttribute('aria-label','北京时间今天更新');card.append(badge);}
+    return favorite;
+  }
+  let catalogRows=null;
+  function hydrate(articles){
+    if(Array.isArray(articles))catalogRows=articles;
+    refresh();const members=global.ReadMembers;if(!members){if(document.readyState!=='complete')document.addEventListener('DOMContentLoaded',hydrate,{once:true});return;}
+    members.ready?.then(()=>{
+      if(catalogRows)members.setPublicCatalog(catalogRows);
+      refresh();
+      if(members.state.user&&!members.state.presentationFavoritesKnown&&!members.state.libraryReady)members.ensureLibraryReady().then(refresh).catch(()=>{});
+    });
+  }
+  const api={mount,refresh,hydrate,sourceUrl,updatedToday};
+  if(typeof module!=='undefined')module.exports=api;
+  global.ReadCardActions=api;
+  if(typeof document!=='undefined')document.addEventListener('read-members-change',refresh);
+})(typeof window==='undefined'?globalThis:window);

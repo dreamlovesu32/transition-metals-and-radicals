@@ -45,7 +45,7 @@ async function start() {
       documentState = adaptReviewDraft(reviewDraft, requestedArticleId);
     } else {
     window.ReadPublished.catalog('./catalog.json').then(data => {
-      articles = data.articles; configureReadingNavigation(articles);
+      articles = data.articles; window.ReadMembers?.setPublicCatalog?.(articles); configureReadingNavigation(articles);
     }).catch(() => {});
     documentState = await window.ReadPublished.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
     }
@@ -76,31 +76,7 @@ async function start() {
     await finishReadingPreparation();
     if (reviewMode) assertReviewIdentity();
     if (!reviewMode) configureReadingNavigation(articles);
-    if (window.ReadMembers) {
-      (async () => {
-      if (!reviewMode) await window.ReadMembers.ready;
-      const mount = reviewMode ? window.ReadMembers.mountReviewReader : window.ReadMembers.mountReader;
-      if (!mount) throw new Error("阅读工具版本已更新，请刷新重试");
-      mount({articleId:articleId(), revision:documentState.version_hash, snapshot:documentState, metadata:articles.find(a=>a.id===articleId()), assetUrl:articleAsset, root:$("#article"), toolbar:$("#member-reader-tools"), figureRoot:$(".left-rail"), draft:reviewDraft});
-      if (!reviewMode) {
-        const remote = await window.ReadMembers.loadProgress(articleId(),documentState.version_hash,storedReadingState(),readingMode());
-        if (remote && !readerTouched && !readingRestoreInterrupted) {
-          restoringReadingState = true;
-          readingBottomIntent = remote.scroll?.atBottom === true;
-          paneRatio = Number.isFinite(remote.paneRatio) ? remote.paneRatio : DEFAULT_PANE_RATIO;
-          pendingPanelViewport = remote.figure || null;
-          pendingInlinePositions = {...(remote.inline || {})};
-          figureAuto = remote.figure?.auto !== false;
-          figureFillPane = remote.figure?.fill === true;
-          figureScale = Math.min(5, Math.max(1, Number(remote.figure?.scale) || 1));
-          for (const [id,position] of Object.entries(remote.inline || {})) inlineFigureScales.set(id,Math.min(5,Math.max(1,Number(position.scale)||1)));
-          showFigure(Number.isInteger(remote.figure?.index) ? remote.figure.index : 0);
-          setFigureAuto(figureAuto);setFigureFillPane(figureFillPane);
-          await restoreReadingState(remote);
-        }
-      }
-      })().catch(error => console.warn("Reading tools unavailable", error)).finally(() => { window.ReadProgressPending=false; });
-    } else window.ReadProgressPending=false;
+    mountReadingTools(articles.find(a=>a.id===articleId()),()=>readerTouched);
   } catch(error) {
     console.error("Reader preparation failed", error);
     restoringReadingState = false;
