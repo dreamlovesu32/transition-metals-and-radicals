@@ -227,24 +227,58 @@ test('reading originals omit small previews and opacity transitions while naviga
 });
 
 
-test('configured final figure follows document bottom only in automatic desktop mode and releases on scrolling back',()=>{
+test('configured final figure retains a quarter viewport buffer and releases on scrolling farther back',()=>{
  const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
  for(const height of [400,950]){
   const selected=[],anchors=[10,30,2000].map(top=>({getBoundingClientRect:()=>({top})}));
-  const ctx={figureBlocks:[{},{},{scrollTrigger:'article-end'}],restoringReadingState:false,figureAuto:true,isDesktopLayout:()=>true,readingPrepared:true,documentState:{article:{scrollThreshold:.52}},window:{scrollY:2000-height-4,innerHeight:height},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelectorAll:()=>anchors},showFigure:i=>selected.push(i)};
+  const ctx={currentFigureIndex:0,figureBlocks:[{},{},{scrollTrigger:'article-end'}],restoringReadingState:false,figureAuto:true,isDesktopLayout:()=>true,readingPrepared:true,documentState:{article:{scrollThreshold:.52}},window:{scrollY:2000-height-4,innerHeight:height},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelectorAll:()=>anchors},showFigure:i=>selected.push(i)};
   vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
-  ctx.syncFigureToScroll();assert.deepEqual(selected,[2]);
-  ctx.window.scrollY=2000-height-20;ctx.syncFigureToScroll();assert.deepEqual(selected,[2,1]);
-  ctx.figureAuto=false;ctx.window.scrollY=2000-height;ctx.syncFigureToScroll();assert.deepEqual(selected,[2,1]);
-  ctx.figureAuto=true;ctx.restoringReadingState=true;ctx.syncFigureToScroll();assert.deepEqual(selected,[2,1]);
+  ctx.syncFigureToScroll();ctx.currentFigureIndex=2;assert.deepEqual(selected,[2]);
+  ctx.window.scrollY=2000-height-20;ctx.syncFigureToScroll();assert.deepEqual(selected,[2,2]);
+  ctx.window.scrollY=2000-height-height*.3;ctx.syncFigureToScroll();ctx.currentFigureIndex=1;assert.deepEqual(selected,[2,2,1]);
+  ctx.figureAuto=false;ctx.window.scrollY=2000-height;ctx.syncFigureToScroll();assert.deepEqual(selected,[2,2,1]);
+  ctx.figureAuto=true;ctx.restoringReadingState=true;ctx.syncFigureToScroll();assert.deepEqual(selected,[2,2,1]);
   ctx.restoringReadingState=false;ctx.document.scrollingElement.scrollHeight=3000;ctx.syncFigureToScroll();assert.equal(selected.at(-1),1);
   assert.equal(ctx.isReadingAtEnd(100,0,100),false);
  }
 });
 test('unconfigured and single-column figures keep natural anchor behavior',()=>{
  const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
- const selected=[],ctx={figureBlocks:[{},{},{}],restoringReadingState:false,figureAuto:true,isDesktopLayout:()=>true,readingPrepared:true,documentState:{article:{}},window:{scrollY:1400,innerHeight:600},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelectorAll:()=>[0,10,2000].map(top=>({getBoundingClientRect:()=>({top})}))},showFigure:i=>selected.push(i)};
+ const selected=[],ctx={currentFigureIndex:0,figureBlocks:[{},{},{}],restoringReadingState:false,figureAuto:true,isDesktopLayout:()=>true,readingPrepared:true,documentState:{article:{}},window:{scrollY:1400,innerHeight:600},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelectorAll:()=>[0,10,2000].map(top=>({getBoundingClientRect:()=>({top})}))},showFigure:i=>selected.push(i)};
  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);ctx.syncFigureToScroll();assert.equal(selected.at(-1),1);
  ctx.figureBlocks[0].scrollTrigger='article-end';assert.equal(ctx.articleEndFigureIndex(),-1);
  ctx.isDesktopLayout=()=>false;ctx.currentInlineFigure=()=>({dataset:{figureIndex:'2'}});ctx.currentFigureIndex=0;ctx.preloadOtherFigures=()=>{};ctx.syncFigureToScroll();assert.equal(ctx.currentFigureIndex,2);assert.equal(selected.length,1);
+});
+
+
+test('ordinary anchor hysteresis accumulates micro scrolls and uses distinct stable upward/downward lines',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function selectAutoFigure('),end=source.indexOf('\nfunction resetAutoFigureTracking(',at);const ctx={};vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
+ const pick=(tops,current,force=false)=>ctx.selectAutoFigure(tops,current,-1,300,500,900,false,force);
+ assert.equal(pick([0,299,700],0),1);
+ for(let top=301;top<=390;top++)assert.equal(pick([0,top,top+400],1),1);
+ assert.equal(pick([0,391,791],1),0);
+ assert.equal(pick([0,310,710],0),0);assert.equal(pick([0,300,700],0),1);
+ assert.equal(pick([0,200,210,220,700],0),3);assert.equal(pick([100,390,400,410,800],3),1);
+ assert.equal(pick([0,320,700],1,true),0);
+ assert.ok(!source.slice(at,end).includes('setTimeout'));
+});
+test('reading height excludes the chrome and explicit jumps bypass hysteresis only until their clamped target',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
+ const chosen=[];const ctx={currentFigureIndex:1,figureBlocks:[{},{},{}],figureAuto:true,readingPrepared:true,readingPreparationSaved:null,restoringReadingState:false,documentState:{article:{}},isDesktopLayout:()=>true,window:{scrollY:500,innerHeight:600},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelector:()=>({getBoundingClientRect:()=>({bottom:100})}),querySelectorAll:()=>[0,320,900].map(top=>({getBoundingClientRect:()=>({top})}))},showFigure:i=>chosen.push(i)};
+ vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);assert.equal(ctx.readingVisibleHeight(),500);
+ ctx.syncFigureToScroll();assert.equal(chosen.at(-1),1);
+ ctx.beginFigureJump(500);assert.equal(chosen.at(-1),0);assert.equal(ctx.syncFigureToScroll.jumpTarget,null);
+ ctx.beginFigureJump(5000);assert.equal(ctx.syncFigureToScroll.jumpTarget,1400);assert.equal(chosen.at(-1),2);
+ ctx.window.scrollY=1400;ctx.syncFigureToScroll();assert.equal(ctx.syncFigureToScroll.jumpTarget,null);
+ ctx.beginFigureJump(0);ctx.cancelFigureJump({target:{closest:()=>true}});assert.equal(ctx.syncFigureToScroll.jumpTarget,0);
+ ctx.cancelFigureJump({target:{closest:()=>false}});assert.equal(ctx.syncFigureToScroll.jumpTarget,null);
+ ctx.readingPrepared=false;ctx.readingPreparationSaved={figure:{index:1}};ctx.currentFigureIndex=1;ctx.window.scrollY=500;ctx.syncFigureToScroll();assert.equal(chosen.at(-1),1);
+ ctx.readingPreparationSaved=null;ctx.syncFigureToScroll();assert.equal(chosen.at(-1),0);
+});
+test('explicit navigation, auto toggles, reflow and resize all route through immediate recalibration',()=>{
+ const root=path.join(__dirname,'..');const app=fs.readFileSync(path.join(root,'app.js'),'utf8'),chrome=fs.readFileSync(path.join(root,'reader-chrome.js'),'utf8'),boot=fs.readFileSync(path.join(root,'public-site/reader-boot.js'),'utf8');
+ assert.ok(chrome.includes('beginFigureJump(h.getBoundingClientRect().top+window.scrollY'));
+ assert.ok(chrome.includes("beginFigureJump(edge==='top'?0:document.documentElement.scrollHeight)"));
+ assert.ok(app.includes('if (enabled) syncFigureToScroll(true);'));
+ for(const source of [app,boot])assert.ok(source.includes('resetAutoFigureTracking();'));
 });

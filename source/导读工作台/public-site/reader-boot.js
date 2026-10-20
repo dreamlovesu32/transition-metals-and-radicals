@@ -84,16 +84,16 @@ async function start() {
     $("#article").innerHTML = '<h1 class="article-title">阅读内容暂时无法载入</h1><p>' + (reviewMode ? escapeHtml(error.message || "请返回稿件审核重试。") : '请从文献导航重新选择文章。') + '</p>';
     showPreparationFailure(reviewMode ? error.message || "稿件暂时无法载入，请重试。" : "阅读内容暂时无法载入，请重试。");
   }
-  $("#nav-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; window.scrollTo({top:0,behavior:"smooth"});});
-  $("#nav-bottom").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("bottom");readingBottomIntent = true; window.scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});});
-  window.addEventListener("wheel", event => {if(!event.ctrlKey) readingBottomIntent = false;}, {passive:true});
-  window.addEventListener("touchmove", () => {readingBottomIntent = false;}, {passive:true});
-  window.addEventListener("keydown", event => {if(["ArrowUp","ArrowDown","PageUp","PageDown","Home","End"," "].includes(event.key)) readingBottomIntent = false;});
+  $("#nav-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; beginFigureJump(0); window.scrollTo({top:0,behavior:"smooth"});});
+  $("#nav-bottom").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("bottom");readingBottomIntent = true; beginFigureJump(document.documentElement.scrollHeight); window.scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});});
+  window.addEventListener("wheel", event => {if(!event.ctrlKey) {readingBottomIntent = false; cancelFigureJump(event);}}, {passive:true});
+  window.addEventListener("touchmove", event => {readingBottomIntent = false; cancelFigureJump(event);}, {passive:true});
+  window.addEventListener("keydown", event => {if(["ArrowUp","ArrowDown","PageUp","PageDown","Home","End"," "].includes(event.key)) {readingBottomIntent = false; cancelFigureJump(event);}});
   $("#nav-prev").addEventListener("click", event => navigateToArticle(event.currentTarget));
   $("#nav-next").addEventListener("click", event => navigateToArticle(event.currentTarget));
   $("#nav-catalog").addEventListener("click", saveReadingState);
   $("#footer-catalog").addEventListener("click", saveReadingState);
-  $("#footer-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; window.scrollTo({top:0,behavior:"smooth"});});
+  $("#footer-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; beginFigureJump(0); window.scrollTo({top:0,behavior:"smooth"});});
   $(".topbar .brand").addEventListener("click", saveReadingState);
   window.addEventListener("pagehide", saveReadingState);
   document.addEventListener("visibilitychange", () => {if(document.visibilityState === "hidden") saveReadingState();});
@@ -134,8 +134,9 @@ async function start() {
   divider.addEventListener("keydown", handlePaneKey);
   window.addEventListener("resize", () => {
     if (readingMode() !== (isDesktopLayout() ? "desktop" : "single")) {reflowReaderLayout();return;}
-    applyPaneRatio();syncFigureToScroll();applyFigureScale();applyAllInlineFigureScales();
+    applyPaneRatio();applyFigureScale();applyAllInlineFigureScales();
     if(readingBottomIntent)window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
+    resetAutoFigureTracking();
   });
 }
 

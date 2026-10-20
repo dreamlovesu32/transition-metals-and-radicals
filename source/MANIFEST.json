@@ -361,8 +361,8 @@
     },
     {
       "path": "导读工作台/app.js",
-      "bytes": 74489,
-      "sha256": "5326537e9c9b1b61308ca52eb5c35a392be0dc008f9d9f2c23a1522aa9bf7755",
+      "bytes": 77022,
+      "sha256": "7236cfeade1f8987be514af86449c203a734f0e8d9cecbf5d9e6b37eaae212b8",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -403,8 +403,8 @@
     },
     {
       "path": "导读工作台/export_github_pages.py",
-      "bytes": 17851,
-      "sha256": "326aef48faa5ad5986ffcc242fc3ebe6f4cfa6fd5c18c14f7ab352fdea190ee7",
+      "bytes": 17961,
+      "sha256": "6606a58055cd788751ea320723ea8a95b6c73be13819b1cf846bdb0da05198a0",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -559,8 +559,8 @@
     },
     {
       "path": "导读工作台/public-site/reader-boot.js",
-      "bytes": 8803,
-      "sha256": "30a79d305edcf1281ed3d500f33a19207f72d592c2060e588b71c398ee50169c",
+      "bytes": 8991,
+      "sha256": "db8b7b4e9b28a22d02b97bc40036e1d961f434fe0c71bad95b7f7b92c03f3e31",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -577,8 +577,8 @@
     },
     {
       "path": "导读工作台/reader-chrome.js",
-      "bytes": 14659,
-      "sha256": "47c92513104896e9d317173327c977ea97530fe93ce31ad97247ea15f3296531",
+      "bytes": 14995,
+      "sha256": "08cd0d201db4e159e6a87eb13147d4d151fa770ef778f2950d8ae1c6cfb714c7",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -619,8 +619,8 @@
     },
     {
       "path": "导读工作台/tests/loading-performance.test.cjs",
-      "bytes": 27051,
-      "sha256": "91c62448d7c5f6fe6d8a670940eab8c3d394325cf6dc2e976144e3413519c59a",
+      "bytes": 30931,
+      "sha256": "35241d62b70f63d2c76dcade06b45564f6204231c9fbbe21f3a9adf9e58b7682",
       "origin": "byte-for-byte source copy"
     },
     {

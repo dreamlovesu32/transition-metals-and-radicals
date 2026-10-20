@@ -607,7 +607,8 @@ function setFigureAuto(enabled) {
   button.setAttribute("aria-pressed", String(enabled));
   button.textContent = enabled ? (currentLanguage === "zh" ? "● 自动" : "● Auto") : (currentLanguage === "zh" ? "Ⅱ 恢复自动" : "Ⅱ Resume auto");
   button.title = enabled ? (currentLanguage === "zh" ? "随正文自动切换图片" : "Follow the article") : (currentLanguage === "zh" ? "手动切图已暂停联动，点击恢复" : "Manual choice paused following; click to resume");
-  if (enabled) syncFigureToScroll();
+  syncFigureToScroll.jumpTarget = null;
+  if (enabled) syncFigureToScroll(true);
   scheduleReadingSave();
 }
 
@@ -642,9 +643,47 @@ function articleEndFigureIndex() {
   return index === figureBlocks.length - 1 ? index : -1;
 }
 
-function syncFigureToScroll() {
+function readingVisibleHeight() {
+  const toolbar = document.querySelector?.(".reader-toolbar") || document.querySelector?.(".topbar");
+  const headerBottom = toolbar?.getBoundingClientRect?.().bottom || 0;
+  return Math.max(1, window.innerHeight - Math.max(0, headerBottom));
+}
+
+function selectAutoFigure(tops, current, endIndex, downLine, visibleHeight, bottomGap, atEnd, force=false) {
+  if (endIndex >= 0 && atEnd) return endIndex;
+  let next = 0;
+  tops.forEach((top, index) => {if (index !== endIndex && top <= downLine) next = index;});
+  if (force || current < 0 || current >= tops.length) return next;
+  if (endIndex >= 0 && current === endIndex) return bottomGap < visibleHeight * .25 ? endIndex : next;
+  if (next >= current) return next;
+  const upLine = downLine + visibleHeight * .18;
+  let previous = 0;
+  tops.forEach((top, index) => {if (index !== endIndex && top <= upLine) previous = index;});
+  return Math.min(current, previous);
+}
+
+function resetAutoFigureTracking() {
+  syncFigureToScroll.jumpTarget = null;
+  syncFigureToScroll(true);
+}
+
+function beginFigureJump(targetY) {
+  if (!figureAuto || !isDesktopLayout() || !Number.isFinite(targetY)) return;
+  const scroller = document.scrollingElement || document.documentElement;
+  const max = Math.max(0, Math.max(scroller.scrollHeight, document.documentElement.scrollHeight) - window.innerHeight);
+  syncFigureToScroll.jumpTarget = Math.max(0, Math.min(max, targetY));
+  syncFigureToScroll(true);
+}
+
+function cancelFigureJump(event) {
+  if (event.target?.closest?.(".figure-stage,.inline-figure-stage")) return;
+  if (syncFigureToScroll.jumpTarget != null) resetAutoFigureTracking();
+}
+
+function syncFigureToScroll(force=false) {
   if (restoringReadingState || !figureBlocks.length) return;
   if (!isDesktopLayout()) {
+    syncFigureToScroll.jumpTarget = null;
     if (!readingPrepared) return;
     const wrap = currentInlineFigure();
     const index = Number(wrap?.dataset.figureIndex);
@@ -652,18 +691,20 @@ function syncFigureToScroll() {
     return;
   }
   if (!figureAuto) return;
-  const endIndex = articleEndFigureIndex();
   const scroller = document.scrollingElement || document.documentElement;
-  if (endIndex >= 0 && isReadingAtEnd(window.scrollY, window.innerHeight, Math.max(scroller.scrollHeight, document.documentElement.scrollHeight))) {
-    showFigure(endIndex);
-    return;
+  const contentHeight = Math.max(scroller.scrollHeight, document.documentElement.scrollHeight);
+  const max = Math.max(0, contentHeight - window.innerHeight);
+  const jump = syncFigureToScroll.jumpTarget;
+  const targetY = jump == null ? window.scrollY : Math.max(0, Math.min(max, jump));
+  if (jump != null) {
+    syncFigureToScroll.jumpTarget = Math.abs(window.scrollY - targetY) <= 6 ? null : targetY;
   }
   const anchors = [...document.querySelectorAll(".block[data-figure-index]")];
-  const threshold = window.innerHeight * (documentState.article?.scrollThreshold ?? .52);
-  let index = 0;
-  anchors.forEach((anchor, i) => {
-    if (i !== endIndex && anchor.getBoundingClientRect().top <= threshold) index = i;
-  });
+  const tops = anchors.map(anchor => anchor.getBoundingClientRect().top + window.scrollY - targetY);
+  const downLine = window.innerHeight * (documentState.article?.scrollThreshold ?? .52);
+  const index = selectAutoFigure(tops, currentFigureIndex, articleEndFigureIndex(), downLine,
+    readingVisibleHeight(), Math.max(0, contentHeight - window.innerHeight - targetY),
+    isReadingAtEnd(targetY, window.innerHeight, contentHeight), force === true || (!readingPrepared && !readingPreparationSaved) || jump != null);
   showFigure(index);
 }
 
@@ -740,7 +781,7 @@ async function reflowReaderLayout(nextPreference=layoutPreference, nextPaneSide=
   });
   restoringReadingState = false;
   changingLayout = false;
-  syncFigureToScroll();
+  resetAutoFigureTracking();
   scheduleReadingSave();
 }
 
@@ -853,6 +894,8 @@ function restoreArticleScroll(saved) {
   const target = scroll.atBottom ? max : block ?
     block.getBoundingClientRect().top + window.scrollY + (Number(scroll.offset) || 0) :
     max * Math.max(0, Math.min(1, Number(scroll.fraction) || 0));
+  if (restoringReadingState) syncFigureToScroll.jumpTarget = null;
+  else beginFigureJump(Math.max(0, Math.min(max, target)));
   window.scrollTo({top:Math.max(0, Math.min(max, target)), behavior:"instant"});
 }
 
@@ -1143,16 +1186,16 @@ async function start() {
     $("#article").innerHTML = '<h1 class="article-title">阅读内容暂时无法载入</h1><p>' + (reviewMode ? escapeHtml(error.message || "请返回稿件审核重试。") : '请从文献导航重新选择文章。') + '</p>';
     showPreparationFailure(reviewMode ? error.message || "稿件暂时无法载入，请重试。" : "阅读内容暂时无法载入，请重试。");
   }
-  $("#nav-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; window.scrollTo({top:0,behavior:"smooth"});});
-  $("#nav-bottom").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("bottom");readingBottomIntent = true; window.scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});});
-  window.addEventListener("wheel", event => {if(!event.ctrlKey) readingBottomIntent = false;}, {passive:true});
-  window.addEventListener("touchmove", () => {readingBottomIntent = false;}, {passive:true});
-  window.addEventListener("keydown", event => {if(["ArrowUp","ArrowDown","PageUp","PageDown","Home","End"," "].includes(event.key)) readingBottomIntent = false;});
+  $("#nav-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; beginFigureJump(0); window.scrollTo({top:0,behavior:"smooth"});});
+  $("#nav-bottom").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("bottom");readingBottomIntent = true; beginFigureJump(document.documentElement.scrollHeight); window.scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});});
+  window.addEventListener("wheel", event => {if(!event.ctrlKey) {readingBottomIntent = false; cancelFigureJump(event);}}, {passive:true});
+  window.addEventListener("touchmove", event => {readingBottomIntent = false; cancelFigureJump(event);}, {passive:true});
+  window.addEventListener("keydown", event => {if(["ArrowUp","ArrowDown","PageUp","PageDown","Home","End"," "].includes(event.key)) {readingBottomIntent = false; cancelFigureJump(event);}});
   $("#nav-prev").addEventListener("click", event => navigateToArticle(event.currentTarget));
   $("#nav-next").addEventListener("click", event => navigateToArticle(event.currentTarget));
   $("#nav-catalog").addEventListener("click", saveReadingState);
   $("#footer-catalog").addEventListener("click", saveReadingState);
-  $("#footer-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; window.scrollTo({top:0,behavior:"smooth"});});
+  $("#footer-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; beginFigureJump(0); window.scrollTo({top:0,behavior:"smooth"});});
   $(".topbar .brand").addEventListener("click", saveReadingState);
   window.addEventListener("pagehide", saveReadingState);
   document.addEventListener("visibilitychange", () => {if(document.visibilityState === "hidden") saveReadingState();});
@@ -1193,8 +1236,9 @@ async function start() {
   divider.addEventListener("keydown", handlePaneKey);
   window.addEventListener("resize", () => {
     if (readingMode() !== (isDesktopLayout() ? "desktop" : "single")) {reflowReaderLayout();return;}
-    applyPaneRatio();syncFigureToScroll();applyFigureScale();applyAllInlineFigureScales();
+    applyPaneRatio();applyFigureScale();applyAllInlineFigureScales();
     if(readingBottomIntent)window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
+    resetAutoFigureTracking();
   });
 }
 

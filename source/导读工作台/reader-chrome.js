@@ -48,8 +48,8 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
   leading.append(jumps);q('.reading-navigation')?.remove();
   const jumpController=createReaderJumpController(
    ()=>({x:window.scrollX,y:window.scrollY,anchor:typeof readingAnchor==='function'?readingAnchor():null}),
-   edge=>{if(typeof readingBottomIntent!=='undefined')readingBottomIntent=edge==='bottom';window.scrollTo({top:edge==='top'?0:document.documentElement.scrollHeight,behavior:'smooth'});},
-   saved=>{if(typeof readingBottomIntent!=='undefined')readingBottomIntent=!!saved.anchor?.atBottom;if(saved.anchor&&typeof restoreArticleScroll==='function')restoreArticleScroll({scroll:saved.anchor});else window.scrollTo({top:saved.y,left:saved.x,behavior:'smooth'});},
+   edge=>{if(typeof readingBottomIntent!=='undefined')readingBottomIntent=edge==='bottom';if(typeof beginFigureJump==='function')beginFigureJump(edge==='top'?0:document.documentElement.scrollHeight);window.scrollTo({top:edge==='top'?0:document.documentElement.scrollHeight,behavior:'smooth'});},
+   saved=>{if(typeof readingBottomIntent!=='undefined')readingBottomIntent=!!saved.anchor?.atBottom;if(saved.anchor&&typeof restoreArticleScroll==='function')restoreArticleScroll({scroll:saved.anchor});else {if(typeof beginFigureJump==='function')beginFigureJump(saved.y);window.scrollTo({top:saved.y,left:saved.x,behavior:'smooth'});}},
    active=>{for(const [edge,button]of Object.entries(jumpButtons)){const label=edge==='top'?'顶部':'底部';button.textContent=active===edge?'返回原位':label;button.title=active===edge?'返回跳转前的阅读位置':'前往页面'+label;button.setAttribute('aria-label',button.title);button.setAttribute('aria-pressed',String(active===edge));}}
   );
   if(new URLSearchParams(location.search).has('review')){
@@ -124,6 +124,7 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
       a.addEventListener('click',async e=>{
         e.preventDefault();
         if(innerWidth<901)await closePanel();
+        if(typeof beginFigureJump==='function')beginFigureJump(h.getBoundingClientRect().top+window.scrollY-(parseFloat(getComputedStyle(h).scrollMarginTop)||0));
         h.scrollIntoView({behavior:'smooth',block:'start'});
       });
       const level=Number(h.tagName[1]);

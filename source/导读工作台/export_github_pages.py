@@ -25,7 +25,7 @@ READER_FUNCTIONS = (
     "applyFigureScale", "setFigureScale", "wheelDeltaPixels", "handleFigureWheel",
     "schedulePaneFigureFit", "applyPaneRatio", "paneRatioAt", "endPaneDrag",
     "handlePaneKey", "setFigureAuto", "chooseFigure", "renderFigurePanel",
-    "isReadingAtEnd", "articleEndFigureIndex", "syncFigureToScroll", "observeFigures", "isDesktopLayout", "applyLayoutPreference",
+    "isReadingAtEnd", "articleEndFigureIndex", "readingVisibleHeight", "selectAutoFigure", "resetAutoFigureTracking", "beginFigureJump", "cancelFigureJump", "syncFigureToScroll", "observeFigures", "isDesktopLayout", "applyLayoutPreference",
     "loadLayoutPreference", "reflowReaderLayout", "readingMode", "readingKey",
     "scrollFraction", "restoreScrollFraction", "readingAnchor",
     "captureReadingState", "saveReadingState", "scheduleReadingSave",
