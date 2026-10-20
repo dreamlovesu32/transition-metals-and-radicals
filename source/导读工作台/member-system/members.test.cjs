@@ -44,3 +44,13 @@ test('late reading-position response cannot restore another account position',as
  try{const local={y:10};const pending=loadProgress('a','h',local);state.user={id:'new-reader'};state.epoch++;release();assert.deepEqual(await pending,local);}
  finally{global.fetch=originalFetch;state.user=null;state.expired=false;}
 });
+
+
+test('old note offsets map only whitespace removed from the same immutable paragraph without rewriting notes',()=>{
+ const legacyText='产物 1 在 25 °C 下反应，保留记录。',text='产物1在25 °C下反应，保留记录。',quote='1 在 25 °C 下反应';
+ const start=legacyText.indexOf(quote),item={articleId:'a',revision:'v',blockId:'p',quote,prefix:legacyText.slice(0,start),suffix:legacyText.slice(start+quote.length),offset:{start,end:start+quote.length}};
+ const frozen=JSON.stringify(item),ctx={articleId:'a',revision:'v',blockId:'p',text,legacyText};
+ assert.deepEqual(resolveAnchor(item,ctx),{start:2,end:text.indexOf('，')});assert.equal(JSON.stringify(item),frozen);
+ for(const change of [{revision:'different'},{blockId:'other'},{text:text.replace('反应','变化')},{legacyText:legacyText.replace('产物','底物')},{text:'别处'+text}])assert.equal(resolveAnchor(item,{...ctx,...change}),null);
+ assert.equal(resolveAnchor(item,{...ctx,legacyText:undefined}),null);
+});

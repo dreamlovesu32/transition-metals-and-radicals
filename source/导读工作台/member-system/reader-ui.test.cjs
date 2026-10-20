@@ -5,7 +5,7 @@ test('ligand stars use superscript consistently without consuming bold/italic de
   const html=format.html(text);assert.match(html,/<sup [^>]*>&#42;<\/sup>/);assert(!html.includes('L*'));
  }
  assert.match(format.html('**L*1**'),/^<strong>L<sup .*<\/sup>1<\/strong>$/);
- assert.equal(format.html('**图 1** 和 *N,N,P*'),' <strong>图 1</strong> 和 <em>N,N,P</em>'.trim());
+ assert.equal(format.html('**图 1** 和 *N,N,P*'),'<strong>图1</strong>和<em>N,N,P</em>');
  assert(!format.html('<script>x</script>').includes('<script>'));
  assert.match(format.html('S<sub>N</sub>2'),/S<sub>N<\/sub>2/);
  const exported=require('./article-export.js').render([{kind:'paragraph',text:'**L*1**'}],new Map());assert(exported.includes(format.html('**L*1**')));
