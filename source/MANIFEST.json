@@ -415,8 +415,8 @@
     },
     {
       "path": "导读工作台/inline-format.js",
-      "bytes": 1251,
-      "sha256": "aa935d5daa761fd8b082376e2d47ab03e65d1f9ea8bcf18d9a891e4886a6036f",
+      "bytes": 1813,
+      "sha256": "19c0f228b323e7b848f4edd1287f3bc2c02278f4b54f03f7a401b04b9644d507",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -613,8 +613,8 @@
     },
     {
       "path": "导读工作台/tests/chemical-inline-export.test.cjs",
-      "bytes": 3323,
-      "sha256": "53c7ebecf4b7baf7daebd5395d5fd5ef37a6ff02f05e8a8c410fdbb962854259",
+      "bytes": 4502,
+      "sha256": "adadad9d72079bff3f89a21fa4f8f5d9ded53aedc8308f8517d38fefc86f34c4",
       "origin": "byte-for-byte source copy"
     },
     {
