@@ -25,6 +25,7 @@ async function start() {
     document.addEventListener("read-members-expired", clearPrivateReview);
   }
   loadLayoutPreference();
+  $("#reading-preparation-continue").addEventListener("click", () => finishReadingPreparation(false, true));
   $("#panel-figure-retry").addEventListener("click", retryPanelFigure);
   $("#reading-preparation-retry").addEventListener("click", () => {
     if (!documentState?.article) location.reload();
@@ -50,7 +51,7 @@ async function start() {
     documentState = await window.ReadPublished.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
     }
     restoringReadingState = true;
-    const localSaved = reviewMode || window.ReadMembers?.state.authStatus === "ready" ? storedReadingState() : null;
+    const localSaved = storedReadingState();
     const saved = localSaved;
     readingPreparationSaved = saved;
     pendingPanelViewport = saved?.figure || null;

@@ -360,7 +360,8 @@ function setPanelFigureState(state) {
   stage.dataset.imageState = state;
   updateDragPanState(stage);
   status.hidden = state === "ready";
-  $("#panel-figure-status-message").textContent = state === "failed" ? "图片暂时无法载入" : "图片加载中…";
+  stage.dataset.hasImage = String(Boolean($("#panel-figure-image").naturalWidth));
+  $("#panel-figure-status-message").textContent = state === "failed" ? (stage.dataset.hasImage === "true" ? "新图片暂时无法载入；已保留上一张，可重试" : "当前原图暂时无法载入，可重试") : "正在载入当前原图…";
   $("#panel-figure-retry").hidden = state !== "failed";
   $("#figure-zoom-out").disabled = state !== "ready" || figureScale <= 1;
   $("#figure-detail-zoom").disabled = state !== "ready" || figureScale >= 5;
@@ -379,55 +380,61 @@ function handlePanelVisibleLoad() {
 
 function requestPanelFigure(block, retry=false) {
   const requestId = ++panelFigureRequest;
-  const image = $("#panel-figure-image");
   const base = articleAsset(block.src);
   const url = retry ? `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}` : base;
-  const warm=backgroundFigureImages.find(item=>item.getAttribute("src")===url&&item.complete&&item.naturalWidth);
-  if(warm){
-    warm.id="panel-figure-image";warm.alt=image.alt;image.replaceWith(warm);
-    $("#figure-canvas .panel-media-preview")?.remove();handlePanelVisibleLoad();setPanelFigureState("ready");
-    panelFigureReady=Promise.resolve("ready");return panelFigureReady;
-  }
+  const warm = backgroundFigureImages.find(item => item.getAttribute("src") === url && item.complete && item.naturalWidth && item.dataset.decoded === "true");
   setPanelFigureState("loading");
-  $("#figure-canvas .panel-media-preview")?.remove();
-  const media = figureMedia(block);
-  if (media.preview) {
-    const small = new Image(); small.className = "panel-media-preview"; small.alt = "";
-    small.setAttribute("aria-hidden", "true"); small.decoding = "async"; small.src = media.preview;
-    $("#figure-canvas").append(small);
-  }
   panelFigureReady = new Promise(resolve => {
-    const candidate = new Image();
+    const candidate = warm || new Image();
+    const media = figureMedia(block);
     candidate.decoding = "async"; candidate.fetchPriority = "high";
     if (media.width && media.height) {candidate.width = media.width; candidate.height = media.height;}
     let settled = false;
     const finish = result => {
       if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      if (requestId !== panelFigureRequest) { resolve("stale"); return; }
-      if (result !== "ready") { setPanelFigureState("failed"); resolve(result); return; }
+      settled = true; clearTimeout(timer);
+      candidate.onload = candidate.onerror = null;
+      if (requestId !== panelFigureRequest) {resolve("stale"); return;}
+      if (result !== "ready") {setPanelFigureState("failed"); resolve(result); return;}
       candidate.id = "panel-figure-image";
-      candidate.alt = image.alt;
-      image.replaceWith(candidate);
-      candidate.dataset.figureSource=block.src;
-      if(!backgroundFigureImages.includes(candidate))backgroundFigureImages.push(candidate);
+      const visible = $("#panel-figure-image");
+      if (visible !== candidate) visible.replaceWith(candidate);
+      candidate.dataset.figureSource = block.src;
+      if (!backgroundFigureImages.includes(candidate)) backgroundFigureImages.push(candidate);
       $("#figure-canvas .panel-media-preview")?.remove();
-      handlePanelVisibleLoad();
-      setPanelFigureState("ready");
+      commitPanelFigure(block); handlePanelVisibleLoad(); setPanelFigureState("ready");
       resolve("ready");
     };
+    const loaded = async () => {
+      try {await decodeFigureImage(candidate); finish("ready");}
+      catch {finish("error");}
+    };
     const timer = setTimeout(() => finish("timeout"), IMAGE_READY_TIMEOUT_MS);
-    candidate.onload = () => finish("ready");
-    candidate.onerror = () => finish("error");
-    candidate.src = url;
-    if (candidate.complete && candidate.naturalWidth) finish("ready");
+    candidate.onload = loaded; candidate.onerror = () => finish("error");
+    if (!warm) candidate.src = url;
+    if (candidate.complete && candidate.naturalWidth) loaded();
   });
   return panelFigureReady;
 }
 
+async function decodeFigureImage(image) {
+  if (!image.naturalWidth) throw new Error("图片无法解码");
+  if (image.dataset.decoded === "true") return;
+  if (typeof image.decode === "function") await image.decode();
+  image.dataset.decoded = "true";
+}
+
+function commitPanelFigure(block) {
+  const page = figurePage(block.src);
+  $("#panel-figure-image").alt = `${tr("source")}${page}${tr("page")}`;
+  $("#figure-position").textContent = `${String(currentFigureIndex + 1).padStart(2,"0")} / ${String(figureBlocks.length).padStart(2,"0")}`;
+  $("#panel-figure-page").textContent = `${tr("source")}${page}${tr("page")}`;
+  $("#panel-figure-caption").innerHTML = inlineMarkdown(block.text);
+  $("#panel-figure-note").textContent = currentLanguage === "zh" ? "原论文裁图 · 栏内查看" : "Original paper crop";
+}
+
 function retryPanelFigure() {
-  if (figureBlocks[currentFigureIndex]) requestPanelFigure(figureBlocks[currentFigureIndex], true);
+  if (figureBlocks[currentFigureIndex]) return requestPanelFigure(figureBlocks[currentFigureIndex], true);
 }
 
 function showFigure(index, force=false) {
@@ -436,14 +443,7 @@ function showFigure(index, force=false) {
   if (!force && nextIndex === currentFigureIndex) return;
   currentFigureIndex = nextIndex;
   const block = figureBlocks[currentFigureIndex];
-  const page = figurePage(block.src);
-  const image = $("#panel-figure-image");
-  image.alt = `${tr("source")}${page}${tr("page")}`;
-  requestPanelFigure(block).then(()=>{if(readingPrepared)preloadOtherFigures();});
-  $("#figure-position").textContent = `${String(currentFigureIndex + 1).padStart(2,"0")} / ${String(figureBlocks.length).padStart(2,"0")}`;
-  $("#panel-figure-page").textContent = `${tr("source")}${page}${tr("page")}`;
-  $("#panel-figure-caption").innerHTML = inlineMarkdown(block.text);
-  $("#panel-figure-note").textContent = currentLanguage === "zh" ? "原论文裁图 · 左栏内查看" : "Original paper crop · inspect in the left pane";
+  if (isDesktopLayout()) requestPanelFigure(block).then(result => {if (result === "ready" && readingPrepared) preloadOtherFigures();});
   $("#figure-prev").disabled = currentFigureIndex === 0;
   $("#figure-next").disabled = currentFigureIndex === figureBlocks.length - 1;
   $("#figure-edge-prev").disabled = currentFigureIndex === 0;
@@ -633,7 +633,15 @@ function renderFigurePanel() {
 }
 
 function syncFigureToScroll() {
-  if (restoringReadingState || !figureAuto || !figureBlocks.length || !isDesktopLayout()) return;
+  if (restoringReadingState || !figureBlocks.length) return;
+  if (!isDesktopLayout()) {
+    if (!readingPrepared) return;
+    const wrap = currentInlineFigure();
+    const index = Number(wrap?.dataset.figureIndex);
+    if (Number.isInteger(index) && index !== currentFigureIndex) {currentFigureIndex = index; preloadOtherFigures();}
+    return;
+  }
+  if (!figureAuto) return;
   const anchors = [...document.querySelectorAll(".block[data-figure-index]")];
   const threshold = window.innerHeight * (documentState.article?.scrollThreshold ?? .52);
   let index = 0;
@@ -693,6 +701,7 @@ async function reflowReaderLayout(nextPreference=layoutPreference, nextPaneSide=
     localStorage.setItem("reading-desk:pane-side", paneSide);
   } catch(error) {}
   applyLayoutPreference();
+  if (isDesktopLayout()) showFigure(currentFigureIndex, true);
   const modePositions = storedReadingState();
   const panelPosition = before.mode === "desktop" ? before.figure : modePositions?.figure || before.figure;
   const inlinePositions = before.mode === "single" ? before.inline : modePositions?.inline || before.inline;
@@ -870,81 +879,92 @@ function currentInlineFigure() {
 
 function waitForInlineImage(image) {
   if (!image) return Promise.resolve("ready");
-  window.ReadMedia?.load(image, "high");
-  image.loading = "eager";
-  if (image.complete) return Promise.resolve(image.naturalWidth ? "ready" : "error");
   return new Promise(resolve => {
     let settled = false;
     const finish = result => {
       if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      image.removeEventListener("load", loaded);
-      image.removeEventListener("error", failed);
+      settled = true; clearTimeout(timer);
+      image.removeEventListener("load", loaded); image.removeEventListener("error", failed);
       resolve(result);
     };
-    const loaded = () => finish("ready");
+    const loaded = async () => {try {await decodeFigureImage(image); finish("ready");} catch {finish("error");}};
     const failed = () => finish("error");
     const timer = setTimeout(() => finish("timeout"), IMAGE_READY_TIMEOUT_MS);
-    image.addEventListener("load", loaded);
-    image.addEventListener("error", failed);
+    image.addEventListener("load", loaded); image.addEventListener("error", failed);
+    window.ReadMedia?.load(image, "high"); image.loading = "eager";
+    if (image.complete && image.getAttribute("src")) image.naturalWidth ? loaded() : failed();
   });
 }
 
 function preloadOtherFigures() {
   if(isDesktopLayout()&&$("#figure-stage").dataset.imageState!=="ready")return;
   if (figurePreloadActive) {figurePreloadQueued=true;return;}
-  const snapshot=documentState;
-  const order=figureBlocks.slice(currentFigureIndex+1,currentFigureIndex+3);
+  const snapshot=documentState,startIndex=currentFigureIndex;
+  const order=figureBlocks.slice(startIndex+1,startIndex+3);
   figurePreloadActive=true;
   (async()=>{
     for (const block of order) {
-      if(documentState!==snapshot)break;
+      if(documentState!==snapshot || currentFigureIndex!==startIndex)break;
       if(reviewMode){try{assertReviewIdentity();}catch{break;}}
       if(backgroundFigureImages.some(image=>image.dataset.figureSource===block.src))continue;
       const image=new Image();image.dataset.figureSource=block.src;
       image.decoding='async';image.fetchPriority='low';backgroundFigureImages.push(image);
-      await new Promise(resolve=>{const timer=setTimeout(resolve,12000);image.onload=image.onerror=()=>{clearTimeout(timer);resolve();};image.src=articleAsset(block.src);});
+      await new Promise(resolve=>{const timer=setTimeout(resolve,12000);image.onload=async()=>{try{await decodeFigureImage(image);}catch{}clearTimeout(timer);resolve();};image.onerror=()=>{clearTimeout(timer);resolve();};image.src=articleAsset(block.src);});
     }
   })().finally(()=>{figurePreloadActive=false;if(figurePreloadQueued){figurePreloadQueued=false;preloadOtherFigures();}});
 }
 
 function showPreparationFailure(message) {
+  readingPrepared = false;
+  document.body.classList.add("reader-preparing");
+  $(".layout").inert = true; $("#reading-preparation").hidden = false;
   $("#reading-preparation-message").textContent = message;
   $("#reading-preparation-retry").hidden = false;
+  $("#reading-preparation-continue").hidden = !documentState?.article;
 }
 
-async function finishReadingPreparation(retry=false) {
-  const attempt = ++preparationAttempt;
-  $("#reading-preparation-message").textContent = "正在准备阅读…";
-  $("#reading-preparation-retry").hidden = true;
-  // The text, reading position and fixed picture viewport are usable now.
-  // Full-resolution image completion must not gate reading or account tools.
-  let pictureReady;
-  if (isDesktopLayout()) {
-    if (retry) retryPanelFigure();
-    pictureReady = panelFigureReady;
-  } else {
-    const wrap = currentInlineFigure();
-    const image = wrap?.querySelector(".inline-figure-canvas img");
-    if (retry && image) {
-      const base = articleAsset(figureBlocks[Number(wrap.dataset.figureIndex)].src);
-      image.src = `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}`;
-    }
-    pictureReady = waitForInlineImage(image);
-    pictureReady.then(result => {if (result === "ready" && wrap) applyInlineFigureScale(wrap, false);});
-  }
+function revealReadingContent(attempt) {
   if (attempt !== preparationAttempt) return;
   if (readingPreparationSaved?.scroll?.atBottom) window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
   readingPrepared = true;
-  $(".topbar").inert = false;
-  $(".layout").inert = false;
+  $(".topbar").inert = false; $(".layout").inert = false;
   document.body.classList.remove("reader-preparing");
   $("#reading-preparation").hidden = true;
   window.ReadContentReady = true;
   document.dispatchEvent(new CustomEvent("read-content-ready"));
   if (window.ReadMedia) window.ReadMedia.inline($("#article"));
-  pictureReady.then(() => {if(attempt === preparationAttempt)preloadOtherFigures();});
+}
+
+async function finishReadingPreparation(retry=false, textOnly=false) {
+  const attempt = ++preparationAttempt;
+  $("#reading-preparation-message").textContent = "正在准备阅读：正文与当前原图…";
+  $("#reading-preparation-retry").hidden = true;
+  $("#reading-preparation-continue").hidden = true;
+  if (textOnly) {revealReadingContent(attempt); return;}
+  let result;
+  if (isDesktopLayout()) {
+    if (retry) retryPanelFigure();
+    // Layout/scroll restoration can supersede an image while it is decoding.
+    do {const pending = panelFigureReady; result = await pending; if (pending === panelFigureReady) break;} while (attempt === preparationAttempt);
+  } else {
+    const wrap = currentInlineFigure();
+    const image = wrap?.querySelector(".inline-figure-canvas img");
+    if (wrap) currentFigureIndex = Number(wrap.dataset.figureIndex);
+    if (retry && image) {
+      const base = articleAsset(figureBlocks[currentFigureIndex].src);
+      image.removeAttribute("src"); delete image.dataset.decoded;
+      image.dataset.src = `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}`;
+    }
+    result = await waitForInlineImage(image);
+    if (result === "ready" && wrap) applyInlineFigureScale(wrap, false);
+  }
+  if (attempt !== preparationAttempt) return;
+  if (result !== "ready") {
+    showPreparationFailure("当前原图暂未就绪，请重试或先读正文。");
+    return;
+  }
+  revealReadingContent(attempt);
+  preloadOtherFigures();
 }
 
 function figureMedia(block) {
@@ -960,10 +980,37 @@ function figureImageMarkup(block, alt) {
 async function resumeRemoteProgress(readerTouched) {
   if (reviewMode || !window.ReadMembers) return;
   await window.ReadMembers.ready;
-  const remote = await window.ReadMembers.loadProgress(articleId(),documentState.version_hash,storedReadingState(),readingMode());
-  if (!remote || readerTouched() || readingRestoreInterrupted) return;
+  const owner = {uid:window.ReadMembers.state.user?.id, epoch:window.ReadMembers.state.epoch};
+  const sameOwner = () => !window.ReadMembers.state.expired && window.ReadMembers.state.epoch === owner.epoch && window.ReadMembers.state.user?.id === owner.uid;
+  const local = storedReadingState();
+  const remote = await window.ReadMembers.loadProgress(articleId(),documentState.version_hash,local,readingMode());
+  if (!remote || remote === local || readingPreparationSaved || readerTouched() || readingRestoreInterrupted || !sameOwner()) return;
+  const positionKey = value => JSON.stringify([value?.scroll?.blockId || null,Number(value?.scroll?.offset) || 0,Number(value?.scroll?.fraction) || 0,value?.scroll?.atBottom === true,Number(value?.figure?.index) || 0,Number(value?.figure?.scale) || 1]);
+  if (positionKey(remote) === positionKey(captureReadingState())) return;
+  // The remote revision is now known; a resume invitation must not block new progress saves.
+  window.ReadProgressPending = false;
+  // Late account I/O must not move text or pictures already revealed to the reader.
+  if (readingPrepared) {
+    const button = document.createElement("button");
+    button.type = "button"; button.className = "reader-resume-progress";
+    button.textContent = "继续上次阅读";
+    ($(".reader-toolbar") || $(".topbar")).append(button);
+    const accepted = await new Promise(resolve => {
+      const cleanup = value => {button.remove();document.removeEventListener("read-members-expired", expired);document.removeEventListener("read-members-change", changed);resolve(value);};
+      const expired = () => cleanup(false);
+      const changed = () => {if (!sameOwner()) cleanup(false);};
+      document.addEventListener("read-members-expired", expired);
+      document.addEventListener("read-members-change", changed);
+      button.addEventListener("click", () => cleanup(true), {once:true});
+    });
+    if (!accepted || !sameOwner()) return;
+    readingPrepared = false;
+    document.body.classList.add("reader-preparing");
+    $(".layout").inert = true; $("#reading-preparation").hidden = false;
+  }
   restoringReadingState = true;
   readingBottomIntent = remote.scroll?.atBottom === true;
+  readingPreparationSaved = remote;
   paneRatio = Number.isFinite(remote.paneRatio) ? remote.paneRatio : DEFAULT_PANE_RATIO;
   pendingPanelViewport = remote.figure || null;
   pendingInlinePositions = {...(remote.inline || {})};
@@ -974,6 +1021,7 @@ async function resumeRemoteProgress(readerTouched) {
   showFigure(Number.isInteger(remote.figure?.index)?remote.figure.index:0);
   setFigureAuto(figureAuto);setFigureFillPane(figureFillPane);
   await restoreReadingState(remote);
+  await finishReadingPreparation();
 }
 
 function mountReadingTools(metadata, readerTouched) {
@@ -1018,6 +1066,7 @@ async function start() {
     document.addEventListener("read-members-expired", clearPrivateReview);
   }
   loadLayoutPreference();
+  $("#reading-preparation-continue").addEventListener("click", () => finishReadingPreparation(false, true));
   $("#panel-figure-retry").addEventListener("click", retryPanelFigure);
   $("#reading-preparation-retry").addEventListener("click", () => {
     if (!documentState?.article) location.reload();
@@ -1043,7 +1092,7 @@ async function start() {
     documentState = await window.ReadPublished.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
     }
     restoringReadingState = true;
-    const localSaved = reviewMode || window.ReadMembers?.state.authStatus === "ready" ? storedReadingState() : null;
+    const localSaved = storedReadingState();
     const saved = localSaved;
     readingPreparationSaved = saved;
     pendingPanelViewport = saved?.figure || null;
