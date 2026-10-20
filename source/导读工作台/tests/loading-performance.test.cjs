@@ -225,3 +225,26 @@ test('reading originals omit small previews and opacity transitions while naviga
  const css=fs.readFileSync(path.join(__dirname,'../progressive-media.css'),'utf8');assert.ok(css.includes('.source-figure .inline-figure-stage img[data-src]{transition:none}'));assert.ok(css.includes('.progressive-media img[data-src]{opacity:0;transition:opacity .2s ease}'));
  const media=fs.readFileSync(path.join(__dirname,'../progressive-media.js'),'utf8');assert.ok(media.includes('image.dataset.preview'));
 });
+
+
+test('configured final figure follows document bottom only in automatic desktop mode and releases on scrolling back',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
+ for(const height of [400,950]){
+  const selected=[],anchors=[10,30,2000].map(top=>({getBoundingClientRect:()=>({top})}));
+  const ctx={figureBlocks:[{},{},{scrollTrigger:'article-end'}],restoringReadingState:false,figureAuto:true,isDesktopLayout:()=>true,readingPrepared:true,documentState:{article:{scrollThreshold:.52}},window:{scrollY:2000-height-4,innerHeight:height},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelectorAll:()=>anchors},showFigure:i=>selected.push(i)};
+  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
+  ctx.syncFigureToScroll();assert.deepEqual(selected,[2]);
+  ctx.window.scrollY=2000-height-20;ctx.syncFigureToScroll();assert.deepEqual(selected,[2,1]);
+  ctx.figureAuto=false;ctx.window.scrollY=2000-height;ctx.syncFigureToScroll();assert.deepEqual(selected,[2,1]);
+  ctx.figureAuto=true;ctx.restoringReadingState=true;ctx.syncFigureToScroll();assert.deepEqual(selected,[2,1]);
+  ctx.restoringReadingState=false;ctx.document.scrollingElement.scrollHeight=3000;ctx.syncFigureToScroll();assert.equal(selected.at(-1),1);
+  assert.equal(ctx.isReadingAtEnd(100,0,100),false);
+ }
+});
+test('unconfigured and single-column figures keep natural anchor behavior',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
+ const selected=[],ctx={figureBlocks:[{},{},{}],restoringReadingState:false,figureAuto:true,isDesktopLayout:()=>true,readingPrepared:true,documentState:{article:{}},window:{scrollY:1400,innerHeight:600},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelectorAll:()=>[0,10,2000].map(top=>({getBoundingClientRect:()=>({top})}))},showFigure:i=>selected.push(i)};
+ vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);ctx.syncFigureToScroll();assert.equal(selected.at(-1),1);
+ ctx.figureBlocks[0].scrollTrigger='article-end';assert.equal(ctx.articleEndFigureIndex(),-1);
+ ctx.isDesktopLayout=()=>false;ctx.currentInlineFigure=()=>({dataset:{figureIndex:'2'}});ctx.currentFigureIndex=0;ctx.preloadOtherFigures=()=>{};ctx.syncFigureToScroll();assert.equal(ctx.currentFigureIndex,2);assert.equal(selected.length,1);
+});

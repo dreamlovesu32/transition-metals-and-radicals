@@ -632,6 +632,16 @@ function renderFigurePanel() {
   setFigureAuto(figureAuto);
 }
 
+function isReadingAtEnd(scrollY, viewportHeight, contentHeight) {
+  // Document heights and scroll offsets can differ by fractional CSS pixels.
+  return viewportHeight > 0 && scrollY + viewportHeight >= contentHeight - 6;
+}
+
+function articleEndFigureIndex() {
+  const index = figureBlocks.findIndex(block => block.scrollTrigger === "article-end");
+  return index === figureBlocks.length - 1 ? index : -1;
+}
+
 function syncFigureToScroll() {
   if (restoringReadingState || !figureBlocks.length) return;
   if (!isDesktopLayout()) {
@@ -642,10 +652,18 @@ function syncFigureToScroll() {
     return;
   }
   if (!figureAuto) return;
+  const endIndex = articleEndFigureIndex();
+  const scroller = document.scrollingElement || document.documentElement;
+  if (endIndex >= 0 && isReadingAtEnd(window.scrollY, window.innerHeight, Math.max(scroller.scrollHeight, document.documentElement.scrollHeight))) {
+    showFigure(endIndex);
+    return;
+  }
   const anchors = [...document.querySelectorAll(".block[data-figure-index]")];
   const threshold = window.innerHeight * (documentState.article?.scrollThreshold ?? .52);
   let index = 0;
-  anchors.forEach((anchor, i) => { if (anchor.getBoundingClientRect().top <= threshold) index = i; });
+  anchors.forEach((anchor, i) => {
+    if (i !== endIndex && anchor.getBoundingClientRect().top <= threshold) index = i;
+  });
   showFigure(index);
 }
 

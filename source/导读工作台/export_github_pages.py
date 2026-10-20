@@ -25,7 +25,7 @@ READER_FUNCTIONS = (
     "applyFigureScale", "setFigureScale", "wheelDeltaPixels", "handleFigureWheel",
     "schedulePaneFigureFit", "applyPaneRatio", "paneRatioAt", "endPaneDrag",
     "handlePaneKey", "setFigureAuto", "chooseFigure", "renderFigurePanel",
-    "syncFigureToScroll", "observeFigures", "isDesktopLayout", "applyLayoutPreference",
+    "isReadingAtEnd", "articleEndFigureIndex", "syncFigureToScroll", "observeFigures", "isDesktopLayout", "applyLayoutPreference",
     "loadLayoutPreference", "reflowReaderLayout", "readingMode", "readingKey",
     "scrollFraction", "restoreScrollFraction", "readingAnchor",
     "captureReadingState", "saveReadingState", "scheduleReadingSave",
@@ -119,6 +119,7 @@ def public_blocks(state: dict, article: dict, *, require_approval: bool = True) 
     allowed = {"title", "heading", "paragraph", "figure", "bullet", "number", "quote", "table"}
     figure_names = {f"figures/{figure['file']}" for figure in article["figures"]}
     blocks = []
+    last_figure = next((block for block in reversed(state["blocks"]) if block.get("kind") == "figure"), None)
     for block in state["blocks"]:
         if block.get("kind") not in allowed:
             raise RuntimeError(f"Unsupported public block kind: {block.get('kind')}")
@@ -134,6 +135,10 @@ def public_blocks(state: dict, article: dict, *, require_approval: bool = True) 
             if block.get("src") not in figure_names:
                 raise RuntimeError(f"Unlisted figure in {article['id']}")
             clean["src"] = block["src"]
+        if block.get("scrollTrigger") is not None:
+            if block["kind"] != "figure" or block is not last_figure or block["scrollTrigger"] != "article-end":
+                raise RuntimeError("Article-end trigger must belong to the final figure")
+            clean["scrollTrigger"] = "article-end"
         blocks.append(clean)
     if not blocks or blocks[0]["kind"] != "title":
         raise RuntimeError(f"No public article title in {article['id']}")
