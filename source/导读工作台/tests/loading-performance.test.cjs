@@ -165,6 +165,10 @@ test('panel switching retains image and caption until decode; stale and failed r
  assert.equal(await first,'stale');assert.equal(await last,'ready');assert.equal(node('#panel-figure-image'),original);assert.equal(node('#panel-figure-caption').innerHTML,'E-final');
  ctx.documentState.blocks=[{kind:'figure',src:'broken'}];ctx.primeCurrentFigure();images.at(-1).complete=true;images.at(-1).naturalWidth=0;
  assert.equal(await ctx.requestPanelFigure({src:'broken',text:'broken'}),'error');
+ const inline={isConnected:true,dataset:{},getAttribute:()=> 'inline-current'};ctx.backgroundFigureImages.push(inline);
+ const oldCount=images.length,newPanel=ctx.requestPanelFigure({src:'inline-current',text:'inline-current'});assert.equal(images.length,oldCount+1);
+ const panelCopy=images.at(-1);panelCopy.emit('load');panelCopy.decodingJob.resolve();assert.equal(await newPanel,'ready');assert.notEqual(node('#panel-figure-image'),inline);
+
 
 });
 test('single-column current image waits for decode and reports decode failure',async()=>{
@@ -323,4 +327,9 @@ test('single-column adopts the already requested original instead of starting a 
  const ctx={backgroundFigureImages:[requested],setTimeout,clearTimeout,IMAGE_READY_TIMEOUT_MS:100,decodeFigureImage:async image=>{decoded=image;},window:{ReadMedia:{load:image=>assert.equal(image,requested)}}};
  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
  assert.equal(await ctx.waitForInlineImage(placeholder),'ready');assert.equal(replacement,requested);assert.equal(decoded,requested);assert.equal(requested.alt,'current original');
+ requested.isConnected=true;requested.id='panel-figure-image';let moved=false;
+ const ownInline={dataset:{src:'/current'},complete:true,naturalWidth:300,getAttribute:()=>'/current',addEventListener(){},removeEventListener(){},replaceWith(){moved=true;}};
+ ctx.window.ReadMedia.load=image=>assert.equal(image,ownInline);
+ assert.equal(await ctx.waitForInlineImage(ownInline),'ready');assert.equal(decoded,ownInline);assert.equal(moved,false);
+
 });

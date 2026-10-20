@@ -382,7 +382,7 @@ function requestPanelFigure(block, retry=false) {
   const requestId = ++panelFigureRequest;
   const base = articleAsset(block.src);
   const url = retry ? `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}` : base;
-  const warm = backgroundFigureImages.find(item => item.getAttribute("src") === url);
+  const warm = backgroundFigureImages.find(item => item.getAttribute("src") === url && (!item.isConnected || item.id === "panel-figure-image"));
   setPanelFigureState("loading");
   panelFigureReady = new Promise(resolve => {
     const candidate = warm || new Image();
@@ -960,7 +960,7 @@ function currentInlineFigure() {
 
 function waitForInlineImage(image) {
   if (!image) return Promise.resolve("ready");
-  const primed = backgroundFigureImages.find(item => item.getAttribute("src") === image.dataset.src);
+  const primed = backgroundFigureImages.find(item => item.getAttribute("src") === image.dataset.src && !item.isConnected && item.id !== "panel-figure-image");
   if (primed && primed !== image) {
     primed.alt = image.alt; primed.dataset.src = image.dataset.src;
     image.replaceWith(primed); image = primed;

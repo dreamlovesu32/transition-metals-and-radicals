@@ -361,8 +361,8 @@
     },
     {
       "path": "导读工作台/app.js",
-      "bytes": 78344,
-      "sha256": "d45507f32b602ffce1ac154d30b85d7dc66427be69b59c43420bee11195e8ce9",
+      "bytes": 78460,
+      "sha256": "1b122ad8af0c730b95e7bd9dc61e1afb29509f73332fa1b5267dcb1b00cb78ac",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -619,8 +619,8 @@
     },
     {
       "path": "导读工作台/tests/loading-performance.test.cjs",
-      "bytes": 35218,
-      "sha256": "4ecac2fe132089c6138845966ed0d284c5d2c8d051d0df231aded91eff61883f",
+      "bytes": 36115,
+      "sha256": "05e3afda2022a62004b6cf99ebde33dcd8a05b9867eeb6a76eae37c53cb3d397",
       "origin": "byte-for-byte source copy"
     },
     {
