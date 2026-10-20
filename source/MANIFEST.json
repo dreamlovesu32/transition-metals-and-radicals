@@ -469,8 +469,8 @@
     },
     {
       "path": "导读工作台/member-system/article-export.js",
-      "bytes": 15819,
-      "sha256": "6a6674ae09749ca722268821b323d53ed498c592a1f3194f9462a236e07a2698",
+      "bytes": 27873,
+      "sha256": "f7565e5d78a5a41e8a35076c6e8da31abe18150c6dfc6a0be46d1f8f46451dee",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -487,14 +487,14 @@
     },
     {
       "path": "导读工作台/member-system/members.css",
-      "bytes": 16497,
-      "sha256": "195b583155d0b45dd442592fdc27a4bc9473501a4d4fc675ed0be1f88d5238b8",
+      "bytes": 20948,
+      "sha256": "af1db8ce765bd365fe58eca894522eda914e80e878c30ce1e4307664e14bad49",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/member-system/members.js",
-      "bytes": 90678,
-      "sha256": "0b65542f83197d5f0d0585776c44caac4f5ae9f9de02a62ce77b2b46ac305d60",
+      "bytes": 90750,
+      "sha256": "f337d772721f145ebb0418f046b84a7388048d9698fba03988a45daf62067d97",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -511,8 +511,8 @@
     },
     {
       "path": "导读工作台/member-system/reader-ui.test.cjs",
-      "bytes": 6026,
-      "sha256": "9cd02dc1ba14b3cc7249c9be8865188dc07f56be69b5fc0cb8f4440422c4fb8f",
+      "bytes": 6088,
+      "sha256": "1506382021a7f0367440054ffb92b66dbae229d0cfd0cc302b668624fa511eeb",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -571,14 +571,14 @@
     },
     {
       "path": "导读工作台/reader-chrome.css",
-      "bytes": 11363,
-      "sha256": "d03977e9aaeec94341266639f395ebc77679d0159e8c61e4d9f977dc58980bee",
+      "bytes": 11775,
+      "sha256": "8f95109c257bd199e68c8fd9adfbd77f65f56d0333fccadee0572f9d76de5f2b",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/reader-chrome.js",
-      "bytes": 14995,
-      "sha256": "08cd0d201db4e159e6a87eb13147d4d151fa770ef778f2950d8ae1c6cfb714c7",
+      "bytes": 15064,
+      "sha256": "17d857f224a6e9fa793c9bdcb1b5963fe5430d4af3c141139c1e814f1e5fc107",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -613,8 +613,8 @@
     },
     {
       "path": "导读工作台/tests/chemical-inline-export.test.cjs",
-      "bytes": 7571,
-      "sha256": "a55646b27217bbaff6883a904e91228ab93824c6520619e59b4db434e7ec0776",
+      "bytes": 7726,
+      "sha256": "e3ccc5ca3b84eaa739687b451a2afbaec1e3cc56630970da7ca88a8a9937042d",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -627,6 +627,12 @@
       "path": "导读工作台/tests/published-library.test.cjs",
       "bytes": 5915,
       "sha256": "c456d62fcdab4ff056d3acbacd988733ca60c956fe17f96e3a5da2884d175033",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/wechat-export.test.cjs",
+      "bytes": 10990,
+      "sha256": "c1087b4edc263fb0aad97a7ef1270a77e8eb9addce5a3b894147a358b234c71b",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -643,8 +649,8 @@
     },
     {
       "path": "工具/同步网站源码.py",
-      "bytes": 16842,
-      "sha256": "477ddb6eb9dfc63060ebe725b2ddb1e5e18e04d98569e5342412484958253ad1",
+      "bytes": 16874,
+      "sha256": "4317c50ef8e871461d698b744cb45ac6a8b0fcde6f1db85c8636eeb702d803f3",
       "origin": "byte-for-byte source copy"
     }
   ]

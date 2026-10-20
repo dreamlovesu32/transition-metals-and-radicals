@@ -151,6 +151,7 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
     if(detail.dataset.chrome)return;detail.dataset.chrome='true';
     const box=panel(title,dialog);box.querySelector('.reader-panel-body').append(detail);
     if(key==='notes')notesPanel=box;
+    if(key==='export')box.classList.add('reader-export-dialog');
     if(key==='versions'){box.classList.add('reader-outline','reader-versions');box.dataset.outline='true';}
     detail.querySelector(':scope > summary').hidden=true;
     if(key==='notes'&&annotationButton){notesTrigger=null;return;}
@@ -174,7 +175,7 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
     source.querySelectorAll('.member-notes-panel').forEach(d=>convertDetails(d,'批注','notes',false));
     source.querySelectorAll('.member-version-panel').forEach(d=>convertDetails(d,'版本记录','versions',false));
     source.querySelectorAll('.reader-historical-banner').forEach(n=>{n.classList.add('reader-historical-status');actions.prepend(n);});
-    source.querySelectorAll('.member-export-panel').forEach(d=>convertDetails(d,'导出素材','export',true));
+    source.querySelectorAll('.member-export-panel').forEach(d=>convertDetails(d,'公众号导出','export',true));
     source.querySelectorAll('.member-review-decisions').forEach(d=>convertDetails(d,'提交审核','review',true));
     const extras=source.querySelector('.member-review-tools .member-reader-actions');
     if(extras&&!extras.dataset.chrome){

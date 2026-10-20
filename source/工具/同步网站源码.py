@@ -27,7 +27,7 @@ FRONTEND = (
     "member-system/favorites.html", "member-system/admin.html",
     "templates/article-manifest.example.json", "templates/content-en.example.md",
     "templates/content-zh.example.md",
-    "tests/chemical-inline-export.test.cjs", "tests/loading-performance.test.cjs", "tests/card-actions.test.cjs", "tests/published-library.test.cjs",
+    "tests/chemical-inline-export.test.cjs", "tests/loading-performance.test.cjs", "tests/card-actions.test.cjs", "tests/published-library.test.cjs", "tests/wechat-export.test.cjs",
 )
 FRONTEND_TESTS = (
     "account-entry.test.cjs", "admin-feedback.test.cjs", "admin-navigation.test.cjs",
