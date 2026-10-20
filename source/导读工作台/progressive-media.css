@@ -24,3 +24,6 @@
 @keyframes paper-breathe{50%{opacity:.65}}
 @keyframes figure-reveal{from{opacity:.3}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.progressive-media::after,.loading-skeleton::after,.figure-stage::after,.reader-copy-skeleton,.figure-stage[data-image-state="ready"] #panel-figure-image{animation:none!important}.progressive-media img[data-src]{transition:none!important}}
+
+/* Reading originals appear fully opaque after the readiness gate; covers stay progressive. */
+.source-figure .inline-figure-stage img[data-src]{transition:none}

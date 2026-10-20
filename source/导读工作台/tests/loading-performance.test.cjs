@@ -216,3 +216,12 @@ test('sequential preloading drops an obsolete window after a figure jump',async(
  ctx.currentFigureIndex=10;ctx.preloadOtherFigures();await images[0].onload();await new Promise(r=>setImmediate(r));assert.deepEqual(requests,['figure-1','figure-11']);
  await images[1].onload();await new Promise(r=>setImmediate(r));assert.deepEqual(requests,['figure-1','figure-11','figure-12']);await images[2].onload();
 });
+
+
+test('reading originals omit small previews and opacity transitions while navigation covers stay progressive',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function figureImageMarkup('),end=source.indexOf('\nasync function decodeFigureImage(',at);
+ const ctx={figureMedia:()=>({width:800,height:600,preview:'/small.webp'}),articleAsset:()=>'/original.png'};vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
+ const html=ctx.figureImageMarkup({src:'original'},'source');assert.ok(html.includes('data-src="/original.png"'));assert.ok(html.includes('width="800" height="600"'));assert.ok(!html.includes('data-preview'));
+ const css=fs.readFileSync(path.join(__dirname,'../progressive-media.css'),'utf8');assert.ok(css.includes('.source-figure .inline-figure-stage img[data-src]{transition:none}'));assert.ok(css.includes('.progressive-media img[data-src]{opacity:0;transition:opacity .2s ease}'));
+ const media=fs.readFileSync(path.join(__dirname,'../progressive-media.js'),'utf8');assert.ok(media.includes('image.dataset.preview'));
+});

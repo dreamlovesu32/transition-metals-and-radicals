@@ -361,8 +361,8 @@
     },
     {
       "path": "导读工作台/app.js",
-      "bytes": 73806,
-      "sha256": "3e34cda047fe0258b7ed8a222977d8f4d05c686cc3a30031030a90d6b9a8eb84",
+      "bytes": 73748,
+      "sha256": "28f84bf76a3c3a818d0c0e825170478ee21376eedd55b1f0d12c4e7b870b7228",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -535,8 +535,8 @@
     },
     {
       "path": "导读工作台/progressive-media.css",
-      "bytes": 3031,
-      "sha256": "d08c12cea1392fed929ab6b1f7d6c63df41892fd36d9c0874586854faba91220",
+      "bytes": 3197,
+      "sha256": "272d8ecfec03d418b52188fd067c476c8abdad41320ece6b9ed5eff97fa1c814",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -619,8 +619,8 @@
     },
     {
       "path": "导读工作台/tests/loading-performance.test.cjs",
-      "bytes": 23356,
-      "sha256": "21bb29ea14c972ddace87df354dd1dfe67853f704c08030f6b057846e2fd2543",
+      "bytes": 24463,
+      "sha256": "edd907daad930b73f6b416c1a5c29c7e5b049473d075ef657f89fd5e6670bc0b",
       "origin": "byte-for-byte source copy"
     },
     {

@@ -425,7 +425,7 @@ function figureMedia(block) {
 function figureImageMarkup(block, alt) {
   const media = figureMedia(block);
   const dimensions = media.width && media.height ? ` width="${media.width}" height="${media.height}"` : "";
-  return `<img data-src="${articleAsset(block.src)}"${media.preview ? ` data-preview="${media.preview}"` : ""} alt="${alt}"${dimensions} decoding="async" loading="lazy">`;
+  return `<img data-src="${articleAsset(block.src)}" alt="${alt}"${dimensions} decoding="async" loading="lazy">`;
 }
 
 async function decodeFigureImage(image) {
