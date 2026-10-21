@@ -1,12 +1,12 @@
 /* Quiet, two-level navigation shared by public reading and review. */
-body{--reader-header:112px;--reader-ink:#274461;--reader-line:#e2e9f0}
+body{--reader-topbar:60px;--reader-header:112px;--reader-ink:#274461;--reader-line:#e2e9f0}
 body .topbar{height:60px;min-height:60px;padding:0 clamp(16px,3vw,48px);gap:24px;flex-wrap:nowrap;box-shadow:none!important}
 .topbar #nav-catalog{font:500 14px/1.3 "Microsoft YaHei","PingFang SC",sans-serif;color:#50657a;text-decoration:none;white-space:nowrap}
 .topbar [data-member-nav]{margin-left:auto}
 .topbar .top-actions[hidden]{display:none!important}
 .topbar .member-navigation{gap:20px!important;font-size:14px!important;flex-wrap:nowrap}
 .topbar .member-navigation a{font:500 14px/1.4 "Microsoft YaHei","PingFang SC",sans-serif!important;white-space:nowrap}
-.reader-toolbar{position:sticky;top:60px;height:52px;z-index:19;display:flex;align-items:center;gap:12px;padding:0 clamp(16px,3vw,48px);border-bottom:1px solid var(--reader-line);background:rgba(255,255,255,.98);color:var(--reader-ink)}
+.reader-toolbar{position:sticky;top:var(--reader-topbar);height:52px;z-index:19;display:flex;align-items:center;gap:12px;padding:0 clamp(16px,3vw,48px);border-bottom:1px solid var(--reader-line);background:rgba(255,255,255,.98);color:var(--reader-ink)}
 .reader-tool-group{display:flex;align-items:center;gap:4px;min-width:0}
 .reader-tool-group+.reader-tool-group:not(:empty){border-left:1px solid var(--reader-line);padding-left:12px}
 .reader-tool-group:last-child{margin-left:auto}
@@ -24,7 +24,7 @@ body .topbar{height:60px;min-height:60px;padding:0 clamp(16px,3vw,48px);gap:24px
 .reader-layout-options button,.reader-layout-options select{font:inherit}
 .reader-jumps{position:fixed;right:14px;bottom:24px;display:grid;gap:3px;padding:3px;border:1px solid var(--reader-line);border-radius:12px;background:#fffffff0;box-shadow:0 4px 20px #1737510a;z-index:15}
 body[data-reader-layout=desktop] .left-rail,body[data-reader-layout=desktop] .pane-divider{top:var(--reader-header);height:calc(100dvh - var(--reader-header))}
-#article h2,#article h3,#article h4{scroll-margin-top:135px}
+#article h2,#article h3,#article h4{scroll-margin-top:calc(var(--reader-header) + 23px)}
 .reader-panel{position:fixed;z-index:40;top:var(--reader-header);bottom:0;right:0;width:min(360px,100vw);background:white;border-left:1px solid var(--reader-line);box-shadow:-8px 0 40px #1838520b;display:flex;flex-direction:column;color:var(--reader-ink);font:14px/1.7 "Microsoft YaHei","PingFang SC",sans-serif}
 .reader-panel[hidden],.reader-panel-shade[hidden]{display:none!important}
 .reader-panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 14px 24px;border-bottom:1px solid var(--reader-line);flex:none}

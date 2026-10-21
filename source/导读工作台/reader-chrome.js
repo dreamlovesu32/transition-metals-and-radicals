@@ -41,6 +41,18 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
   leading.className='reader-tool-group reader-leading-tools';actions.className='reader-tool-group reader-admin-tools';ending.className='reader-tool-group reader-ending-tools';
   actions.id='reader-member-actions';bar.append(leading,ending);ending.append(actions);
   q('.topbar').after(bar);
+  // Sticky tools, the figure pane and heading targets share the measured chrome height.
+  function syncReadingHeader() {
+    const top = Math.ceil(q('.topbar').getBoundingClientRect().height);
+    const tools = Math.ceil(bar.getBoundingClientRect().height);
+    document.body.style.setProperty('--reader-topbar', top + 'px');
+    document.body.style.setProperty('--reader-header', (top + tools) + 'px');
+  }
+  if (window.ResizeObserver) {
+    const headerSize = new ResizeObserver(syncReadingHeader);
+    headerSize.observe(q('.topbar')); headerSize.observe(bar);
+  }
+  syncReadingHeader();
   const catalog=q('#nav-catalog'),catalogGroup=document.createElement('div');catalogGroup.className='reader-global-articles';catalogGroup.setAttribute('aria-label','文献导航与相邻文章');
   if(catalog){q('.brand').after(catalogGroup);catalogGroup.append(catalog);}
   for(const [id,key,label] of [['nav-prev','prev','上一篇'],['nav-next','next','下一篇']])if(q('#'+id))catalogGroup.append(dress(q('#'+id),key,label));

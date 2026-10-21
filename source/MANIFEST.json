@@ -427,14 +427,14 @@
     },
     {
       "path": "导读工作台/literature-lookup.css",
-      "bytes": 5850,
-      "sha256": "004d8628a2ed433bb6ace980c307e78312819834e045a220199b2a4582064e77",
+      "bytes": 5651,
+      "sha256": "c46ceeb6034eaaba342f50769e9cd5c27271fbcd8ced1671f6c4b58c7e6c57c2",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/literature-lookup.js",
-      "bytes": 12282,
-      "sha256": "1b200ca840bab3140431175413c53e526d8c365f7b74ad78c6b575f48aa1200b",
+      "bytes": 13436,
+      "sha256": "8c16d9236b889e6c596842a39a69cd2b7ad49e0ec1e86aa054690e9ce1a21025",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -583,14 +583,14 @@
     },
     {
       "path": "导读工作台/reader-chrome.css",
-      "bytes": 16441,
-      "sha256": "c3fed0b670964f82c4841140e53bbb115f3cc627a54ced536bcdbbdb1a4730d5",
+      "bytes": 16503,
+      "sha256": "09cd65ff90bbac505319a75f52fadddba47d358e4f08809dd708b36a5ca37227",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/reader-chrome.js",
-      "bytes": 18234,
-      "sha256": "6c78b4e6c2142bfbaa49b0c63a60ca84afbb01d063a7aeed4acf9a88ba48bdf4",
+      "bytes": 18826,
+      "sha256": "39e43d2b5c14e225c230812d7087d2514d70f45219e7c473d1eb0364447338de",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -687,6 +687,12 @@
       "path": "导读工作台/tests/fixtures/reading-contract.json",
       "bytes": 32880,
       "sha256": "3a5285f547317bb08a226a14365b2c4ac8e093b7af3c38a5a6b4ae8bbebc8406",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/header-space.test.cjs",
+      "bytes": 1925,
+      "sha256": "1677dae79ec0fe75170c21e861b89ef62035ec67a0df472a8744d15a0dd44702",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -853,8 +859,8 @@
     },
     {
       "path": "工具/同步网站源码.py",
-      "bytes": 18018,
-      "sha256": "cae9e031b31697c3c2fba1811626d0809f228db13a2d385f4a6c59f512a45589",
+      "bytes": 18049,
+      "sha256": "683ce034bed372b50e5654b759132f0ab83a7a74affd60eabd562235754447bf",
       "origin": "byte-for-byte source copy"
     },
     {

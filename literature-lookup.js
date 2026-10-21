@@ -14,6 +14,24 @@
   lookup.innerHTML = '<div class="literature-heading"><h2>文献候选</h2><button class="literature-close" type="button" aria-label="关闭检索结果"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><p id="literature-status" class="literature-status"></p><div id="literature-results" class="literature-results" hidden><div id="literature-candidates" class="literature-candidates"></div></div>';
   document.body.append(lookup);
   mount.classList.add('has-literature-lookup'); document.body.classList.add('has-inline-literature');
+  const header = mount.closest?.('.catalog-topbar,.member-header,.topbar');
+  if (header && window.ResizeObserver) {
+    let layoutFrame = 0;
+    const fitHeader = () => {
+      layoutFrame = 0;
+      const style = getComputedStyle(header), gap = parseFloat(style.columnGap) || 0;
+      const fixed = [...header.querySelectorAll(':scope > .catalog-brand,:scope > .member-brand,:scope > .brand,:scope > .reader-global-articles,.member-navigation')];
+      const required = fixed.reduce((sum, node) => sum + node.getBoundingClientRect().width, 240) + gap * fixed.length;
+      const available = header.clientWidth - (parseFloat(style.paddingLeft)||0) - (parseFloat(style.paddingRight)||0);
+      header.classList.toggle('header-search-wrapped', required > available + .5);
+    };
+    const scheduleHeader = () => {if (!layoutFrame) layoutFrame = requestAnimationFrame(fitHeader);};
+    new ResizeObserver(scheduleHeader).observe(header);
+    new MutationObserver(scheduleHeader).observe(header, {childList:true,subtree:true});
+    window.addEventListener('resize', scheduleHeader);
+    document.fonts?.ready.then(scheduleHeader);
+    scheduleHeader();
+  }
   const input = form.querySelector('input');
   const status = document.querySelector('#literature-status');
   const panel = document.querySelector('#literature-results');

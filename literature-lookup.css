@@ -1,7 +1,7 @@
 /* A persistent search field shared by catalog, reader and account pages. */
 [data-member-nav].has-literature-lookup{display:flex;align-items:center;gap:16px;min-width:0}
-.literature-form{display:flex;align-items:center;gap:4px;flex:none;width:clamp(240px,25vw,380px);margin:0;font:14px/1.5 "Microsoft YaHei","PingFang SC",system-ui,sans-serif}
-.literature-form input{display:block;flex:1;min-width:0;width:0;height:40px;padding:9px 12px;box-sizing:border-box;border:1px solid #d6e1eb;border-radius:8px;background:#f8fafc;color:#274461;font:inherit}
+.literature-form{display:flex;align-items:center;gap:4px;flex:1 1 240px;min-width:240px;max-width:300px;width:300px;margin:0;font:14px/1.5 "Microsoft YaHei","PingFang SC",system-ui,sans-serif}
+.literature-form input{display:block;flex:1;min-width:0;width:0;height:44px;padding:9px 12px;box-sizing:border-box;border:1px solid #d6e1eb;border-radius:8px;background:#f8fafc;color:#274461;font:inherit}
 .literature-form input::placeholder{color:#8595a5}
 .literature-form input:focus{background:#fff;border-color:#8caac7;outline:2px solid #dce9f6;outline-offset:1px}
 .literature-toggle,.literature-close{display:inline-flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;min-height:44px;padding:11px;border:1px solid transparent;border-radius:8px;background:transparent;color:#315574;cursor:pointer;touch-action:manipulation;font:inherit}
@@ -25,30 +25,17 @@
 .literature-result-head .literature-collapse{background:transparent;border-color:transparent;font-size:12px;padding:6px 8px}
 .literature-card textarea{width:100%;box-sizing:border-box;min-height:100px;margin-top:10px}
 .literature-lookup :focus-visible,.literature-toggle:focus-visible{outline:2px solid #467ead;outline-offset:3px}
-@media(min-width:851px) and (max-width:1000px){.literature-form{width:220px}[data-member-nav].has-literature-lookup{gap:10px}body.has-inline-literature .topbar{gap:12px}.member-header .member-brand{font-size:18px}}
-@media(max-width:850px){
- .literature-form{width:100%;flex-basis:100%;order:4;gap:5px}.literature-form input{height:40px;font-size:16px}
- [data-member-nav].has-literature-lookup{gap:6px}
- body.has-inline-literature .catalog-topbar,body.has-inline-literature .member-header{display:flex;flex-wrap:wrap;gap:4px 10px;height:auto;min-height:112px;padding:8px 14px}
- body.has-inline-literature :is(.catalog-topbar,.member-header,.topbar) [data-member-nav].has-literature-lookup{display:contents}
- body.has-inline-literature :is(.catalog-topbar,.member-header,.topbar) .member-navigation{order:3;margin-left:auto;flex:none;width:auto;gap:10px;flex-wrap:nowrap}
- body.has-inline-literature .member-brand{font-size:16px!important}
- body.has-inline-literature .topbar{display:flex;flex-wrap:wrap;gap:4px 8px;height:112px;min-height:112px;padding:8px 14px;align-content:center}
- body.has-inline-literature{--reader-header:164px}
- body.has-inline-literature .reader-toolbar{top:112px}
- body.has-inline-literature .topbar .brand{order:1}
- body.has-inline-literature .reader-global-articles{order:2;margin-right:auto}
- body.has-inline-literature .topbar [data-member-nav]{margin:0}
- body.has-inline-literature #article :is(h2,h3,h4){scroll-margin-top:187px}
- .literature-lookup{right:12px;max-width:calc(100vw - 24px);padding:12px 14px}
- .literature-candidates{grid-template-columns:minmax(0,1fr)}
-}
 
-/* Leave room for every account link, including the administrator review entry. */
-@media(max-width:380px){
- body.has-inline-literature .topbar{height:156px;min-height:156px}
- body.has-inline-literature{--reader-header:208px}
- body.has-inline-literature .reader-toolbar{top:156px}
- body.has-inline-literature .topbar .member-navigation{flex-basis:100%;justify-content:flex-end;min-height:40px}
- body.has-inline-literature #article :is(h2,h3,h4){scroll-margin-top:231px}
-}
+/* Intrinsic groups remain intact; the search moves only when measured space is insufficient. */
+body.has-inline-literature :is(.catalog-topbar,.member-header,.topbar){display:flex;flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:4px 10px;height:auto;min-height:60px;padding:8px clamp(14px,3vw,42px);box-sizing:border-box}
+body.has-inline-literature :is(.catalog-topbar,.member-header,.topbar) [data-member-nav].has-literature-lookup{display:contents;margin:0}
+body.has-inline-literature :is(.catalog-brand,.member-brand,.topbar .brand){order:1;flex:none;min-height:44px;display:flex;align-items:center;white-space:nowrap}
+body.has-inline-literature .reader-global-articles{order:2;flex:none}
+body.has-inline-literature .literature-form{order:3;margin-left:auto}
+body.has-inline-literature :is(.catalog-topbar,.member-header,.topbar) .member-navigation{order:4;display:flex;align-items:center;flex:none;width:auto;gap:10px!important;flex-wrap:nowrap;margin:0 0 0 auto;white-space:nowrap}
+body.has-inline-literature .member-header .member-brand{font:700 13px/1.4 "Microsoft YaHei","PingFang SC",sans-serif;gap:13px}
+body.has-inline-literature .member-header .member-brand b{font:30px/1 Georgia,serif;letter-spacing:-.08em}
+body.has-inline-literature .member-navigation a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;touch-action:manipulation}
+body.has-inline-literature .header-search-wrapped .literature-form{order:4;margin-left:0;flex:0 1 300px;width:min(300px,100%);min-width:min(240px,100%)}
+body.has-inline-literature .header-search-wrapped .member-navigation{order:3}
+@media(max-width:600px){.literature-form input{font-size:16px}.literature-lookup{right:12px;max-width:calc(100vw - 24px);padding:12px 14px}.literature-candidates{grid-template-columns:minmax(0,1fr)}}
