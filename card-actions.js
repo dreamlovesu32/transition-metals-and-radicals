@@ -39,14 +39,33 @@
         await global.ReadMembers.ready;
         await global.ReadMembers.toggleFavorite(article.id);refresh();
       }catch(error){const notice=document.createElement('span');notice.className='card-action-error';notice.setAttribute('role','status');notice.textContent=error.message||'收藏未完成，请重试。';card.append(notice);refresh();}
-      finally{favorite.disabled=false;favorite.removeAttribute('aria-busy');}
+      finally{favorite.disabled=favorite.dataset.public==='false';favorite.removeAttribute('aria-busy');}
     });
     actions.append(favorite);
     const original=sourceUrl(article);
     if(original){const link=document.createElement('a');link.className='card-source-link';link.href=original;link.target='_blank';link.rel='noopener';link.title='查看原文';link.setAttribute('aria-label','查看原文');link.innerHTML=svg(arrow);link.addEventListener('click',event=>event.stopPropagation());actions.append(link);}
     (card.querySelector('.card-meta-row')||card).append(actions);
-    if(updatedToday(article.updatedAt)){const badge=document.createElement('span');badge.className='card-new';badge.textContent='New!';badge.setAttribute('aria-label','北京时间今天更新');card.append(badge);}
+    update(card,article);
     return favorite;
+  }
+  function update(card,article){
+    const favorite=card.querySelector('.card-favorite');
+    if(favorite){favorite.dataset.public=String(article.public!==false);if(favorite.getAttribute('aria-busy')!=='true')favorite.disabled=article.public===false;}
+    const actions=card.querySelector('.card-actions'),url=sourceUrl(article);
+    let source=card.querySelector('.card-source-link');
+    if(!source&&url&&actions){source=document.createElement('a');source.className='card-source-link';source.target='_blank';source.rel='noopener';source.title='查看原文';source.setAttribute('aria-label','查看原文');source.innerHTML=svg(arrow);source.addEventListener('click',event=>event.stopPropagation());actions.append(source);}
+    if(source){source.hidden=!url;if(url)source.href=url;}
+    const meta=card.querySelector('.catalog-meta')||card.querySelector('.card-meta-text');
+    if(!meta)return;
+    let date=meta.querySelector('.card-date');
+    if(!date){
+      const value=meta.children[1];if(!value)return;
+      date=document.createElement('span');date.className='card-date';
+      value.replaceWith(date);date.append(value);
+    }
+    let badge=date.querySelector('.card-new');const show=updatedToday(article.updatedAt);
+    if(show&&!badge){badge=document.createElement('span');badge.className='card-new';badge.textContent='New!';badge.setAttribute('aria-label','北京时间今天更新');date.append(badge);}
+    if(!show&&badge)badge.remove();
   }
   let catalogRows=null;
   function hydrate(articles){
@@ -58,7 +77,7 @@
       if(members.state.user&&!members.state.presentationFavoritesKnown&&!members.state.libraryReady)members.ensureLibraryReady().then(refresh).catch(()=>{});
     });
   }
-  const api={mount,refresh,hydrate,sourceUrl,updatedToday};
+  const api={mount,update,refresh,hydrate,sourceUrl,updatedToday};
   if(typeof module!=='undefined')module.exports=api;
   global.ReadCardActions=api;
   if(typeof document!=='undefined')document.addEventListener('read-members-change',refresh);

@@ -6,6 +6,7 @@ let catalogArticles = [];
 function articleCard(article) {
   const card = document.createElement("article");
   card.className = "catalog-card";
+  card.dataset.articleId = article.id;
   const link = document.createElement("a");
   link.className = "catalog-main-link";
   link.target = "_blank";
@@ -64,6 +65,24 @@ function articleCard(article) {
   return card;
 }
 
+function patchArticleCard(card,article) {
+  const meta=card.querySelector('.catalog-meta');
+  meta.children[0].textContent=article.journal;
+  (meta.querySelector('.card-date')?.firstElementChild||meta.children[1]).textContent=article.published;
+  let pending=meta.querySelector('.catalog-review-pending');
+  const label=article.reviewStatus==='pending'?'待审核':article.reviewStatus==='proofreading'?'待校对':'';
+  if(label&&!pending){pending=document.createElement('span');pending.className='catalog-review-pending';meta.append(pending);}
+  if(pending){if(label)pending.textContent=label;else pending.remove();}
+  card.querySelector('h3').textContent=article.title;
+  card.querySelector('.catalog-main-link').setAttribute('aria-label',`阅读 ${article.title}`);
+  card.querySelector('.catalog-card-foot').firstElementChild.textContent=article.doi;
+  const source=card.querySelector('.card-source-link'),url=window.ReadCardActions?.sourceUrl(article);
+  if(source&&url)source.href=url;
+  const image=card.querySelector('.catalog-cover img'),next=article.coverDisplay||article.cover;
+  if(image.dataset.src!==next){image.removeAttribute('src');image.dataset.src=next;window.ReadMedia?.load(image,'low');}
+  window.ReadCardActions?.update(card,article);
+}
+
 async function startCatalog() {
   try {
     // Static covers and article cards need not wait for the publication service.
@@ -109,11 +128,19 @@ function renderCatalog() {
   for (const kind of ["research", "review"]) {
     const articles = sortedArticles(kind);
     const track = $(`#${kind}-list`);
-    const displayKey = JSON.stringify(articles.map(a => [a.id,a.title,a.journal,a.published,a.doi,a.coverDisplay||a.cover,a.coverPreview,a.reviewStatus,a.updatedAt,a.sourceUrl,a.public]));
-    if (track.dataset.catalogKey === displayKey) continue;
-    track.dataset.catalogKey = displayKey;
-    track.replaceChildren(...articles.map(articleCard));
-    track.scrollLeft = 0;
+    // Initial loading placeholders have no stable identity; remove every one.
+    [...track.children].filter(card=>!card.dataset.articleId).forEach(card=>card.remove());
+    const previous=new Map([...track.children].map(card=>[card.dataset.articleId,card]));
+    const left=track.scrollLeft,focused=track.contains(document.activeElement)?document.activeElement:null;
+    for (const [index,article] of articles.entries()) {
+      const card=previous.get(article.id)||articleCard(article);
+      if(previous.has(article.id))patchArticleCard(card,article);
+      previous.delete(article.id);
+      if(track.children[index]!==card)track.insertBefore(card,track.children[index]||null);
+    }
+    previous.forEach(card=>card.remove());
+    track.scrollLeft=left;
+    if(focused?.isConnected&&document.activeElement!==focused)focused.focus({preventScroll:true});
     $(`#${kind}-count`).textContent = `${articles.length} 篇`;
     const empty = $(`#${kind}-empty`);
     if (empty) empty.hidden = articles.length > 0;

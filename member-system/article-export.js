@@ -54,11 +54,30 @@
    return {key:block.id||'figure-'+index,src:block.src,number,label,reference:label==='配图'?'本段配图':(source?'原文':'文中')+label+(source&&labelMatch&&labelMatch[1]+labelMatch[2]!==label?'｜文中'+labelMatch[1]+labelMatch[2]:''),stem};
   });
  }
+ function citationBlockIds(blocks){
+  // Determine this once from the complete original snapshot, never from each part.
+  const content=blocks.filter(b=>b.kind!=='title'),first=content[0];
+  if(first?.kind!=='paragraph'||!first.id)return [];
+  const ids=[first.id];
+  for(const block of content.slice(1)){
+   if(block.kind!=='paragraph'||!/^DOI\s*[：:]/i.test(String(block.text||'').trim()))break;
+   if(block.id)ids.push(block.id);
+  }
+  return ids;
+ }
+ function exportGroups(blocks,starts,selection='whole'){
+  const parts=split(blocks,starts);
+  if(selection==='whole')return [{part:{blocks,original:blocks,stats:stats(blocks)},index:0,count:1}];
+  if(selection==='parts')return parts.map((part,index)=>({part,index,count:parts.length}));
+  const index=Number(selection);
+  if(!Number.isInteger(index)||index<0||!parts[index])throw Error('分篇范围已变化，请重新选择。');
+  return [{part:parts[index],index,count:parts.length}];
+ }
  function footer(){return `<p data-export-footer style="${esc(TEXT_STYLE)}margin-top:28px;padding-top:16px;border-top:1px solid #dce5ee">更好的图文阅读体验，欢迎访问 <a href="https://metalradical.xyz" style="color:#315f8b;text-decoration:underline;font-family:${esc(FONT)}">metalradical.xyz</a>，或点击下方“阅读原文”。</p>`;}
  function render(blocks,images=new Map(),options={}){
-  const figures=options.figures||figurePlan(blocks);let n=0;
+  const figures=options.figures||figurePlan(blocks),citationIds=new Set(options.citationIds||[]);let n=0;
   const body=blocks.filter(b=>b.kind!=='title').map(b=>{
-   const t=exportInline(b.text),style=esc(TEXT_STYLE);
+   const t=exportInline(b.text),citation=citationIds.has(b.id)&&b.kind==='paragraph',style=esc(TEXT_STYLE+(citation?'font-size:12pt;':''));
    if(b.kind==='figure'){
     const slot=figures[n++],image=images.get(slot.key)||images.get(b.src);
     const placeholder=`【插入图片${slot.number}｜${slot.reference}】`;
@@ -69,7 +88,7 @@
    if(b.kind==='heading'){const l=Math.max(2,Math.min(4,Number(b.level)||2));return `<h${l} style="${style}font-size:${l===2?22:19}px;line-height:1.6;font-weight:650;margin:24px 0 12px">${t}</h${l}>`;}
    if(b.kind==='bullet')return `<ul style="${style}"><li style="color:${INK};font-family:${esc(FONT)}">${t}</li></ul>`;
    if(b.kind==='quote')return `<blockquote style="${style}padding-left:16px;border-left:3px solid #c6d4e2">${t}</blockquote>`;
-   return `<p style="${style}">${t}</p>`;
+   return `<p${citation?' data-export-citation':''} style="${style}">${t}</p>`;
   }).join('\n');
   return body+(options.footer?footer():'');
  }
@@ -128,37 +147,29 @@ async function runCopy(kind){const status=document.querySelector('#copy-status')
     const path=`admin/drafts/${articleId}/export-plan?source=${effective}`+(['static','history'].includes(effective)?`&version=${revision}`:'');
     if(!saved||effective==='static')saved=await api(path);
     if(!isCurrent())throw Error('登录已变化，请重新打开文章。');if(effective==='draft'||effective==='history'){if((source==='draft-content'?saved.content_hash:saved.version_hash)!==revision)throw Error('稿件已更新，请重新打开。');body=saved;}
-    const blocks=body.blocks.filter(b=>b.kind!=='title'),url=readingUrl(articleId),published=['published','static'].includes(effective);
+    const blocks=body.blocks.filter(b=>b.kind!=='title'),citationIds=citationBlockIds(body.blocks),url=readingUrl(articleId),published=['published','static'].includes(effective);
     let titleText=body.title||body.article?.title?.zh||snapshot.article.title.zh;
     const month=body.article?.published||metadata?.published||(body.article?.firstPublishedOn||metadata?.firstPublishedOn||'').slice(0,7).replace('-','.');
     if(/^\d{4}\.\d{2}$/.test(month)&&!new RegExp('[（(]'+month.replace('.','\\.')+'[）)]$').test(titleText))titleText+='（'+month+'）';
     let starts=saved.plan?.starts||(body.article?.kind==='review'?suggest(blocks):[]),planRevision=effective==='static'?revision:saved.version_hash,selection='whole',parts=[];
     if(!starts.every(id=>blocks.some(b=>b.id===id&&b.kind==='heading')))starts=[];
     area.replaceChildren();const add=(parent,tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;parent.append(n);return n;};
-    const intro=add(area,'section',undefined,'export-intro');add(intro,'span',effective==='history'?'历史版本 · 只读':published?'当前公开版本':'待审版本 · 仅导出','export-version');add(intro,'h3','从阅读页，到公众号');add(intro,'p','复制正文后，按编号插入图片。');
+    const intro=add(area,'section',undefined,'export-intro');add(intro,'span',effective==='history'?'历史版本 · 只读':published?'当前公开版本':'待审版本 · 仅导出','export-version');add(intro,'h3','导出素材包');add(intro,'p','下载后打开 body.html，一键复制正文、标题和阅读原文链接。');
     const titleLabel=add(area,'label','导出标题','export-field'),title=add(titleLabel,'input');title.value=saved.plan?.title||titleText;title.maxLength=300;title.setAttribute('aria-label','导出标题');
-    const scope=add(area,'section',undefined,'export-section');add(scope,'h4','复制范围');const scopes=add(scope,'div',undefined,'export-scopes');scopes.setAttribute('aria-label','复制范围');
-    const copyArea=add(area,'section',undefined,'export-section');const copyActions=add(copyArea,'div',undefined,'export-copy-actions');
-    const report=add(copyArea,'p','选择整篇或分篇后复制。','export-status');report.dataset.exportStatus='';report.setAttribute('role','status');report.setAttribute('aria-live','polite');
-    const linkArea=add(area,'section',undefined,'export-link-section');add(linkArea,'h4','公众号“阅读原文”');add(linkArea,'p',url,'export-read-url');add(linkArea,'p',published?'填写此链接，读者将进入本篇网站阅读页。':'本文尚未发布，链接发布后可访问。复制或导出不会发布稿件。','export-link-hint');
-    const mapDetails=add(area,'details',undefined,'export-image-map');add(mapDetails,'summary','图片顺序与对应文件');const imageMap=add(mapDetails,'div',undefined,'export-image-map-list');
-    const downloads=add(area,'section',undefined,'export-section');add(downloads,'h4','图片与本地素材');add(downloads,'p','占位中的01、02是本篇插入顺序，原文图号另列。封面独立，不占正文编号。');const downloadActions=add(downloads,'div',undefined,'export-download-actions');
+    const scope=add(area,'section',undefined,'export-section');add(scope,'h4','导出范围');const scopes=add(scope,'div',undefined,'export-scopes');scopes.setAttribute('aria-label','导出范围');
+    const downloads=add(area,'section',undefined,'export-download-section'),downloadActions=add(downloads,'div',undefined,'export-download-actions');
+    const report=add(downloads,'p','素材包包含排版正文、按编号配图、独立封面和本站阅读原文链接。','export-status');report.dataset.exportStatus='';report.setAttribute('role','status');report.setAttribute('aria-live','polite');
+    if(!published)add(downloads,'p','本文尚未发布，阅读原文链接发布后可访问。','export-link-hint');
     const adjust=add(area,'details',undefined,'export-adjust');add(adjust,'summary','调整与保存分篇');add(adjust,'p','按章节分篇，不拆散段落与配图。4000字符 / 8图为编辑参考，不是微信后台硬上限。');const choices=add(adjust,'div',undefined,'export-split-choices');
     function action(parent,text,name,fn,primary=false){const b=add(parent,'button',undefined,'export-button'+(primary?' export-primary':''));b.type='button';b.innerHTML=icon(name)+'<span>'+esc(text)+'</span>';b.addEventListener('click',async()=>{if(b.disabled)return;const controls=[...area.querySelectorAll('button,input')];controls.forEach(n=>n.disabled=true);area.setAttribute('aria-busy','true');try{if(!isCurrent())throw Error('管理员身份已变化，请重新打开导出。');await fn();}catch(error){status(error.message||'操作未完成，请重试。',true);}finally{controls.forEach(n=>n.disabled=false);area.setAttribute('aria-busy','false');}});return b;}
-    function selected(){const planned=selection!=='whole',index=planned?Number(selection):0,part=planned?parts[index]:{blocks,original:blocks,stats:stats(blocks)};if(!part)throw Error('分篇范围已变化，请重新选择。');return {part,title:title.value+(planned&&parts.length>1?`（${index+1}/${parts.length}）`:''),figures:figurePlan(part.blocks)};}
-    function payload(){const item=selected(),html=render(item.part.blocks,new Map(),{placeholders:true,figures:item.figures,footer:true});return {...item,html,text:plainText(html)};}
-    action(copyActions,'复制排版正文','copy',()=>{const value=payload();return copyPayload({...value,isCurrent}).then(()=>status('排版正文已复制。请粘贴后按占位编号插入同名图片。'));},true);
-    action(copyActions,'复制纯文本','text',()=>{const value=payload();return copyPayload({text:value.text,isCurrent}).then(()=>status('纯文本已复制，图片占位和原图号一并保留。'));});
-    action(copyActions,'复制标题','text',()=>copyPayload({text:selected().title,isCurrent}).then(()=>status('标题已复制。')));
-    action(linkArea,'复制阅读原文链接','link',()=>copyPayload({text:url,isCurrent}).then(()=>status('阅读原文链接已复制。'+(!published?'本文尚未发布，链接发布后可访问。':''))));
-    function refresh(){parts=split(blocks,starts);if(selection!=='whole'&&Number(selection)>=parts.length)selection='whole';scopes.replaceChildren();const addScope=(value,label,detail)=>{const b=add(scopes,'button',undefined,'export-scope');b.type='button';b.setAttribute('aria-pressed',String(selection===value));add(b,'strong',label);add(b,'small',detail);b.addEventListener('click',()=>{selection=value;refresh();});};const whole=stats(blocks);addScope('whole','整篇',`${whole.characters}字 · ${whole.figures}张图`);if(parts.length>1)parts.forEach((part,i)=>addScope(String(i),`第${i+1}篇 / 共${parts.length}篇`,`${part.stats.characters}字 · ${part.stats.figures}张图`));imageMap.replaceChildren();for(const item of selected().figures){const row=add(imageMap,'div',undefined,'export-image-row');add(row,'strong','图片'+item.number);add(row,'span',item.reference);add(row,'code',item.stem);}if(!selected().figures.length)add(imageMap,'p','本范围没有正文图片。');}
+    function refresh(){parts=split(blocks,starts);if(!['whole','parts'].includes(selection)&&Number(selection)>=parts.length)selection='whole';scopes.replaceChildren();const addScope=(value,label,detail)=>{const b=add(scopes,'button',undefined,'export-scope');b.type='button';b.setAttribute('aria-pressed',String(selection===value));add(b,'strong',label);add(b,'small',detail);b.addEventListener('click',()=>{selection=value;refresh();});};const whole=stats(blocks);addScope('whole','整篇',`${whole.characters}字 · ${whole.figures}张图`);if(parts.length>1){addScope('parts','全部分篇',`共${parts.length}篇 · 按章节分别整理`);parts.forEach((part,i)=>addScope(String(i),`第${i+1}篇 / 共${parts.length}篇`,`${part.stats.characters}字 · ${part.stats.figures}张图`));}}
     for(const b of blocks.filter((b,i)=>i>0&&b.kind==='heading')){const label=add(choices,'label',undefined,'export-split-choice'),check=add(label,'input');check.type='checkbox';check.checked=starts.includes(b.id);check.value=b.id;check.addEventListener('change',()=>{starts=[...choices.querySelectorAll('input:checked')].map(n=>n.value);refresh();});add(label,'span','从此章节开始下一篇：'+plainText(inline(b.text)));}
     const save=async()=>{if(effective==='history')return;if(!isCurrent())throw Error('登录已失效。');await api(path,{version_hash:planRevision,starts,title:title.value},'PUT');};
-    action(adjust,'按章节建议分篇','split',()=>{starts=suggest(blocks);for(const c of choices.querySelectorAll('input'))c.checked=starts.includes(c.value);refresh();status('已更新分篇建议，可选择各篇复制或下载。');});
+    action(adjust,'按章节建议分篇','split',()=>{starts=suggest(blocks);for(const c of choices.querySelectorAll('input'))c.checked=starts.includes(c.value);refresh();status('已更新分篇建议，可选择范围后下载。');});
     if(effective!=='history')action(adjust,'保存分篇方案','save',async()=>{await save();status('标题与分篇方案已保存。');});
-    async function download(planned){
-     status('正在准备图片与素材包…');await save();const groups=planned?split(blocks,starts):[{blocks,original:blocks,stats:stats(blocks)}],files=[],cache=new Map(),manifestParts=[];let total=0,loadedImages=0;
-     const imageCount=new Set(groups.flatMap(p=>p.blocks.filter(b=>b.kind==='figure').map(b=>b.src))).size+1;
+    async function download(){
+     status('正在准备图片与素材包…');await save();const groups=exportGroups(blocks,starts,selection),files=[],cache=new Map(),manifestParts=[];let total=0,loadedImages=0;
+     const imageCount=new Set(groups.flatMap(p=>p.part.blocks.filter(b=>b.kind==='figure').map(b=>b.src))).size+1;
      const getImage=async(src,cover=false)=>{
       const key=cover?'cover':src;if(cache.has(key))return cache.get(key);let asset;
       if(effective==='history')asset=`/api/member/admin/drafts/${articleId}/versions/${encodeURIComponent(revision)}/assets/${body.asset_map[key]}`;
@@ -172,22 +183,22 @@ async function runCopy(kind){const status=document.querySelector('#copy-status')
       const result={bytes,ext};cache.set(key,result);loadedImages++;status(`正在准备素材：图片${loadedImages} / ${imageCount}…`);return result;
      };
      for(let i=0;i<groups.length;i++){
-      const part=groups[i],prefix=`day-${String(i+1).padStart(2,'0')}/`,images=new Map(),figures=figurePlan(part.blocks);
+      const {part,index,count}=groups[i],prefix=`day-${String(index+1).padStart(2,'0')}/`,images=new Map(),figures=figurePlan(part.blocks);
       for(const slot of figures){const image=await getImage(slot.src),name=`images/${slot.stem}.${image.ext}`;slot.fileName=slot.stem+'.'+image.ext;images.set(slot.key,name);files.push([prefix+name,image.bytes]);}
       const cover=await getImage('cover',true);files.push([prefix+`cover.${cover.ext}`,cover.bytes]);
-      const titleValue=title.value+(groups.length>1?`（${i+1}/${groups.length}）`:''),copyHtml=render(part.blocks,new Map(),{placeholders:true,figures,footer:true}),html=render(part.blocks,images,{figures,footer:true});
+      const titleValue=title.value+(count>1?`（${index+1}/${count}）`:''),copyHtml=render(part.blocks,new Map(),{placeholders:true,figures,footer:true,citationIds}),html=render(part.blocks,images,{figures,footer:true,citationIds});
       files.push([prefix+'title.txt',titleValue],[prefix+'body.html',documentHtml(titleValue,html,{copyHtml,url,published})],[prefix+'body.txt',plainText(copyHtml)],[prefix+'read-original-link.txt',url+(!published?'\n本文尚未发布，链接发布后可访问。':'')]);
-      manifestParts.push({day:i+1,block_ids:part.original.map(b=>b.id),...part.stats,figures:figures.map(x=>({number:x.number,reference:x.reference,file:'images/'+x.fileName,block_id:x.key,source:x.src})),cover:'cover.'+cover.ext});
+      manifestParts.push({day:index+1,block_ids:part.original.map(b=>b.id),...part.stats,figures:figures.map(x=>({number:x.number,reference:x.reference,file:'images/'+x.fileName,block_id:x.key,source:x.src})),cover:'cover.'+cover.ext});
      }
      const final=await api(path);if(!isCurrent()||(effective!=='static'&&final.version_hash!==planRevision))throw Error('文章或管理员身份已变化，已停止导出。');
      files.push(['manifest.json',JSON.stringify({articleId,source:effective,version_hash:planRevision,readingUrl:url,published,parts:manifestParts,note:'插图序号逐篇重置；原图号另列；封面独立。不含PDF、SI、批注或反馈。'},null,2)]);
-     const blob=zip(files),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`${articleId}-${planned?'plan':'full'}.zip`;link.click();setTimeout(()=>URL.revokeObjectURL(link.href),10000);status(`已下载${groups.length}篇素材。打开body.html可一键复制排版正文，按占位文件名插图，cover为独立封面。`);
+     const blob=zip(files),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`${articleId}-${selection==='whole'?'full':selection==='parts'?'parts':'part-'+String(Number(selection)+1).padStart(2,'0')}.zip`;link.click();setTimeout(()=>URL.revokeObjectURL(link.href),10000);status(`已下载${groups.length}篇素材。打开body.html可一键复制排版正文，按占位文件名插图，cover为独立封面。`);
     }
-    action(downloadActions,'下载整篇素材包','download',()=>download(false));action(downloadActions,'按分篇下载素材包','download',()=>download(true));refresh();loaded=true;
+    action(downloadActions,'下载素材包','download',download,true);refresh();loaded=true;
    }catch(error){fail(error);}finally{area.setAttribute('aria-busy','false');}
   }
   node.addEventListener('toggle',()=>{if(node.open)load();});
   document.addEventListener('read-members-expired',()=>{area.replaceChildren();node.remove();},{once:true});return node;
  }
- const api={mount,split,suggest,stats,zip,render,documentHtml,plainText,figurePlan,readingUrl,copyPayload,copyFallback,SLOGAN};global.ReadArticleExport=api;if(typeof module!=='undefined')module.exports=api;
+ const api={mount,split,suggest,stats,zip,render,citationBlockIds,exportGroups,documentHtml,plainText,figurePlan,readingUrl,copyPayload,copyFallback,SLOGAN};global.ReadArticleExport=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);

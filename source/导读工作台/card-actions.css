@@ -14,7 +14,7 @@
 @media(hover:hover){.card-actions button:hover,.card-actions a:hover{background:#eef3f880!important;color:#537695}.card-actions button:hover svg{transform:scale(1.06)}}
 .card-actions button:active svg,.card-actions a:active svg{transform:scale(.92)}
 .card-actions button:focus-visible,.card-actions a:focus-visible{outline:2px solid #638bb5;outline-offset:-4px}.card-actions button:disabled{opacity:.55;cursor:wait}
-.card-new{position:absolute;left:11px;top:12px;z-index:2;padding:3px 7px;border-radius:6px;background:#fffffff2;color:#ad3d42;font:600 11px/1.5 system-ui,sans-serif;letter-spacing:.025em;box-shadow:0 1px 5px #0f2a4908;pointer-events:none}
+.card-date{display:flex;align-items:center;gap:7px;min-height:18px;font-weight:400;letter-spacing:0;color:#738294}.card-new{display:inline-flex;align-items:center;padding:0 5px;border-radius:4px;background:#a33c4410;color:#94454c;font:500 10px/16px system-ui,sans-serif;letter-spacing:.01em;white-space:nowrap;pointer-events:none}
 .card-action-error{position:absolute;z-index:4;right:8px;left:8px;bottom:8px;padding:7px 10px;border:1px solid #ebd8d5;border-radius:8px;background:#fff9f6;color:#934c45;font-size:12px;line-height:1.5}
 .member-card .card-meta-row{margin:0 12px 9px}.member-card .card-meta-text{font:700 11px/1.5 Arial,sans-serif;color:#617286;padding-top:1px}
 .member-card .card-meta-text small{margin:0;overflow-wrap:normal;font:inherit}.member-card .card-meta-text small+small{font-weight:400;color:#738294}

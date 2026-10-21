@@ -53,6 +53,8 @@ function assertReviewIdentity() {
 function clearPrivateReview() {
   if (!reviewMode) return;
   restoringReadingState = true;
+  preloadOtherFigures.cancel?.();
+  delete requestPanelFigure.pendingCandidate;
   panelFigureRequest += 1;
   preparationAttempt += 1;
   reviewDraft = null;

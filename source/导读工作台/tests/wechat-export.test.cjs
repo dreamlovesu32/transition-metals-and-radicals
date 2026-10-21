@@ -70,23 +70,56 @@ class Element{
  remove(){if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(n=>n!==this);}
 }
 async function mountHarness(source='draft',options={}){
- const previous={document:global.document,location:global.location,fetch:global.fetch,ClipboardItem:global.ClipboardItem,navigator:Object.getOwnPropertyDescriptor(global,'navigator')};
+ const previous={document:global.document,location:global.location,fetch:global.fetch,ClipboardItem:global.ClipboardItem,setTimeout:global.setTimeout,navigator:Object.getOwnPropertyDescriptor(global,'navigator')},oldCreate=URL.createObjectURL,oldRevoke=URL.revokeObjectURL;
  const doc={createElement:tag=>new Element(tag),addEventListener(){},removeEventListener(){}};global.document=doc;global.location=new URL('https://example.org/read');global.fetch=()=>{throw Error('copy must not download images');};
- let written,valid=true;global.ClipboardItem=class{constructor(values){this.values=values;}};Object.defineProperty(global,'navigator',{configurable:true,value:{clipboard:{write:async items=>{written=items[0];},writeText:async text=>{written=text;}}}});
+ let written,valid=true,downloadBlob,downloadName;const imageRequests=[];if(options.downloads){global.setTimeout=()=>0;URL.createObjectURL=blob=>{downloadBlob=blob;return 'blob:fixture';};URL.revokeObjectURL=()=>{};global.fetch=async url=>{imageRequests.push(String(url));return {ok:true,headers:{get:()=> 'image/png'},arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer};};doc.createElement=tag=>{const element=new Element(tag);if(tag==='a')element.click=()=>{downloadName=element.download;};return element;};}global.ClipboardItem=class{constructor(values){this.values=values;}};Object.defineProperty(global,'navigator',{configurable:true,value:{clipboard:{write:async items=>{written=items[0];},writeText:async text=>{written=text;}}}});
  const revision='a'.repeat(64),snapshot={article:{id:'sample-paper',title:{zh:'标题'},kind:'research'},blocks:sample,version_hash:'c'.repeat(64),review_version_hash:options.expectedReview},calls=[];
- const saved={...snapshot,content_hash:source==='draft-content'?'c'.repeat(64):revision,version_hash:options.serverReview||revision,title:'标题',plan:null};
- const toolbar=new Element('div');const api=async(path,body,method='GET')=>{calls.push({path,body,method});return saved;};
- const node=await tool.mount({articleId:'sample-paper',revision:source==='draft-content'?'c'.repeat(64):revision,snapshot,toolbar,source,api,isCurrent:()=>valid,metadata:{}});node.open=true;await node.fire('toggle');await new Promise(r=>setImmediate(r));
+ const saved={...snapshot,content_hash:source==='draft-content'?'c'.repeat(64):revision,version_hash:options.serverReview||revision,title:'标题',plan:options.plan||null,asset_map:{cover:'cover.png','figures/scheme-1.png':'scheme.png','figures/figure-2A.png':'figure.png'}};
+ const toolbar=new Element('div');const api=async(path,body,method='GET')=>{calls.push({path,body,method});return options.finalMismatch&&imageRequests.length?{...saved,version_hash:'changed'}:saved;};
+ const node=await tool.mount({articleId:'sample-paper',revision:source==='draft-content'?'c'.repeat(64):revision,snapshot,toolbar,source,api,isCurrent:()=>valid,metadata:{},assetUrl:src=>'/'+src,coverUrl:'/cover.png'});node.open=true;await node.fire('toggle');await new Promise(r=>setImmediate(r));
  const buttons=()=>node.querySelectorAll('button'),find=label=>buttons().find(b=>b.textContent===label);
- return {node,calls,find,saved,get written(){return written;},expire(){valid=false;},restore(){for(const [key,value]of Object.entries(previous)){if(key==='navigator'){if(value)Object.defineProperty(global,key,value);else delete global.navigator;}else if(value===undefined)delete global[key];else global[key]=value;}}};
+ return {node,calls,find,saved,imageRequests,get downloadBlob(){return downloadBlob;},get downloadName(){return downloadName;},get written(){return written;},expire(){valid=false;},restore(){URL.createObjectURL=oldCreate;URL.revokeObjectURL=oldRevoke;for(const [key,value]of Object.entries(previous)){if(key==='navigator'){if(value)Object.defineProperty(global,key,value);else delete global.navigator;}else if(value===undefined)delete global[key];else global[key]=value;}}};
 }
 
-test('actual mounted current/history/workbench export copies without save or image request and preserves the viewed source',async()=>{
+test('actual mounted current/history/workbench export has one download action and keeps copying inside the package',async()=>{
  for(const source of ['draft','history','draft-content']){
-  const h=await mountHarness(source);try{const button=h.find('复制排版正文');assert(button,'real copy control is mounted');await button.fire('click');assert(h.written?.values['text/html']);const html=await h.written.values['text/html'].text();assert(html.includes('data-export-placeholder'));assert(h.calls.every(c=>c.method==='GET'));assert(h.calls.every(c=>c.path.includes(source==='history'?'source=history':'source=draft')));if(source==='history')assert(!h.find('保存分篇方案'));h.expire();const old=h.written;await button.fire('click');assert.equal(h.written,old);assert(h.node.textContent.includes('身份已变化'));}finally{h.restore();}
+  const h=await mountHarness(source);try{
+   assert(h.find('下载素材包'));assert(!h.find('复制排版正文'));assert(!h.find('复制纯文本'));assert(!h.find('复制标题'));assert(!h.find('复制阅读原文链接'));
+   assert(h.calls.every(c=>c.method==='GET'));assert(h.calls.every(c=>c.path.includes(source==='history'?'source=history':'source=draft')));
+   if(source==='history')assert(!h.find('保存分篇方案'));
+   h.expire();await h.find('下载素材包').fire('click');assert(h.node.textContent.includes('身份已变化'));assert.equal(h.written,undefined);
+  }finally{h.restore();}
  }
+});
+
+function unzipStored(blob){return blob.arrayBuffer().then(buffer=>{const bytes=new Uint8Array(buffer),view=new DataView(buffer),files=new Map();let offset=0;while(view.getUint32(offset,true)===0x04034b50){const size=view.getUint32(offset+18,true),nameLength=view.getUint16(offset+26,true),extra=view.getUint16(offset+28,true),start=offset+30+nameLength+extra;files.set(new TextDecoder().decode(bytes.slice(offset+30,offset+30+nameLength)),bytes.slice(start,start+size));offset=start+size;}return files;});}
+
+test('real download creates complete full or selected-part bundles with independent covers and final version checks',async()=>{
+ for(const source of ['draft','history','draft-content']){
+  const h=await mountHarness(source,{downloads:true,plan:{starts:['h']}});try{
+   await h.find('下载素材包').fire('click');assert(h.downloadBlob);assert.equal(h.downloadName,'sample-paper-full.zip');
+   const files=await unzipStored(h.downloadBlob),decode=name=>new TextDecoder().decode(files.get(name));
+   assert(files.has('day-01/cover.png'));assert(files.has('day-01/images/01-图式1.png'));assert(files.has('day-01/images/03-图式1.png'));
+   const full=decode('day-01/body.html');assert(full.includes('复制排版正文'));assert(full.includes('复制标题'));assert(full.includes('复制阅读原文链接'));assert(full.includes('data-export-placeholder'));assert(full.includes('font-size:12pt;'));assert(full.includes('25 °C'));assert(full.includes('10 mol%'));
+   assert.equal(h.imageRequests.length,3,'two unique figure assets plus cover');assert.equal(JSON.parse(decode('manifest.json')).parts.length,1);
+   const second=h.node.querySelectorAll('button').find(b=>b.textContent.startsWith('第2篇 /'));assert(second);await second.fire('click');await h.find('下载素材包').fire('click');
+   assert.equal(h.downloadName,'sample-paper-part-02.zip');const secondFiles=await unzipStored(h.downloadBlob),secondHtml=new TextDecoder().decode(secondFiles.get('day-02/body.html'));
+   assert(!secondHtml.includes('data-export-citation'),'part 2 first prose is not the original citation');assert(secondHtml.includes('（2/2）'));assert(secondFiles.has('day-02/cover.png'));assert(!secondFiles.has('day-01/body.html'));
+   const puts=h.calls.filter(c=>c.method==='PUT');assert.equal(puts.length,source==='history'?0:2);
+  }finally{h.restore();}
+ }
+ const h=await mountHarness('draft',{downloads:true,finalMismatch:true});try{await h.find('下载素材包').fire('click');assert.equal(h.downloadBlob,undefined);assert(h.node.textContent.includes('已停止导出'));}finally{h.restore();}
 });
 
 test('published review hash must match even when its body hash is unchanged, so new pictures cannot replace cached viewed pictures',async()=>{
  const h=await mountHarness('published',{expectedReview:'old-review',serverReview:'new-review'});try{assert(!h.find('复制排版正文'));assert(h.node.textContent.includes('刷新'));assert(h.node.textContent.includes('重新载入'));}finally{h.restore();}
+});
+
+test('12pt citation styling follows only original opening ids across whole and chapter exports',()=>{
+ const blocks=[{id:'title',kind:'title',text:'Title'},{id:'citation',kind:'paragraph',text:'Authors. Journal 2026. Verified citation.'},{id:'doi',kind:'paragraph',text:'DOI: 10.1234/test'},{id:'intro',kind:'paragraph',text:'Normal introduction.'},{id:'section',kind:'heading',text:'Later section'},{id:'later',kind:'paragraph',text:'Later first paragraph.'}];
+ const frozen=JSON.stringify(blocks),ids=tool.citationBlockIds(blocks);assert.deepEqual(ids,['citation','doi']);
+ const full=tool.render(blocks,new Map(),{citationIds:ids});assert.equal((full.match(/data-export-citation/g)||[]).length,2);assert.equal((full.match(/font-size:12pt/g)||[]).length,2);assert(full.includes('font-size:16px;">Normal introduction.'));
+ const parts=tool.split(blocks,['section']);assert.equal((tool.render(parts[0].blocks,new Map(),{citationIds:ids}).match(/data-export-citation/g)||[]).length,2);assert(!tool.render(parts[1].blocks,new Map(),{citationIds:ids}).includes('font-size:12pt'));
+ assert.deepEqual(tool.exportGroups(blocks,['section'],'parts').map(g=>g.index),[0,1]);assert.equal(tool.exportGroups(blocks,['section'],'1')[0].part.blocks.at(-1).id,'later');assert.throws(()=>tool.exportGroups(blocks,['section'],'9'));
+ assert.equal(JSON.stringify(blocks),frozen);
 });

@@ -107,13 +107,11 @@ test('401 clears CSRF and cached admin hints; direct re-login gets fresh preauth
  await h.members.requestForTest('login',{username:'synthetic@example.invalid',password:'synthetic'});
  assert.equal(requests.filter(x=>x.url.endsWith('/session')).length,1);assert.equal(requests.at(-1).options.headers['X-CSRF-Token'],'fresh-preauth');
 });
-test('figure warm-up is bounded to the next two, then advances in reading order',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8'),at=source.indexOf('function preloadOtherFigures()'),end=source.indexOf('\nfunction showPreparationFailure',at),requests=[];
- class Image{constructor(){this.dataset={};}set src(value){requests.push(value);queueMicrotask(()=>this.onload());}}
- const context={Image,figurePreloadActive:false,figurePreloadQueued:false,documentState:{},figureBlocks:Array.from({length:39},(_,i)=>({src:'figure-'+i})),currentFigureIndex:0,backgroundFigureImages:[],reviewMode:false,isDesktopLayout:()=>false,articleAsset:x=>x,setTimeout,clearTimeout};
- vm.createContext(context);vm.runInContext(source.slice(at,end)+';this.warm=preloadOtherFigures;',context);
- context.warm();await new Promise(r=>setImmediate(r));assert.deepEqual(requests,['figure-1','figure-2']);
- context.currentFigureIndex=1;context.warm();await new Promise(r=>setImmediate(r));assert.deepEqual(requests,['figure-1','figure-2','figure-3']);
+test('background warm-up continues through a long article with a bounded detached cache',async()=>{
+ const h=require('./preload-harness.cjs').create();h.ctx.preloadOtherFigures();await h.flush();
+ assert.equal(h.requests.length,38);assert.deepEqual(h.requests.slice(0,3).map(r=>r.url),['figure-1','figure-2','figure-3']);
+ assert.equal(h.maxActive,1);assert(h.ctx.backgroundFigureImages.filter(i=>!i.isConnected&&i.id!=='panel-figure-image').length<=6);
+ assert(h.decoded.length<=2,'far originals must warm HTTP cache without retaining full decoded article');
 });
 test('public reader starts account I/O only after content readiness and a paint opportunity',async()=>{
  const source=fs.readFileSync(path.join(__dirname,'../member-system/members.js'),'utf8');
@@ -144,17 +142,18 @@ test('panel switching hides the old image until current decode; stale and failed
  const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
  const at=source.indexOf('async function decodeFigureImage('),end=source.indexOf('\nfunction retryPanelFigure(',at);
  const images=[],nodes=new Map(),states=[],commits=[];
- const node=s=>{if(!nodes.has(s))nodes.set(s,{textContent:'old',innerHTML:'old',remove(){},naturalWidth:300,dataset:{},alt:'old',setAttribute(k,v){this[k]=v;},replaceWith(next){nodes.set('#panel-figure-image',next);}});return nodes.get(s);};
+ const node=s=>{if(!nodes.has(s))nodes.set(s,{textContent:'old',innerHTML:'old',remove(){},naturalWidth:300,dataset:{},alt:'old',setAttribute(k,v){this[k]=v;},removeAttribute(k){delete this[k];},replaceWith(next){nodes.set('#panel-figure-image',next);}});return nodes.get(s);};
  class FakeImage{
   constructor(){this.dataset={};this.complete=false;this.naturalWidth=500;this.decodingJob=deferred();images.push(this);}
   addEventListener(name,handler){this.listeners ||= {}; (this.listeners[name] ||= new Set()).add(handler);}
   removeEventListener(name,handler){this.listeners?.[name]?.delete(handler);}
   emit(name){for(const handler of [...(this.listeners?.[name]||[])])handler();}
   getAttribute(name){return name==='src'?this.src:null;}
+  removeAttribute(name){delete this[name];}
   decode(){return this.decodingJob.promise;}
   replaceWith(next){nodes.set('#panel-figure-image',next);}
  }
- const ctx={$:node,Image:FakeImage,setTimeout,clearTimeout,panelFigureRequest:0,panelFigureReady:null,backgroundFigureImages:[],imageRetryNumber:0,IMAGE_READY_TIMEOUT_MS:40,articleAsset:x=>x,figureMedia:()=>({}),updateDragPanState:stage=>states.push(stage.dataset.imageState),figureScale:1,handlePanelVisibleLoad:changed=>commits.push(changed),figurePage:src=>src,inlineMarkdown:text=>text,tr:()=>'',currentFigureIndex:0,figureBlocks:[1,2,3],currentLanguage:'zh'};
+ const ctx={preloadOtherFigures:()=>{},$:node,Image:FakeImage,setTimeout,clearTimeout,panelFigureRequest:0,panelFigureReady:null,backgroundFigureImages:[],imageRetryNumber:0,IMAGE_READY_TIMEOUT_MS:40,articleAsset:x=>x,figureMedia:()=>({}),updateDragPanState:stage=>states.push(stage.dataset.imageState),figureScale:1,handlePanelVisibleLoad:changed=>commits.push(changed),figurePage:src=>src,inlineMarkdown:text=>text,tr:()=>'',currentFigureIndex:0,figureBlocks:[1,2,3],currentLanguage:'zh'};
  vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function setPanelFigureState('),source.indexOf('function handlePanelVisibleLoad('))+source.slice(at,end),ctx);
  const old=node('#panel-figure-image');old.dataset.figureSource='previous';const a=ctx.requestPanelFigure({src:'A',text:'captionA'});images[0].emit("load");assert.equal(node('#figure-stage').dataset.hasImage,'false');assert.equal(node('#panel-figure-status').hidden,false);
  ctx.currentFigureIndex=1;ctx.updatePanelFigurePosition();const b=ctx.requestPanelFigure({src:'B',text:'captionB'});images[1].emit("load");
@@ -226,17 +225,11 @@ test('unchanged remote progress and a restored local position never create a res
 });
 
 
-test('sequential preloading drops an obsolete window after a figure jump',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');const at=source.indexOf('function preloadOtherFigures('),end=source.indexOf('\nfunction showPreparationFailure(',at);
- const requests=[],images=[];
- class FakeImage{constructor(){this.dataset={};images.push(this);}set src(value){requests.push(value);}}
- const ctx={Image:FakeImage,setTimeout,clearTimeout,isDesktopLayout:()=>true,$:()=>({dataset:{imageState:'ready'}}),documentState:{},currentFigureIndex:0,figureBlocks:Array.from({length:39},(_,i)=>({src:'figure-'+i})),backgroundFigureImages:[],figurePreloadActive:false,figurePreloadQueued:false,reviewMode:false,articleAsset:x=>x,decodeFigureImage:async()=>{}};
- vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);ctx.preloadOtherFigures();assert.deepEqual(requests,['figure-1']);
- ctx.currentFigureIndex=10;ctx.preloadOtherFigures();await images[0].onload();await new Promise(r=>setImmediate(r));assert.deepEqual(requests,['figure-1','figure-11']);
- await images[1].onload();await new Promise(r=>setImmediate(r));assert.deepEqual(requests,['figure-1','figure-11','figure-12']);await images[2].onload();
+test('a figure jump reprioritizes the next background slot without replaying an obsolete window',async()=>{
+ const h=require('./preload-harness.cjs').create();h.ctx.preloadOtherFigures();assert.equal(h.requests[0].url,'figure-1');
+ h.ctx.currentFigureIndex=20;h.ctx.preloadOtherFigures();await h.complete(h.requests[0].image);h.runTimer();
+ assert.equal(h.requests[1].url,'figure-21');assert.equal(h.requests[1].image.fetchPriority,'low');h.ctx.preloadOtherFigures.cancel();
 });
-
-
 test('reading originals omit small previews and opacity transitions while navigation covers stay progressive',()=>{
  const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');const at=source.indexOf('function figureImageMarkup('),end=source.indexOf('\nasync function decodeFigureImage(',at);
  const ctx={figureMedia:()=>({width:800,height:600,preview:'/small.webp'}),articleAsset:()=>'/original.png'};vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
