@@ -427,14 +427,14 @@
     },
     {
       "path": "导读工作台/literature-lookup.css",
-      "bytes": 4564,
-      "sha256": "07bb4f6a311c4bd33dd88f37155bfbda459b297e1e492908943882eac0176348",
+      "bytes": 5370,
+      "sha256": "bc9b92117c114a7a385e685b753d069a76527e633fec8ceb79d59d6c7f22bd12",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/literature-lookup.js",
-      "bytes": 10771,
-      "sha256": "d8c1dc4850f65601806c00a1e39cbb8d6e10757405150d04f0c500981d6592df",
+      "bytes": 11781,
+      "sha256": "544f863c013e3865496df29811b333e6d236f7a5b20d1337a7005a30ba86bf7a",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -457,8 +457,8 @@
     },
     {
       "path": "导读工作台/member-system/account.html",
-      "bytes": 838,
-      "sha256": "c0ef8ac74715b9926d8c89f61bb8d04b376b69ab70584f8db50fa2e16b3de193",
+      "bytes": 946,
+      "sha256": "5e08c318a951b41beb0c0b6ee97d1be9fea8cf950f5b32b06c86f25ff8486ba4",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -475,8 +475,8 @@
     },
     {
       "path": "导读工作台/member-system/admin.html",
-      "bytes": 804,
-      "sha256": "d3fbc9aa38dd03435b63115c3a22a58c71166889fec69630a3522dc7fe1ba4db",
+      "bytes": 912,
+      "sha256": "a8c6e885bedcfbba063b617fffbf850d216c6be323f4b0156cc72079343e421c",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -493,8 +493,8 @@
     },
     {
       "path": "导读工作台/member-system/favorites.html",
-      "bytes": 1014,
-      "sha256": "47fec234e99e392a254186491a2e11e34a67f1c03ade49e4e291ffae5d2d4e76",
+      "bytes": 1122,
+      "sha256": "609fddac30d17b254d20d66668c62718779da46d0856f391c4d457b40a57f19f",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -696,6 +696,12 @@
       "origin": "byte-for-byte source copy"
     },
     {
+      "path": "导读工作台/tests/literature-inline.test.cjs",
+      "bytes": 7134,
+      "sha256": "69fd8a6d0744ea51fe3d3244de1ce48a7a21148e9157af1d660b0fb879676966",
+      "origin": "byte-for-byte source copy"
+    },
+    {
       "path": "导读工作台/tests/loading-performance.test.cjs",
       "bytes": 44458,
       "sha256": "3b81bc57fd373c5876e56708596302e9fb0df8e0dfdc8419b73b9ae828f71892",
@@ -841,8 +847,8 @@
     },
     {
       "path": "工具/同步网站源码.py",
-      "bytes": 18276,
-      "sha256": "73c4629b7bb8bde29309fcac366fea20013413987e7c6c002243f8fe0b97a548",
+      "bytes": 17979,
+      "sha256": "7649dcebb3e8d2e6f817599078cce054a5496d0110d7f260fb7262dfbbf740e6",
       "origin": "byte-for-byte source copy"
     },
     {

@@ -2,48 +2,61 @@
 (() => {
   const mount = document.querySelector('[data-member-nav]');
   if (!mount) return;
-  const toggle = document.createElement('button');
-  toggle.type = 'button'; toggle.className = 'literature-toggle';
-  toggle.title = '文献直达'; toggle.setAttribute('aria-label', '文献直达');
-  toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-controls', 'literature-lookup');
-  toggle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>';
-  mount.prepend(toggle);
+  const assetRoot = new URL('./', document.currentScript?.src || location.href);
+  const form = document.createElement('form');
+  form.id = 'literature-form'; form.className = 'literature-form'; form.setAttribute('role', 'search');
+  form.setAttribute('aria-label', '文献直达');
+  form.innerHTML = '<label for="literature-query" class="literature-input-label">文献直达</label><input id="literature-query" type="search" name="q" maxlength="600" required minlength="3" placeholder="DOI、题名或期刊卷页" aria-describedby="literature-status"><button class="literature-toggle" type="submit" title="检索文献" aria-label="检索文献" aria-controls="literature-lookup" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>';
+  mount.prepend(form);
   const lookup = document.createElement('section');
   lookup.id = 'literature-lookup'; lookup.className = 'literature-lookup'; lookup.hidden = true;
-  lookup.setAttribute('aria-label', '文献直达');
-  lookup.innerHTML = '<div class="literature-heading"><h2>文献直达</h2><button class="literature-close" type="button" aria-label="关闭文献直达"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><form id="literature-form" class="literature-form" role="search"><label for="literature-query" class="literature-input-label">检索文献</label><input id="literature-query" type="search" name="q" maxlength="600" required minlength="3" placeholder="DOI、题名或期刊 年份 卷 页码" aria-describedby="literature-status"><button type="submit">检索</button></form><p id="literature-status" class="literature-status" role="status" aria-live="polite" aria-atomic="true"></p><div id="literature-results" class="literature-results" hidden><div class="literature-result-head"><h2>文献候选</h2><button id="literature-collapse" class="literature-collapse" type="button" aria-controls="literature-results">收起结果</button></div><div id="literature-candidates" class="literature-candidates"></div></div>';
+  lookup.setAttribute('aria-label', '文献检索结果');
+  lookup.innerHTML = '<div class="literature-heading"><h2>文献直达</h2><button class="literature-close" type="button" aria-label="关闭检索结果"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><p id="literature-status" class="literature-status" role="status" aria-live="polite" aria-atomic="true"></p><div id="literature-results" class="literature-results" hidden><div class="literature-result-head"><h2>文献候选</h2><button id="literature-collapse" class="literature-collapse" type="button">收起结果</button></div><div id="literature-candidates" class="literature-candidates"></div></div>';
   document.body.append(lookup);
-  mount.classList.add('has-literature-lookup');
-  const form = document.querySelector('#literature-form');
-  if (!form) return;
+  mount.classList.add('has-literature-lookup'); document.body.classList.add('has-inline-literature');
   const input = form.querySelector('input');
   const status = document.querySelector('#literature-status');
   const panel = document.querySelector('#literature-results');
   const list = document.querySelector('#literature-candidates');
   const submit = form.querySelector('button');
   function closeLookup(restoreFocus = true) {
-    lookup.hidden = true; toggle.setAttribute('aria-expanded', 'false');
-    if (restoreFocus) toggle.focus({preventScroll: true});
+    lookup.hidden = true; submit.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) input.focus({preventScroll: true});
   }
-  toggle.addEventListener('click', () => {
-    if (!lookup.hidden) { closeLookup(); return; }
-    const bounds = toggle.getBoundingClientRect();
+  function showLookup() {
+    const bounds = form.getBoundingClientRect();
     const top = Math.max(12, Math.min(bounds.bottom + 10, window.innerHeight - 170));
-    lookup.style.top = `${top}px`;
-    lookup.style.maxHeight = `calc(100dvh - ${top + 12}px)`;
-    lookup.hidden = false; toggle.setAttribute('aria-expanded', 'true');
-    input.focus({preventScroll: true});
-  });
+    lookup.style.top = `${top}px`; lookup.style.maxHeight = `calc(100dvh - ${top + 12}px)`;
+    lookup.hidden = false; submit.setAttribute('aria-expanded', 'true');
+  }
   lookup.querySelector('.literature-close').addEventListener('click', () => closeLookup());
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !lookup.hidden) { event.preventDefault(); closeLookup(); }
   });
   document.addEventListener('pointerdown', event => {
-    if (!lookup.hidden && !lookup.contains(event.target) && !toggle.contains(event.target)) closeLookup(false);
+    if (!lookup.hidden && !lookup.contains(event.target) && !form.contains(event.target)) closeLookup(false);
   });
   document.addEventListener('focusin', event => {
-    if (!lookup.hidden && !lookup.contains(event.target) && !toggle.contains(event.target)) closeLookup(false);
+    if (!lookup.hidden && !lookup.contains(event.target) && !form.contains(event.target)) closeLookup(false);
   });
+  // Reserve a tab during the trusted submit event, before awaiting remote metadata.
+  // noopener in window.open returns no handle, so sever opener synchronously on
+  // this same-origin blank tab; no external document ever receives an opener.
+  function reserveTab() {
+    let tab;
+    try {
+      tab = window.open('about:blank', '_blank');
+      if (!tab) return null;
+      tab.opener = null;
+      tab.document.title = '正在检索文献';
+      tab.document.documentElement.lang = 'zh-CN';
+      tab.document.body.textContent = '正在核对文献题录，请稍候…';
+      tab.document.body.style.cssText = 'margin:48px;color:#274461;font:16px/1.8 system-ui,sans-serif';
+      return tab;
+    } catch { try { tab?.close(); } catch {} return null; }
+  }
+  function closeReserved(tab) { try { if (tab && !tab.closed) tab.close(); } catch {} }
+  let pendingTab;
   let controller;
   let catalogPromise;
   const doiKey = value => String(value || '').trim().replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').toLowerCase();
@@ -61,7 +74,7 @@
     const doi = doiKey(item.doi);
     if (!/^10\.\d{4,9}\/[^\s<>"\x00-\x1f]+$/i.test(doi)) return null;
     const local = (catalog.articles || []).find(article => doiKey(article.doi) === doi);
-    return local ? {label: '阅读本站导读', href: `./read.html?article=${encodeURIComponent(local.id)}`}
+    return local ? {label: '阅读本站导读', href: new URL(`./read.html?article=${encodeURIComponent(local.id)}`, assetRoot).href}
       : {label: '原文链接', href: `https://doi.org/${encodeURIComponent(doi).replace(/%2F/gi, '/')}`};
   }
   function definiteResult(query, data) {
@@ -94,9 +107,9 @@
     }
   }
   function loadCatalog() {
-    if (!catalogPromise && window.ReadPublished) return window.ReadPublished.catalog('./catalog.json');
+    if (!catalogPromise && window.ReadPublished) return window.ReadPublished.catalog(new URL('catalog.json', assetRoot).href);
     if (!catalogPromise) {
-      catalogPromise = fetchJson('./catalog.json', new AbortController(), 5000, '导读目录加载超时。')
+      catalogPromise = fetchJson(new URL('./catalog.json', assetRoot).href, new AbortController(), 5000, '导读目录加载超时。')
         .then(({response, data}) => {
           if (!response.ok) throw new Error('catalog_unavailable');
           return data;
@@ -109,20 +122,22 @@
     return catalogPromise;
   }
   function link(text, href) {
-    const node = element('a', text); node.href = href;
+    const node = element('a', text); node.href = href; node.target = '_blank'; node.rel = 'noopener';
     return node;
   }
   document.querySelector('#literature-collapse').addEventListener('click', () => {
-    panel.hidden = true; status.textContent = '结果已收起，可再次检索。'; input.focus();
+    closeLookup();
   });
   form.addEventListener('submit', async event => {
     event.preventDefault();
     const query = input.value.trim();
     if (query.length < 3) { status.textContent = '请至少输入 3 个字符。'; input.focus(); return; }
-    controller?.abort(); controller = new AbortController();
+    controller?.abort(); closeReserved(pendingTab);
+    const reserved = reserveTab(); pendingTab = reserved;
+    controller = new AbortController();
     const active = controller;
     submit.disabled = true; form.setAttribute('aria-busy', 'true');
-    status.textContent = '正在核对文献题录…'; panel.hidden = true; list.replaceChildren();
+    status.textContent = '正在核对文献题录…'; panel.hidden = true; list.replaceChildren(); showLookup();
     try {
       const {response, data} = await fetchJson(`/api/member/literature?q=${encodeURIComponent(query)}`, active, 15000, '文献检索超时，请稍后重试。', {credentials: 'omit'});
       if (!response.ok) throw new Error(response.status === 429 ? '检索较频繁，请稍后再试。' : response.status === 400 ? '请补充题名、DOI 或期刊卷页信息后重试。' : '题录服务暂时无法连接，请稍后重试。');
@@ -132,10 +147,14 @@
       // If the catalog is unavailable, do not assume this site lacks a guide.
       const direct = definite && !catalog.unavailable && destination(definite, catalog);
       if (direct) {
-        status.textContent = direct.label === '阅读本站导读' ? '已确认文献，正在打开本站导读…' : '已确认文献，正在打开原文…';
-        window.location.assign(direct.href);
+        let opened = false;
+        try { if (reserved && !reserved.closed) { reserved.location.replace(direct.href); opened = true; } } catch { closeReserved(reserved); }
+        pendingTab = null;
+        status.textContent = opened ? '已在新标签页打开。 ' : '已确认文献，请点击打开新标签页： ';
+        status.append(link(direct.label, direct.href));
         return;
       }
+      closeReserved(reserved); if (pendingTab === reserved) pendingTab = null;
       for (const item of data.results || []) {
         const card = element('article', '', 'literature-card');
         card.append(element('h3', item.title || '题名未提供'));
@@ -157,6 +176,7 @@
       if (catalog.unavailable && data.results?.length) status.textContent += ' 本站导读目录暂未加载，原文链接和引文仍可使用。';
       panel.hidden = !data.results?.length;
     } catch (error) {
+      closeReserved(reserved); if (pendingTab === reserved) pendingTab = null;
       if (active === controller && error.name !== 'AbortError') status.textContent = error.message || '检索失败，请重试。';
     } finally {
       if (active === controller) { submit.disabled = false; form.removeAttribute('aria-busy'); }
