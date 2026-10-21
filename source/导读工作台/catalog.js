@@ -14,6 +14,13 @@ function articleCard(article) {
   link.setAttribute("aria-label", `阅读 ${article.title}`);
   const cover = document.createElement("div");
   cover.className = "catalog-cover";
+  const coverLink = document.createElement("a");
+  coverLink.className = "catalog-cover-link";
+  coverLink.href = link.href;
+  coverLink.target = link.target;
+  coverLink.rel = link.rel;
+  coverLink.tabIndex = -1;
+  coverLink.setAttribute("aria-hidden", "true");
   const image = document.createElement("img");
   image.dataset.src = article.cover;
   image.decoding = "async";
@@ -25,6 +32,9 @@ function articleCard(article) {
   body.className = "catalog-card-body";
   const meta = document.createElement("div");
   meta.className = "catalog-meta";
+  const metaRow = document.createElement("div");
+  metaRow.className = "card-meta-row";
+  metaRow.append(meta);
   for (const value of [article.journal, article.published]) {
     const part = document.createElement("span");
     part.textContent = value;
@@ -46,9 +56,10 @@ function articleCard(article) {
   read.className = "catalog-read";
   read.innerHTML = "继续阅读 <span class=ui-arrow-right aria-hidden=true></span>";
   foot.append(doi, read);
-  body.append(meta, title, foot);
-  link.append(cover, body);
-  card.append(link);
+  link.append(title, foot);
+  body.append(metaRow, link);
+  coverLink.append(cover);
+  card.append(coverLink, body);
   window.ReadCardActions?.mount(card, article);
   return card;
 }

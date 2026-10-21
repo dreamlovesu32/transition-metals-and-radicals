@@ -44,7 +44,7 @@
     actions.append(favorite);
     const original=sourceUrl(article);
     if(original){const link=document.createElement('a');link.className='card-source-link';link.href=original;link.target='_blank';link.rel='noopener';link.title='查看原文';link.setAttribute('aria-label','查看原文');link.innerHTML=svg(arrow);link.addEventListener('click',event=>event.stopPropagation());actions.append(link);}
-    card.append(actions);
+    (card.querySelector('.card-meta-row')||card).append(actions);
     if(updatedToday(article.updatedAt)){const badge=document.createElement('span');badge.className='card-new';badge.textContent='New!';badge.setAttribute('aria-label','北京时间今天更新');card.append(badge);}
     return favorite;
   }

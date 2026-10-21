@@ -28,13 +28,13 @@ class Node{
  setAttribute(k,v){this.attrs[k]=String(v);}getAttribute(k){return this.attrs[k]??null;}removeAttribute(k){delete this.attrs[k];}
  addEventListener(k,fn){this.listeners[k]=fn;}querySelector(s){return this.children.find(n=>'.'+n.className===s)||null;}remove(){this.isConnected=false;if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(n=>n!==this);}
 }
-test('card actions are siblings of the main link; unknown favorite state confirms before toggling in place',async()=>{
+test('card actions stay in metadata outside article links; unknown favorite state confirms before toggling in place',async()=>{
  const nodes=[],events={},body=new Node('body'),document={readyState:'complete',createElement:tag=>{const n=new Node(tag);nodes.push(n);return n;},addEventListener:(name,fn)=>events[name]=fn,querySelectorAll:()=>nodes.filter(n=>n.dataset.favoriteArticle&&n.isConnected)};
  let confirm;const ready=new Promise(r=>confirm=r),state={library:{favorites:[]}};let toggles=0;
  const context={document,URL,Date,Intl,ReadMembers:{ready,state,toggleFavorite:async id=>{toggles++;assert(state.library.favorites.includes(id),'must use confirmed state, not an unknown false');state.library.favorites=[];}}};context.window=context;vm.createContext(context);vm.runInContext(fs.readFileSync(__dirname+'/../card-actions.js','utf8'),context);
- const card=new Node('article'),main=new Node('a');card.append(main);body.append(card);let removed=0;
+ const card=new Node('article'),main=new Node('a'),metadata=new Node('div');metadata.className='card-meta-row';card.append(main,metadata);body.append(card);let removed=0;
  const button=context.ReadCardActions.mount(card,{id:'published',public:true,doi:'10.1021/synthetic.1'},{onRemoved:()=>removed++});
- assert.equal(card.children[0],main);assert.equal(card.children[1].tag,'div');const original=card.children[1].children[1];assert.equal(original.target,'_blank');assert.equal(original.rel,'noopener');assert(!main.children.includes(button));
+ assert.equal(card.children[0],main);assert.equal(card.children[1],metadata);assert.equal(metadata.children[0].className,'card-actions');const original=metadata.children[0].children[1];assert.equal(original.target,'_blank');assert.equal(original.rel,'noopener');assert(!main.children.includes(button));
  let prevented=0;const work=button.listeners.click({preventDefault(){prevented++;},stopPropagation(){prevented++;}});await Promise.resolve();assert.equal(toggles,0);
  state.library.favorites=['published'];context.ReadCardActions.refresh();confirm();await work;assert.equal(toggles,1);assert.equal(button.getAttribute('aria-pressed'),'false');assert.equal(removed,1);assert.equal(card.children[0],main);assert.equal(prevented,2);
 });
