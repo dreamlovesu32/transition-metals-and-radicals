@@ -137,11 +137,11 @@ test('highlighter has no second notes button; history retains a read-only record
 });
 
 
-test('panel switching retains image and caption until decode; stale and failed requests cannot mismatch them',async()=>{
+test('panel switching hides the old image until current decode; stale and failed requests stay hidden',async()=>{
  const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
  const at=source.indexOf('async function decodeFigureImage('),end=source.indexOf('\nfunction retryPanelFigure(',at);
- const images=[],nodes=new Map();
- const node=s=>{if(!nodes.has(s))nodes.set(s,{textContent:'old',innerHTML:'old',remove(){},naturalWidth:300,dataset:{},alt:'old',replaceWith(next){nodes.set('#panel-figure-image',next);}});return nodes.get(s);};
+ const images=[],nodes=new Map(),states=[];
+ const node=s=>{if(!nodes.has(s))nodes.set(s,{textContent:'old',innerHTML:'old',remove(){},naturalWidth:300,dataset:{},alt:'old',setAttribute(k,v){this[k]=v;},replaceWith(next){nodes.set('#panel-figure-image',next);}});return nodes.get(s);};
  class FakeImage{
   constructor(){this.dataset={};this.complete=false;this.naturalWidth=500;this.decodingJob=deferred();images.push(this);}
   addEventListener(name,handler){this.listeners ||= {}; (this.listeners[name] ||= new Set()).add(handler);}
@@ -151,13 +151,13 @@ test('panel switching retains image and caption until decode; stale and failed r
   decode(){return this.decodingJob.promise;}
   replaceWith(next){nodes.set('#panel-figure-image',next);}
  }
- const ctx={$:node,Image:FakeImage,setTimeout,clearTimeout,panelFigureRequest:0,panelFigureReady:null,backgroundFigureImages:[],imageRetryNumber:0,IMAGE_READY_TIMEOUT_MS:40,articleAsset:x=>x,figureMedia:()=>({}),setPanelFigureState:state=>{node('#figure-stage').state=state;},handlePanelVisibleLoad(){},figurePage:src=>src,inlineMarkdown:text=>text,tr:()=>'',currentFigureIndex:0,figureBlocks:[1,2,3],currentLanguage:'zh'};
- vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
- const old=node('#panel-figure-image'),a=ctx.requestPanelFigure({src:'A',text:'captionA'});images[0].emit("load");
- ctx.currentFigureIndex=1;const b=ctx.requestPanelFigure({src:'B',text:'captionB'});images[1].emit("load");
- images[0].decodingJob.resolve();assert.equal(await a,'stale');assert.equal(node('#panel-figure-image'),old);assert.equal(node('#panel-figure-caption').innerHTML,'old');
- images[1].decodingJob.resolve();assert.equal(await b,'ready');assert.equal(node('#panel-figure-image').src,'B');assert.equal(node('#panel-figure-caption').innerHTML,'captionB');assert.equal(node('#panel-figure-page').textContent,'B');
- ctx.currentFigureIndex=2;const c=ctx.requestPanelFigure({src:'C',text:'captionC'});images[2].emit("error");assert.equal(await c,'error');assert.equal(node('#panel-figure-image').src,'B');assert.equal(node('#panel-figure-caption').innerHTML,'captionB');
+ const ctx={$:node,Image:FakeImage,setTimeout,clearTimeout,panelFigureRequest:0,panelFigureReady:null,backgroundFigureImages:[],imageRetryNumber:0,IMAGE_READY_TIMEOUT_MS:40,articleAsset:x=>x,figureMedia:()=>({}),updateDragPanState:stage=>states.push(stage.dataset.imageState),figureScale:1,handlePanelVisibleLoad(){},figurePage:src=>src,inlineMarkdown:text=>text,tr:()=>'',currentFigureIndex:0,figureBlocks:[1,2,3],currentLanguage:'zh'};
+ vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function setPanelFigureState('),source.indexOf('function handlePanelVisibleLoad('))+source.slice(at,end),ctx);
+ const old=node('#panel-figure-image'),a=ctx.requestPanelFigure({src:'A',text:'captionA'});images[0].emit("load");assert.equal(node('#figure-stage').dataset.hasImage,'false');assert.equal(node('#panel-figure-status').hidden,false);
+ ctx.currentFigureIndex=1;ctx.updatePanelFigurePosition();const b=ctx.requestPanelFigure({src:'B',text:'captionB'});images[1].emit("load");
+ images[0].decodingJob.resolve();assert.equal(await a,'stale');assert.equal(node('#panel-figure-image'),old);assert.equal(node('#panel-figure-caption').innerHTML,'old');assert.equal(node('#figure-stage').dataset.imageState,'loading');assert.equal(node('.figure-panel-head .rail-kicker').textContent,'原文配图 / 02');
+ images[1].decodingJob.resolve();assert.equal(await b,'ready');assert.equal(node('#panel-figure-image').src,'B');assert.equal(node('#panel-figure-caption').innerHTML,'captionB');assert.equal(node('#panel-figure-page').textContent,'B');assert.equal(node('#figure-stage').dataset.hasImage,'true');assert.equal(node('#panel-figure-status').hidden,true);assert.equal(node('.figure-panel-head .rail-kicker').textContent,'原文配图 / 02');
+ ctx.currentFigureIndex=2;const c=ctx.requestPanelFigure({src:'C',text:'captionC'});images[2].emit("error");assert.equal(await c,'error');assert.equal(node('#panel-figure-image').src,'B');assert.equal(node('#panel-figure-caption').innerHTML,'captionB');assert.equal(node('#figure-stage').dataset.hasImage,'false');assert.equal(node('#panel-figure-status').hidden,false);
  const timeout=ctx.requestPanelFigure({src:'D',text:'captionD'});assert.equal(await timeout,'timeout');assert.equal(node('#panel-figure-image').src,'B');
  ctx.documentState={blocks:[{kind:'figure',src:'E'}]};ctx.currentFigureIndex=0;
  ctx.primeCurrentFigure();const count=images.length,first=ctx.requestPanelFigure({src:'E',text:'E-old'}),last=ctx.requestPanelFigure({src:'E',text:'E-final'});
@@ -168,6 +168,7 @@ test('panel switching retains image and caption until decode; stale and failed r
  const inline={isConnected:true,dataset:{},getAttribute:()=> 'inline-current'};ctx.backgroundFigureImages.push(inline);
  const oldCount=images.length,newPanel=ctx.requestPanelFigure({src:'inline-current',text:'inline-current'});assert.equal(images.length,oldCount+1);
  const panelCopy=images.at(-1);panelCopy.emit('load');panelCopy.decodingJob.resolve();assert.equal(await newPanel,'ready');assert.notEqual(node('#panel-figure-image'),inline);
+ const cached=new FakeImage();cached.src='cached';cached.complete=true;cached.dataset.decoded='true';ctx.backgroundFigureImages.push(cached);const before=states.length;assert.equal(await ctx.requestPanelFigure({src:'cached',text:'cached'}),'ready');assert.deepEqual(states.slice(before),['ready']);assert.equal(node('#panel-figure-image'),cached);
 
 
 });
@@ -261,7 +262,7 @@ test('unconfigured and single-column figures keep natural anchor behavior',()=>{
  const selected=[],ctx={currentFigureIndex:0,figureBlocks:[{},{},{}],restoringReadingState:false,figureAuto:true,isDesktopLayout:()=>true,readingPrepared:true,documentState:{article:{}},window:{scrollY:1400,innerHeight:600},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelectorAll:()=>[0,10,2000].map(top=>({getBoundingClientRect:()=>({top})}))},showFigure:i=>selected.push(i)};
  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);ctx.syncFigureToScroll();assert.equal(selected.at(-1),1);
  ctx.figureBlocks[0].scrollTrigger='article-end';assert.equal(ctx.articleEndFigureIndex(),-1);
- ctx.isDesktopLayout=()=>false;ctx.currentInlineFigure=()=>({dataset:{figureIndex:'2'}});ctx.currentFigureIndex=0;ctx.preloadOtherFigures=()=>{};ctx.syncFigureToScroll();assert.equal(ctx.currentFigureIndex,2);assert.equal(selected.length,1);
+ ctx.updatePanelFigurePosition=()=>{};ctx.isDesktopLayout=()=>false;ctx.currentInlineFigure=()=>({dataset:{figureIndex:'2'}});ctx.currentFigureIndex=0;ctx.preloadOtherFigures=()=>{};ctx.syncFigureToScroll();assert.equal(ctx.currentFigureIndex,2);assert.equal(selected.length,1);
 });
 
 
@@ -326,10 +327,54 @@ test('single-column adopts the already requested original instead of starting a 
  const placeholder={dataset:{src:'/current'},alt:'current original',replaceWith:image=>{replacement=image;}};
  const ctx={backgroundFigureImages:[requested],setTimeout,clearTimeout,IMAGE_READY_TIMEOUT_MS:100,decodeFigureImage:async image=>{decoded=image;},window:{ReadMedia:{load:image=>assert.equal(image,requested)}}};
  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
- assert.equal(await ctx.waitForInlineImage(placeholder),'ready');assert.equal(replacement,requested);assert.equal(decoded,requested);assert.equal(requested.alt,'current original');
+ let revealed=null;ctx.window.ReadMedia.reveal=image=>revealed=image;assert.equal(await ctx.waitForInlineImage(placeholder),'ready');assert.equal(revealed,requested);assert.equal(replacement,requested);assert.equal(decoded,requested);assert.equal(requested.alt,'current original');
  requested.isConnected=true;requested.id='panel-figure-image';let moved=false;
  const ownInline={dataset:{src:'/current'},complete:true,naturalWidth:300,getAttribute:()=>'/current',addEventListener(){},removeEventListener(){},replaceWith(){moved=true;}};
  ctx.window.ReadMedia.load=image=>assert.equal(image,ownInline);
  assert.equal(await ctx.waitForInlineImage(ownInline),'ready');assert.equal(decoded,ownInline);assert.equal(moved,false);
 
+});
+
+
+test('figure sequence labels follow the requested image immediately in desktop and single-column modes',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ const labelStart=source.indexOf('function updatePanelFigurePosition('),labelEnd=source.indexOf('function commitPanelFigure(',labelStart);
+ const showStart=source.indexOf('function showFigure('),showEnd=source.indexOf('function setFigureFillPane(',showStart);
+ for(const desktop of [true,false]){
+  const nodes=new Map();const node=key=>{if(!nodes.has(key))nodes.set(key,{querySelectorAll:()=>[],dataset:{}});return nodes.get(key);};
+  const requested=[];const ctx={$:node,currentLanguage:'zh',currentFigureIndex:0,figureBlocks:Array.from({length:5},(_,i)=>({src:String(i)})),isDesktopLayout:()=>desktop,requestPanelFigure:block=>{requested.push(block.src);return new Promise(()=>{});}};
+  vm.createContext(ctx);vm.runInContext(source.slice(labelStart,labelEnd)+source.slice(showStart,showEnd),ctx);
+  ctx.showFigure(2);assert.equal(node('.figure-panel-head .rail-kicker').textContent,'原文配图 / 03');assert.equal(node('#figure-position').textContent,'03 / 05');
+  ctx.showFigure(4);assert.equal(node('.figure-panel-head .rail-kicker').textContent,'原文配图 / 05');assert.equal(node('#figure-position').textContent,'05 / 05');assert.deepEqual(requested,desktop?['2','4']:[]);
+ }
+});
+
+
+test('loading overlays are centered in fixed viewports and no stylesheet can revive the previous panel image',()=>{
+ const root=path.join(__dirname,'..'),css=fs.readFileSync(path.join(root,'app.css'),'utf8'),media=fs.readFileSync(path.join(root,'progressive-media.css'),'utf8');
+ const status=css.match(/\.figure-image-status\{([^}]*)\}/)[1];
+ for(const rule of ['position:absolute','inset:0','align-items:center','justify-content:center'])assert(status.includes(rule));
+ assert(css.includes('.figure-stage-wrap{position:relative}'));
+ for(const state of ['loading','failed'])assert((css+media).includes(`.figure-stage[data-image-state="${state}"] #panel-figure-image`));
+ assert(!/data-has-image="true"[^}]*visibility:visible/.test(css+media));
+ assert(!css.includes('.figure-stage[data-has-image="true"] .figure-image-status'));
+ for(const file of ['index.html','public-site/read.html']){
+  const html=fs.readFileSync(path.join(root,file),'utf8');assert(html.includes('</div></div><div id="panel-figure-status"'));
+ }
+ const inline=css.match(/\.inline-figure-status\{([^}]*)\}/)[1];for(const rule of ['position:absolute','inset:0','align-items:center','justify-content:center'])assert(inline.includes(rule));
+ assert(css.includes('.source-figure .inline-figure-canvas img:not([data-decoded="true"]){visibility:hidden}'));
+ assert(css.includes('.inline-figure-viewport:has(img[data-decoded="true"]) .inline-figure-status'));
+ const exporter=fs.readFileSync(path.join(root,'export_github_pages.py'),'utf8');assert(exporter.slice(exporter.indexOf('READER_FUNCTIONS = ('),exporter.indexOf('def public_reader_script')).includes('"updatePanelFigurePosition"'));
+});
+
+test('both private and exported single-column load handlers wait for decode before revealing and report decode errors',async()=>{
+ for(const file of ['app.js','public-site/reader-prelude.js'])for(const failure of [false,true]){
+  const source=fs.readFileSync(path.join(__dirname,'..',file),'utf8'),at=source.indexOf('function blockElement('),end=source.indexOf('\nfunction renderArticle(',at);
+  let finish,revealed=0,errors=0;const handlers={};const image={addEventListener:(name,fn)=>handlers[name]=fn,dispatchEvent:event=>{assert.equal(event.type,'error');errors++;}};
+  const wrap={dataset:{},querySelector:selector=>selector.includes('img')?image:{addEventListener(){}},};
+  const pending=new Promise((resolve,reject)=>finish=failure?()=>reject(Error('decode')):resolve);
+  const block={id:'synthetic',kind:'figure',src:'synthetic.png',text:'caption'};
+  const ctx={document:{createElement:()=>wrap},figureBlocks:[block],figurePage:()=>1,currentLanguage:'zh',figureImageMarkup:()=>'<img>',tr:()=>'',inlineMarkdown:x=>x,READING_TOOLS_ENABLED:false,installDragPan(){},decodeFigureImage:()=>pending,window:{ReadMedia:{reveal(){revealed++;}}},applyInlineFigureScale(){},pendingInlinePositions:null,Event};
+  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);ctx.blockElement(block);assert(wrap.innerHTML.includes('inline-figure-viewport'));const loaded=handlers.load();assert.equal(revealed,0);finish();await loaded;assert.equal(revealed,failure?0:1);assert.equal(errors,failure?1:0);
+ }
 });

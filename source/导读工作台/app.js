@@ -154,7 +154,7 @@ function blockElement(block, metadata=false) {
       const number = Number(wrap.dataset.figureIndex) + 1;
       const label = currentLanguage === "zh" ? `原图 ${number}` : `Source figure ${number}`;
       const fit = currentLanguage === "zh" ? "适应" : "Fit";
-      content = `<figure class="source-figure"><div class="inline-figure-stage progressive-media" tabindex="0" aria-label="${label}，放大后可双向滚动"><div class="inline-figure-canvas">${figureImageMarkup(block, `${tr("source")}${page}${tr("page")}`)}</div></div><div class="inline-figure-toolbar" role="group" aria-label="${label}缩放"><button type="button" class="inline-zoom-out" aria-label="${label}缩小">−</button><button type="button" class="inline-zoom-in" aria-label="${label}放大">＋</button><button type="button" class="inline-zoom-fit" aria-label="${label}适应">${fit}</button></div><figcaption class="figure-caption"><span class="figure-label">${tr("source")}${page}${tr("page")}</span><p>${inlineMarkdown(block.text)}</p></figcaption><div class="figure-source">${tr("figureNote")}</div></figure>`;
+      content = `<figure class="source-figure"><div class="inline-figure-viewport"><div class="inline-figure-stage progressive-media" tabindex="0" aria-label="${label}，放大后可双向滚动"><div class="inline-figure-canvas">${figureImageMarkup(block, `${tr("source")}${page}${tr("page")}`)}</div></div><div class="inline-figure-status" role="status">正在载入当前原图…</div></div><div class="inline-figure-toolbar" role="group" aria-label="${label}缩放"><button type="button" class="inline-zoom-out" aria-label="${label}缩小">−</button><button type="button" class="inline-zoom-in" aria-label="${label}放大">＋</button><button type="button" class="inline-zoom-fit" aria-label="${label}适应">${fit}</button></div><figcaption class="figure-caption"><span class="figure-label">${tr("source")}${page}${tr("page")}</span><p>${inlineMarkdown(block.text)}</p></figcaption><div class="figure-source">${tr("figureNote")}</div></figure>`;
       break;
     }
     default: content = `<p>${inlineMarkdown(block.text)}</p>`;
@@ -172,7 +172,8 @@ function blockElement(block, metadata=false) {
   if (block.kind === "figure") {
     installDragPan(wrap.querySelector(".inline-figure-stage"));
     const image = wrap.querySelector(".inline-figure-canvas img");
-    image.addEventListener("load", () => {
+    image.addEventListener("load", async () => {
+      try {await decodeFigureImage(image);} catch {image.dispatchEvent(new Event("error")); return;}
       window.ReadMedia?.reveal(image);
       applyInlineFigureScale(wrap, false);
       const position = pendingInlinePositions?.[wrap.dataset.blockId];
@@ -400,8 +401,9 @@ function setPanelFigureState(state) {
   stage.dataset.imageState = state;
   updateDragPanState(stage);
   status.hidden = state === "ready";
-  stage.dataset.hasImage = String(Boolean($("#panel-figure-image").naturalWidth));
-  $("#panel-figure-status-message").textContent = state === "failed" ? (stage.dataset.hasImage === "true" ? "新图片暂时无法载入；已保留上一张，可重试" : "当前原图暂时无法载入，可重试") : "正在载入当前原图…";
+  stage.dataset.hasImage = String(state === "ready" && Boolean($("#panel-figure-image").naturalWidth));
+  stage.setAttribute("aria-busy", String(state === "loading"));
+  $("#panel-figure-status-message").textContent = state === "failed" ? "当前原图暂时无法载入，可重试" : "正在载入当前原图…";
   $("#panel-figure-retry").hidden = state !== "failed";
   $("#figure-zoom-out").disabled = state !== "ready" || figureScale <= 1;
   $("#figure-detail-zoom").disabled = state !== "ready" || figureScale >= 5;
@@ -454,10 +456,16 @@ function primeCurrentFigure() {
   image.src = url;
 }
 
+function updatePanelFigurePosition() {
+  const number = String(currentFigureIndex + 1).padStart(2, "0");
+  $(".figure-panel-head .rail-kicker").textContent = currentLanguage === "zh" ? `原文配图 / ${number}` : `SOURCE FIGURES / ${number}`;
+  $("#figure-position").textContent = `${number} / ${String(figureBlocks.length).padStart(2, "0")}`;
+}
+
 function commitPanelFigure(block) {
   const page = figurePage(block.src);
   $("#panel-figure-image").alt = `${tr("source")}${page}${tr("page")}`;
-  $("#figure-position").textContent = `${String(currentFigureIndex + 1).padStart(2,"0")} / ${String(figureBlocks.length).padStart(2,"0")}`;
+  updatePanelFigurePosition();
   $("#panel-figure-page").textContent = `${tr("source")}${page}${tr("page")}`;
   $("#panel-figure-caption").innerHTML = inlineMarkdown(block.text);
   $("#panel-figure-note").textContent = currentLanguage === "zh" ? "原论文裁图 · 栏内查看" : "Original paper crop";
@@ -468,7 +476,8 @@ function requestPanelFigure(block, retry=false) {
   const base = articleAsset(block.src);
   const url = retry ? `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}` : base;
   const warm = backgroundFigureImages.find(item => item.getAttribute("src") === url && (!item.isConnected || item.id === "panel-figure-image"));
-  setPanelFigureState("loading");
+  const cachedReady = Boolean(warm?.complete && warm.naturalWidth && warm.dataset.decoded === "true");
+  if (!cachedReady) setPanelFigureState("loading");
   panelFigureReady = new Promise(resolve => {
     const candidate = warm || new Image();
     const media = figureMedia(block);
@@ -497,6 +506,7 @@ function requestPanelFigure(block, retry=false) {
     const timer = setTimeout(() => finish("timeout"), IMAGE_READY_TIMEOUT_MS);
     const failed = () => finish("error");
     candidate.addEventListener("load", loaded); candidate.addEventListener("error", failed);
+    if (cachedReady) {finish("ready"); return;}
     if (!warm) {candidate.dataset.figureSource = block.src; backgroundFigureImages.push(candidate); candidate.src = url;}
     if (candidate.complete) candidate.naturalWidth ? loaded() : failed();
   });
@@ -513,6 +523,7 @@ function showFigure(index, force=false) {
   if (!force && nextIndex === currentFigureIndex) return;
   currentFigureIndex = nextIndex;
   const block = figureBlocks[currentFigureIndex];
+  updatePanelFigurePosition();
   if (isDesktopLayout()) requestPanelFigure(block).then(result => {if (result === "ready" && readingPrepared) preloadOtherFigures();});
   $("#figure-prev").disabled = currentFigureIndex === 0;
   $("#figure-next").disabled = currentFigureIndex === figureBlocks.length - 1;
@@ -757,7 +768,7 @@ function syncFigureToScroll(force=false) {
     if (!readingPrepared) return;
     const wrap = currentInlineFigure();
     const index = Number(wrap?.dataset.figureIndex);
-    if (Number.isInteger(index) && index !== currentFigureIndex) {currentFigureIndex = index; preloadOtherFigures();}
+    if (Number.isInteger(index) && index !== currentFigureIndex) {currentFigureIndex = index; updatePanelFigurePosition(); preloadOtherFigures();}
     return;
   }
   if (!figureAuto) return;
@@ -961,7 +972,7 @@ function updateLanguageChrome() {
   $("#figure-detail-zoom").setAttribute("aria-label", zh ? "放大图片" : "Zoom in on figure");
   $("#figure-fit").textContent = zh ? "适应" : "Fit";
   $(".figure-scale-controls").setAttribute("aria-label", zh ? "图片缩放" : "Figure zoom");
-  $(".figure-panel-head .rail-kicker").textContent = zh ? `原文配图 / ${number}` : `SOURCE FIGURES / ${number}`;
+  updatePanelFigurePosition();
   $("#figure-list").setAttribute("aria-label", zh ? "选择原文配图" : "Choose source figure");
   setFigureAuto(figureAuto);
   setFigureFillPane(figureFillPane);
@@ -1223,7 +1234,7 @@ function waitForInlineImage(image) {
       image.removeEventListener("load", loaded); image.removeEventListener("error", failed);
       resolve(result);
     };
-    const loaded = async () => {try {await decodeFigureImage(image); finish("ready");} catch {finish("error");}};
+    const loaded = async () => {try {await decodeFigureImage(image); window.ReadMedia?.reveal?.(image); finish("ready");} catch {finish("error");}};
     const failed = () => finish("error");
     const timer = setTimeout(() => finish("timeout"), IMAGE_READY_TIMEOUT_MS);
     image.addEventListener("load", loaded); image.addEventListener("error", failed);

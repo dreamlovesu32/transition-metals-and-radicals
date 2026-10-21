@@ -127,7 +127,7 @@ function blockElement(block) {
       const page = figurePage(block.src);
       const number = Number(wrap.dataset.figureIndex) + 1;
       const label = `原图 ${number}`;
-      content = `<figure class="source-figure"><div class="inline-figure-stage progressive-media" tabindex="0" aria-label="${label}，放大后可双向滚动"><div class="inline-figure-canvas">${figureImageMarkup(block, `${tr("source")}${page}${tr("page")}`)}</div></div><div class="inline-figure-toolbar" role="group" aria-label="${label}缩放"><button type="button" class="inline-zoom-out" aria-label="${label}缩小">−</button><button type="button" class="inline-zoom-in" aria-label="${label}放大">＋</button><button type="button" class="inline-zoom-fit" aria-label="${label}适应">适应</button></div><figcaption class="figure-caption"><span class="figure-label">${tr("source")}${page}${tr("page")}</span><p>${inlineMarkdown(block.text)}</p></figcaption><div class="figure-source">${tr("figureNote")}</div></figure>`;
+      content = `<figure class="source-figure"><div class="inline-figure-viewport"><div class="inline-figure-stage progressive-media" tabindex="0" aria-label="${label}，放大后可双向滚动"><div class="inline-figure-canvas">${figureImageMarkup(block, `${tr("source")}${page}${tr("page")}`)}</div></div><div class="inline-figure-status" role="status">正在载入当前原图…</div></div><div class="inline-figure-toolbar" role="group" aria-label="${label}缩放"><button type="button" class="inline-zoom-out" aria-label="${label}缩小">−</button><button type="button" class="inline-zoom-in" aria-label="${label}放大">＋</button><button type="button" class="inline-zoom-fit" aria-label="${label}适应">适应</button></div><figcaption class="figure-caption"><span class="figure-label">${tr("source")}${page}${tr("page")}</span><p>${inlineMarkdown(block.text)}</p></figcaption><div class="figure-source">${tr("figureNote")}</div></figure>`;
       break;
     }
     default: content = `<p>${inlineMarkdown(block.text)}</p>`;
@@ -136,7 +136,8 @@ function blockElement(block) {
   if (block.kind === "figure") {
     installDragPan(wrap.querySelector(".inline-figure-stage"));
     const image = wrap.querySelector(".inline-figure-canvas img");
-    image.addEventListener("load", () => {
+    image.addEventListener("load", async () => {
+      try {await decodeFigureImage(image);} catch {image.dispatchEvent(new Event("error")); return;}
       window.ReadMedia?.reveal(image);
       applyInlineFigureScale(wrap, false);
       const position = pendingInlinePositions?.[wrap.dataset.blockId];
@@ -198,7 +199,7 @@ function updateReadingChrome() {
   document.title = `${documentState.article.title.zh} · 文献导读`;
   $(".eyebrow").innerHTML = `<span class="eyebrow-line"></span> ${documentState.article.kind === "review" ? "综述" : "研究论文"} <span class="separator">/</span> 导读`;
   $(".top-link").href = documentState.article.sourceUrl;
-  $(".figure-panel-head .rail-kicker").textContent = `原文配图 / ${documentState.article.displayNumber}`;
+  updatePanelFigurePosition();
   $("#figure-stage").removeAttribute("title");
   $(".figure-scale-controls").removeAttribute("title");
   setFigureAuto(figureAuto);

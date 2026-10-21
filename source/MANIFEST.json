@@ -355,14 +355,14 @@
     },
     {
       "path": "导读工作台/app.css",
-      "bytes": 46405,
-      "sha256": "f0c8c5b687df1e91fa4f225123a9a51a3fa9b52397c8de6c305ac3358ecba8e8",
+      "bytes": 47001,
+      "sha256": "695d525a222a42c9da5f041337b5a69c6f7b8272dc974339945a08d71ae32b77",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/app.js",
-      "bytes": 78460,
-      "sha256": "1b122ad8af0c730b95e7bd9dc61e1afb29509f73332fa1b5267dcb1b00cb78ac",
+      "bytes": 79089,
+      "sha256": "57894d9dc1aea94e70c980ad340861c19c1d42cc7ae41f064923944172dddc09",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -403,14 +403,14 @@
     },
     {
       "path": "导读工作台/export_github_pages.py",
-      "bytes": 17983,
-      "sha256": "ba87a8efbf9311bae3319219685916f89dfad4338e103933986d2cb3994bae8b",
+      "bytes": 18012,
+      "sha256": "1cf3b9282c921add186b6167dcdd5ad09132e3c8f80b570917d8454059add8aa",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/index.html",
       "bytes": 9099,
-      "sha256": "f7bc2cdb420f32b7e72d474dc92b1b4e7ea3a989ad1867cfcfa8fb093d9fbab0",
+      "sha256": "394b0ab6c5296b8827d91ccfe5f2fa4a06d799e3a0796a610b26c903484bb7db",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -535,8 +535,8 @@
     },
     {
       "path": "导读工作台/progressive-media.css",
-      "bytes": 3197,
-      "sha256": "272d8ecfec03d418b52188fd067c476c8abdad41320ece6b9ed5eff97fa1c814",
+      "bytes": 3160,
+      "sha256": "e6f98675de20bdd4bf49683f745a96703c849cb50fdf6adf2d6b678bee541aa0",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -554,7 +554,7 @@
     {
       "path": "导读工作台/public-site/read.html",
       "bytes": 6275,
-      "sha256": "995cbcdff66a6592fb926e3613eb2204157d609feda5ecc40f0e282ddf2b2e8b",
+      "sha256": "9b16496788a62a0a02733734b8f365129155630d176694ace1b701abec7b0d40",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -565,8 +565,8 @@
     },
     {
       "path": "导读工作台/public-site/reader-prelude.js",
-      "bytes": 10736,
-      "sha256": "5e1b42ff25cd3300b6f0a7f6bf030f8f552e0194dfdbab921df6e98f62ae0664",
+      "bytes": 10887,
+      "sha256": "f1170b292560aa3a774ab46542ec4cdfa502285e790ee305c0526bed7d9e7962",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -619,8 +619,8 @@
     },
     {
       "path": "导读工作台/tests/loading-performance.test.cjs",
-      "bytes": 36115,
-      "sha256": "05e3afda2022a62004b6cf99ebde33dcd8a05b9867eeb6a76eae37c53cb3d397",
+      "bytes": 41972,
+      "sha256": "64025a0d3e8bff1a1e8164b25de3f55cb072f2e3b6bb8688b3ffcf694f70f1c6",
       "origin": "byte-for-byte source copy"
     },
     {

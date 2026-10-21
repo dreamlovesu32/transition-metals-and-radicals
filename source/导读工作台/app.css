@@ -318,6 +318,7 @@ body.reader-preparing .layout{visibility:hidden;pointer-events:none}
 .reading-preparation-actions a:hover,.reading-preparation-actions button:hover{background:#eaf3fc}
 .reading-preparation-actions a:focus-visible,.reading-preparation-actions button:focus-visible{outline:2px solid #638bb5;outline-offset:2px}
 .figure-stage{position:relative}
+.figure-stage-wrap{position:relative}
 .figure-stage[data-image-state="loading"] #panel-figure-image,.figure-stage[data-image-state="failed"] #panel-figure-image{visibility:hidden}
 .figure-image-status{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:1;background:#fbfdff;color:#49657d;font:600 13px Arial,sans-serif;text-align:center;padding:20px}
 .figure-image-status[hidden],.figure-image-status button[hidden]{display:none}
@@ -331,11 +332,18 @@ body.reader-preparing .layout{visibility:hidden;pointer-events:none}
 .reading-preparation-mark{font:700 38px Georgia,serif;color:#0f2a49}.reading-preparation-card p{margin:13px 0 18px;color:#263847;font:600 16px/1.5 Arial,sans-serif}
 .reading-preparation-actions{flex-basis:100%;gap:8px;pointer-events:auto;flex-wrap:wrap}.reading-preparation-actions:has(button:not([hidden])){margin-top:3px}.reading-preparation-actions a{display:none}
 .reading-preparation-actions button{padding:8px 12px;min-height:44px}
-.figure-stage[data-has-image="true"] #panel-figure-image{visibility:visible}
-.figure-stage[data-has-image="true"] .figure-image-status{inset:auto 12px 12px;max-width:calc(100% - 24px);padding:8px 12px;gap:8px;border:1px solid #e2e5e7;border-radius:8px;background:#faf9f5f2;font-size:12px;flex-direction:row;flex-wrap:wrap}
 @media(max-width:700px){.reading-preparation{padding:16px}.reading-preparation-card{padding:32px;max-width:100%}}
 
 .reader-resume-progress{flex:none;min-height:44px;padding:8px 10px;border:1px solid #dbe5ed;border-radius:7px;background:#faf9f5;color:#42617a;font:inherit;font-size:12px;line-height:1.3;cursor:pointer}.reader-resume-progress:focus-visible{outline:2px solid #638bb5;outline-offset:2px}
 
 /* Chinese prose has no synthetic Han/Latin or Han/number spacing. */
 html[lang="zh-CN"] #article,html[lang="zh-CN"] .figure-panel-meta{text-autospace:no-autospace}
+
+/* These messages belong to the fixed viewport, never the scrolling/zooming canvas. */
+.inline-figure-viewport{position:relative}
+.inline-figure-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;background:#fbfdff;color:#49657d;font:600 13px Arial,sans-serif;text-align:center;pointer-events:none}
+.inline-figure-viewport:has(img[data-decoded="true"]) .inline-figure-status,.inline-figure-viewport:has(.media-failed) .inline-figure-status{display:none}
+.source-figure .inline-figure-canvas img:not([data-decoded="true"]){visibility:hidden}
+.inline-figure-viewport .media-error{inset:0;padding:20px;flex-direction:column;background:#fbfdff}
+
+.figure-stage-wrap:has(.figure-stage[data-image-state="loading"])+.figure-panel-meta,.figure-stage-wrap:has(.figure-stage[data-image-state="failed"])+.figure-panel-meta{visibility:hidden}

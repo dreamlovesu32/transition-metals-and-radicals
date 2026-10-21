@@ -21,7 +21,7 @@ EXPORT_MARKER = ".nojekyll"
 READER_FUNCTIONS = (
     "inlineFigureScale", "applyInlineFigureScale", "updateDragPanState", "installDragPan", "setInlineFigureScale",
     "applyAllInlineFigureScales", "setPanelFigureState", "handlePanelVisibleLoad", "requestPanelFigure",
-    "decodeFigureImage", "primeCurrentFigure", "commitPanelFigure", "retryPanelFigure", "showFigure", "setFigureFillPane",
+    "decodeFigureImage", "primeCurrentFigure", "updatePanelFigurePosition", "commitPanelFigure", "retryPanelFigure", "showFigure", "setFigureFillPane",
     "applyFigureScale", "setFigureScale", "wheelDeltaPixels", "handleFigureWheel",
     "schedulePaneFigureFit", "applyPaneRatio", "paneRatioAt", "endPaneDrag",
     "handlePaneKey", "setFigureAuto", "chooseFigure", "renderFigurePanel",
