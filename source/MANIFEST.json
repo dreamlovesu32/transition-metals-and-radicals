@@ -595,8 +595,8 @@
     },
     {
       "path": "导读工作台/reader-core.js",
-      "bytes": 59271,
-      "sha256": "0df56870860d0ae2470f57ba062fab5199cab9a1c105adc1eedb9afc17454f34",
+      "bytes": 61008,
+      "sha256": "532b9fc424f643b96e17e26ea22656298687b5178f867666dd5e1150e551ecce",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -703,8 +703,14 @@
     },
     {
       "path": "导读工作台/tests/reading-resume-sync.test.cjs",
-      "bytes": 13408,
-      "sha256": "6e358753c32f2124c51c80aa87c06dc5a85682a5ae5c1f649d962fad456b818d",
+      "bytes": 12721,
+      "sha256": "6c010521152587d42e420aea74530c8cce7a5cb0c86278ddf1ef56bb2a023091",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/section-resume.test.cjs",
+      "bytes": 12294,
+      "sha256": "65c27b11dea8a82c8a284ad3036992685feb3daea847d4b8eadb9532a1ab0c8f",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -769,8 +775,8 @@
     },
     {
       "path": "工具/同步网站源码.py",
-      "bytes": 17500,
-      "sha256": "2eaf516181054fb297394d277222585114504857f5a65327fd8f2c9d66a4241d",
+      "bytes": 17533,
+      "sha256": "1a08fe82f868e86daee1855cff0d64d681c9a3753f922f8dfd40bcf2bbf1fcea",
       "origin": "byte-for-byte source copy"
     },
     {

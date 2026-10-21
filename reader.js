@@ -927,8 +927,8 @@ function sameReadingIdentity(owner) {
   const now=readingIdentity();return owner.document===now.document&&owner.hash===now.hash&&owner.uid===now.uid&&owner.epoch===now.epoch;
 }
 
-function readingKey() {
-  return `${window.ReadMembers?.state.user?.id || "guest"}:reading-desk:v2:${reviewMode ? "review:" : ""}${articleId()}:${documentState.version_hash}:${readingMode()}`;
+function readingKey(mode=readingMode()) {
+  return `${window.ReadMembers?.state.user?.id || "guest"}:reading-desk:v2:${reviewMode ? "review:" : ""}${articleId()}:${documentState.version_hash}:${mode}`;
 }
 
 function clearReadingActivity() {
@@ -954,8 +954,10 @@ function restoreScrollFraction(element, axis, fraction) {
 function readingAnchor() {
   const blocks = [...document.querySelectorAll("#article .block[data-block-id]:not([data-figure-index])")];
   let anchor = blocks[0];
+  const line=readingSectionInset()+2;
   for (const block of blocks) {
-    if (block.getBoundingClientRect().top > 120) break;
+    const marker=block.querySelector("h2,h3,h4")||block;
+    if (marker.getBoundingClientRect().top > line) break;
     anchor = block;
   }
   const top = anchor ? anchor.getBoundingClientRect().top + window.scrollY : 0;
@@ -973,7 +975,7 @@ function captureReadingState() {
       x:scrollFraction(viewport,"x"), y:scrollFraction(viewport,"y")};
   });
   return {version:1, article:articleId(), documentVersion:documentState.version_hash, savedAt:Date.now(), mode:readingMode(),
-    scroll:readingAnchor(), paneRatio,
+    scroll:readingAnchor(), sectionId:readingSectionId(), paneRatio,
     figure:{index:currentFigureIndex, auto:figureAuto, fill:figureFillPane,
       scale:figureScale, x:scrollFraction(stage,"x"), y:scrollFraction(stage,"y")},
     inline};
@@ -1003,10 +1005,10 @@ function scheduleReadingSave() {
   readingSaveTimer=setTimeout(()=>{if(sameReadingIdentity(owner))saveReadingState();},180);
 }
 
-function storedReadingState() {
+function storedReadingState(mode=readingMode()) {
   try {
-    const state=JSON.parse(localStorage.getItem(readingKey()));
-    return state?.version===1&&state.article===articleId()&&state.documentVersion===documentState.version_hash&&state.mode===readingMode()?state:null;
+    const state=JSON.parse(localStorage.getItem(readingKey(mode)));
+    return state?.version===1&&state.article===articleId()&&state.documentVersion===documentState.version_hash&&state.mode===mode?state:null;
   } catch(error) {return null;}
 }
 
@@ -1254,18 +1256,65 @@ async function finishReadingPreparation(retry=false, textOnly=false) {
   preloadOtherFigures();
 }
 
-function resumeTarget(record) {
+// Resume uses stable section IDs; exact paragraph offsets remain layout-only.
+function readingSectionInset() {
+  const bottoms=[".topbar",".reader-toolbar"].map(selector=>document.querySelector(selector)?.getBoundingClientRect().bottom || 0);
+  return Math.max(0,...bottoms.filter(Number.isFinite))+16;
+}
+
+function sectionHeading(id) {
+  const block=documentState.blocks.find(item=>item.id===id&&item.kind==="heading");
+  if(!block)return null;
+  const wrap=[...document.querySelectorAll("#article .block[data-block-id]")].find(node=>node.dataset.blockId===id);
+  const node=wrap?.querySelector("h2,h3,h4");
+  return node?{block,node}:null;
+}
+
+function readingSectionId() {
+  let id=null;
+  const line=readingSectionInset()+2;
+  for(const block of documentState.blocks.filter(item=>item.kind==="heading")){
+    const heading=sectionHeading(block.id);
+    if(heading&&heading.node.getBoundingClientRect().top<=line)id=block.id;
+  }
+  return id;
+}
+
+function resumeHeading(record) {
   if(record?.version!==1 || record.article!==articleId() || record.documentVersion!==documentState.version_hash)return null;
-  const block=[...document.querySelectorAll("#article .block[data-block-id]")].find(node=>node.dataset.blockId===record.scroll?.blockId);
-  if(!block || !Number.isFinite(record.scroll?.offset))return null;
+  // Explicitly saved IDs never fall back to a different heading if removed.
+  if(Object.hasOwn(record,"sectionId"))return typeof record.sectionId==="string"?sectionHeading(record.sectionId):null;
+  const index=documentState.blocks.findIndex(block=>block.id===record.scroll?.blockId);
+  if(index<0)return null;
+  const heading=documentState.blocks.slice(0,index+1).reverse().find(block=>block.kind==="heading");
+  return heading?sectionHeading(heading.id):null;
+}
+
+function storedResumeState(previous=saveReadingState.previous) {
+  const records=["desktop","single"].map(mode=>previous?.has(readingKey(mode))?previous.get(readingKey(mode)):storedReadingState(mode)).filter(Boolean);
+  records.sort((a,b)=>(Number(b.savedAt)||0)-(Number(a.savedAt)||0));
+  return records[0]||null;
+}
+
+function resumeTarget(record) {
+  const heading=resumeHeading(record);if(!heading)return null;
   const max=Math.max(0,document.documentElement.scrollHeight-innerHeight);
-  return Math.max(0,Math.min(max,record.scroll.atBottom?max:block.getBoundingClientRect().top+window.scrollY+record.scroll.offset));
+  return Math.max(0,Math.min(max,heading.node.getBoundingClientRect().top+window.scrollY-readingSectionInset()));
 }
 
 function resumeChapter(record) {
-  const index=documentState.blocks.findIndex(block=>block.id===record.scroll?.blockId);
-  const heading=documentState.blocks.slice(0,index+1).reverse().find(block=>block.kind==="heading");
-  return (heading?.text||"正文").replace(/[*`]/g,"");
+  return (resumeHeading(record)?.block.text||"").replace(/[*`]/g,"");
+}
+
+function restoreResumeSection(record) {
+  const target=resumeTarget(record);if(target===null)return false;
+  readingBottomIntent=false;
+  // An explicit section jump recalibrates the existing reading plan, even when
+  // the previous manual figure choice paused following. Keep that pause afterward.
+  const following=figureAuto;figureAuto=true;
+  try{beginFigureJump(target);window.scrollTo({top:target,behavior:"instant"});syncFigureToScroll(true);}
+  finally{figureAuto=following;}
+  return true;
 }
 
 async function resumeRemoteProgress() {
@@ -1276,22 +1325,18 @@ async function resumeRemoteProgress() {
   const owner=readingIdentity();
   const current=()=>sameReadingIdentity(owner)&&!window.ReadMembers.state.expired;
   const key=readingKey(),previous=saveReadingState.previous;
-  let candidate=previous?.has(key)?previous.get(key):storedReadingState(),offered="";
+  let candidate=storedResumeState(previous),offered="";
   const far=record=>{const target=resumeTarget(record);return target!==null&&Math.abs(target-window.scrollY)>Math.max(160,innerHeight*.35);};
   const offer=record=>{
     if(!current()||!far(record))return;
-    const signature=JSON.stringify([record.scroll,record.documentVersion]);if(signature===offered)return;
+    const signature=JSON.stringify([record.sectionId,record.scroll,record.documentVersion]);if(signature===offered)return;
     candidate=record;offered=signature;
     window.ReadChrome?.offerResume?.({key,caption:`上次读到「${resumeChapter(record)}」`,label:resumeChapter(record),onResume:()=>{
       if(!current()||!far(record)){window.ReadChrome?.clearResume?.();return;}
-      saveReadingState.progressed=true;readingBottomIntent=record.scroll.atBottom===true;
-      // Move immediately on the explicit click. Image/decode completion never moves text later.
-      restoreArticleScroll(record);
-      if(isDesktopLayout()){
-        if(figureAuto)syncFigureToScroll(true);
-        else showFigure(Math.min(figureBlocks.length-1,Math.max(0,Number(record.figure?.index)||0)),true);
-      }else{
-        syncFigureToScroll(true);const wrap=currentInlineFigure(),image=wrap?.querySelector(".inline-figure-canvas img");
+      if(!restoreResumeSection(record))return;
+      saveReadingState.progressed=true;
+      if(!isDesktopLayout()){
+        const wrap=currentInlineFigure(),image=wrap?.querySelector(".inline-figure-canvas img");
         void waitForInlineImage(image).then(()=>{if(current()&&wrap?.isConnected)applyInlineFigureScale(wrap,false);});
       }
       window.ReadChrome?.clearResume?.();scheduleReadingSave();preloadOtherFigures();
@@ -1301,7 +1346,7 @@ async function resumeRemoteProgress() {
   document.addEventListener("read-members-expired",clearReadingActivity,{once:true});
   offer(candidate);
   if(reviewMode)return;
-  const remote=await window.ReadMembers.loadProgress(articleId(),documentState.version_hash,candidate,readingMode(),()=>storedReadingState());
+  const remote=await window.ReadMembers.loadProgress(articleId(),documentState.version_hash,candidate,readingMode(),()=>storedResumeState(null));
   if(current())offer(remote);
 }
 
