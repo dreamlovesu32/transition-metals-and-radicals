@@ -111,13 +111,27 @@ function startCatalog({refresh=false}={}) {
 window.addEventListener?.('online',()=>{if(catalogReadFailed)void startCatalog({refresh:true});});
 window.addEventListener?.('focus',()=>{if(catalogReadFailed)void startCatalog({refresh:true});});
 
+function catalogSortValue(article, mode) {
+  if (mode !== "published") {
+    const value = Date.parse(article.updatedAt);
+    return Number.isFinite(value) ? value : null;
+  }
+  const value = article.firstPublishedOn;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value ? parsed : null;
+}
+
 function sortedArticles(kind) {
   const mode = $("#catalog-sort").value;
-  const key = article => mode === "published" ? article.firstPublishedOn : Date.parse(article.updatedAt);
   return catalogArticles.filter(article => article.kind === kind).sort((a,b) => {
-    const left = key(a), right = key(b);
-    if (left !== right) return left < right ? 1 : -1;
-    return b.readingId.localeCompare(a.readingId);
+    const left = catalogSortValue(a, mode), right = catalogSortValue(b, mode);
+    if (left !== right) {
+      if (left === null) return 1;
+      if (right === null) return -1;
+      return right - left;
+    }
+    return String(b.readingId || b.id).localeCompare(String(a.readingId || a.id));
   });
 }
 

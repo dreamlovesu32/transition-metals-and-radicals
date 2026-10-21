@@ -188,6 +188,8 @@ def prepare_derived_workbench(workbench, article_ids, explicit_public_ids=(), st
             metadata={key:article[key] for key in ('id','readingId','displayNumber','title','doi','sourceUrl','journal','published','firstPublishedOn','kind','scrollThreshold')}
             metadata['reviewStatus']=article.get('reviewStatus','existing-public-baseline')
             metadata['figures']=article['figures']
+            if 'reading' in article:
+                metadata['reading']=article['reading']
             digest_payload=json.dumps({'metadata':metadata,'blocks':blocks},ensure_ascii=False,sort_keys=True,separators=(',',':'))
             bundles.append({'digest_payload':digest_payload,'id':aid,'title':article['title']['zh'],'body':body,
                 'assets':assets,'review_version_hash':review_hash,

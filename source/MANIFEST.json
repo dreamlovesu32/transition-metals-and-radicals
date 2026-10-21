@@ -91,8 +91,8 @@
     },
     {
       "path": "会员服务/member_service/cloud_trusted.py",
-      "bytes": 12065,
-      "sha256": "8a9861f777966eb82ee6d318c7b5d38654ae31d7ad1c04e2b656cb0f418574e3",
+      "bytes": 12157,
+      "sha256": "951b65656504f1d05d1da924c33bcc5efbef98d6a926eba4e42997cd3d6e97ee",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -217,8 +217,8 @@
     },
     {
       "path": "会员服务/sql/publish_operations.sql",
-      "bytes": 7892,
-      "sha256": "fac1df12ac64a01cc0da2feab3253b80446f4c3ec5867b426424c94ba972e336",
+      "bytes": 8025,
+      "sha256": "faa9ef4ce537ea852f58b752ea54f33c0e88a422fd049deaa53607dd778a86ac",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -403,8 +403,8 @@
     },
     {
       "path": "导读工作台/catalog.js",
-      "bytes": 10478,
-      "sha256": "6e08ad3c756b06e9c10ded477d6c4fc8a33f750264a395a4bd3251e7b9cd24d9",
+      "bytes": 10981,
+      "sha256": "ae732fe448cd2fb59737377e1a35e4d08cc202759e69004819877ea0a3416d66",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -654,6 +654,12 @@
       "origin": "byte-for-byte source copy"
     },
     {
+      "path": "导读工作台/tests/catalog-sort-ae71.test.cjs",
+      "bytes": 2623,
+      "sha256": "ca24a12f8dd0f1361262f976a0213cb9cfa90317f6ece735d4014b2a68d0e40a",
+      "origin": "byte-for-byte source copy"
+    },
+    {
       "path": "导读工作台/tests/chemical-inline-export.test.cjs",
       "bytes": 7719,
       "sha256": "4a22432a71a9fc986683cbb17f245cf5618c38a86b3b94c2258d73e53567c529",
@@ -799,8 +805,8 @@
     },
     {
       "path": "工具/同步网站源码.py",
-      "bytes": 17659,
-      "sha256": "4e6d7625a7f28b4e667bb85903a79be554ed566ebe4e60d33153247137164e26",
+      "bytes": 17694,
+      "sha256": "5d845b1707c95db97a70522512a66704c030484027483e1e8ad18db1541556a6",
       "origin": "byte-for-byte source copy"
     },
     {

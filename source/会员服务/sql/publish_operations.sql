@@ -34,7 +34,7 @@ BEGIN
   RETURN jsonb_build_object('error','invalid_publication'); END IF;
  -- Only the known public metadata, public blocks, raster mapping and content hash.
  SELECT jsonb_object_agg(key,value) INTO clean FROM jsonb_each(b->'article') WHERE key IN
- ('id','readingId','displayNumber','title','sourceUrl','journal','published','kind','doi','figurePages','scrollThreshold','firstPublishedOn','updatedAt');
+ ('id','readingId','displayNumber','title','sourceUrl','journal','published','kind','doi','figurePages','scrollThreshold','firstPublishedOn','updatedAt','reading');
  IF EXISTS(SELECT 1 FROM jsonb_array_elements(b->'blocks') x WHERE
   x->>'kind' IS NULL OR x->>'kind' NOT IN ('title','heading','paragraph','figure','bullet','number','quote','table')
   OR jsonb_typeof(x->'text') IS DISTINCT FROM 'string'
@@ -43,7 +43,7 @@ BEGIN
  clean:=jsonb_build_object('article',clean||jsonb_build_object('reviewStatus','approved'),'blocks',(SELECT jsonb_agg(
   jsonb_build_object('id',x->'id','kind',x->'kind','text',x->'text') ||
   CASE WHEN x->>'kind'='heading' THEN jsonb_build_object('level',coalesce(x->'level','2'::jsonb))
-       WHEN x->>'kind'='figure' THEN jsonb_build_object('src',x->'src') ELSE '{}'::jsonb END)
+       WHEN x->>'kind'='figure' THEN jsonb_build_object('src',x->'src') || CASE WHEN x->>'scrollTrigger'='article-end' THEN jsonb_build_object('scrollTrigger','article-end') ELSE '{}'::jsonb END ELSE '{}'::jsonb END)
   FROM jsonb_array_elements(b->'blocks') x),'asset_map',b->'asset_map');
  IF EXISTS(SELECT 1 FROM jsonb_each_text(b->'asset_map') m WHERE NOT EXISTS(
   SELECT 1 FROM read_member_private.assets a WHERE a.draft_id=did AND a.version_hash=vh
