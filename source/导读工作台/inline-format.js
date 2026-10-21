@@ -38,6 +38,7 @@
   // Protect a ligand's literal star before interpreting Markdown delimiters.
   // The numeric entity cannot be mistaken for an emphasis delimiter.
   out=out.replace(/\bL(?:\*|∗)(?=\d|[–—,，、。；;:：)）\s]|\*\*|$)/gu,'L<sup class="chem-ligand-star" style="font-size:0.75em;line-height:0;vertical-align:super">&#42;</sup>');
+  out=out.replace(/\b(Cp|KTp|Tp)(?:\*|∗)(?=[A-Z\d]|[–—,，、。；;:：)）\]\s]|\*\*|$)/gu,'$1<sup class="chem-ligand-star" style="font-size:0.75em;line-height:0;vertical-align:super">&#42;</sup>');
   out=out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
   out=out.replace(/\*\*([^\n]+?)\*\*/g,'<strong>$1</strong>');
   // Keep a figure/table label and its number together in justified Chinese prose.

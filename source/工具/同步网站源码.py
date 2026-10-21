@@ -221,6 +221,7 @@ def allowlist():
     files.add("会员服务/private_schema_hardening.sql")
     files.add("工具/同步网站源码.py")
     files.add("工具/test_source_sync.py")
+    files.add("工具/test_review_preview.py")
     files.add("工具/构建审稿预览.py")
     return sorted(files)
 

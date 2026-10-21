@@ -18,15 +18,22 @@ from export_github_pages import public_blocks, public_reader_script, public_styl
 from media_assets import export_media, dimensions  # noqa: E402
 
 
+def preview_articles() -> list[dict]:
+    articles = load_catalog()
+    if {item["id"] for item in articles} != set(CATALOG_IDS):
+        raise RuntimeError("Unexpected review catalog")
+    # New private manifests can arrive while another article is being built.
+    # Existing states still pass the JSON/content validators in build below.
+    return [item for item in articles if item["state"]["zh"].is_file()]
+
+
 def build() -> None:
     if DEST.resolve() != Path(r"D:\Read\审稿预览").resolve():
         raise RuntimeError("Unexpected preview destination")
     stage = DEST.parent / f".review-preview-stage-{uuid.uuid4().hex[:8]}"
     stage.mkdir()
     try:
-        articles = load_catalog()
-        if {item["id"] for item in articles} != set(CATALOG_IDS):
-            raise RuntimeError("Unexpected review catalog")
+        articles = preview_articles()
         export_members(stage)
         catalog = []
         for item in articles:

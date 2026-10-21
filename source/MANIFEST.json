@@ -421,8 +421,8 @@
     },
     {
       "path": "导读工作台/inline-format.js",
-      "bytes": 3363,
-      "sha256": "2cdd7051fc55a8c0b22e99d40517c9336df89f7ce673d706c9ec3502faca939e",
+      "bytes": 3571,
+      "sha256": "60cee668f384204b2dd78777cf01f4be143747ba13d423d743b33f52c171c402",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -667,8 +667,8 @@
     },
     {
       "path": "导读工作台/tests/chemical-inline-export.test.cjs",
-      "bytes": 7719,
-      "sha256": "4a22432a71a9fc986683cbb17f245cf5618c38a86b3b94c2258d73e53567c529",
+      "bytes": 8227,
+      "sha256": "7e7e078573d3d482b90c433bdfec9d76eb11399491aae6b7841b341a0307fb22",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -852,6 +852,12 @@
       "origin": "byte-for-byte source copy"
     },
     {
+      "path": "工具/test_review_preview.py",
+      "bytes": 2064,
+      "sha256": "c5c2cb69cd6f100a31765b6bee42f66478598d7b0e04e808f4ba9a117560c97c",
+      "origin": "byte-for-byte source copy"
+    },
+    {
       "path": "工具/test_source_sync.py",
       "bytes": 4258,
       "sha256": "b63a7276fe63889554720df73ffb82e16ebe5c71da46df343b63e4379c1f3e9d",
@@ -859,14 +865,14 @@
     },
     {
       "path": "工具/同步网站源码.py",
-      "bytes": 18049,
-      "sha256": "683ce034bed372b50e5654b759132f0ab83a7a74affd60eabd562235754447bf",
+      "bytes": 18096,
+      "sha256": "0f637fb49a9ef3e91dbf5148dfd175ea44c1002a4b2dc976dc0d5c947bcb9b1a",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "工具/构建审稿预览.py",
-      "bytes": 8011,
-      "sha256": "bd781e4146b9347eae8dced26f8bf8e8d11ad5aa6993082da4a15da8428f558b",
+      "bytes": 8310,
+      "sha256": "72fc656234090e78603e9e34dd6eacdc86b6f68a03a8a791422d469fa53b3601",
       "origin": "byte-for-byte source copy"
     }
   ]
