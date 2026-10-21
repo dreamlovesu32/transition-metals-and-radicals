@@ -25,8 +25,8 @@
 .literature-result-head .literature-collapse{background:transparent;border-color:transparent;font-size:12px;padding:6px 8px}
 .literature-card textarea{width:100%;box-sizing:border-box;min-height:100px;margin-top:10px}
 .literature-lookup :focus-visible,.literature-toggle:focus-visible{outline:2px solid #467ead;outline-offset:3px}
-@media(min-width:701px) and (max-width:1000px){.literature-form{width:220px}[data-member-nav].has-literature-lookup{gap:10px}body.has-inline-literature .topbar{gap:12px}.member-header .member-brand{font-size:18px}}
-@media(max-width:700px){
+@media(min-width:851px) and (max-width:1000px){.literature-form{width:220px}[data-member-nav].has-literature-lookup{gap:10px}body.has-inline-literature .topbar{gap:12px}.member-header .member-brand{font-size:18px}}
+@media(max-width:850px){
  .literature-form{width:100%;flex-basis:100%;order:4;gap:5px}.literature-form input{height:40px;font-size:16px}
  [data-member-nav].has-literature-lookup{gap:6px}
  body.has-inline-literature .catalog-topbar,body.has-inline-literature .member-header{display:flex;flex-wrap:wrap;gap:4px 10px;height:auto;min-height:112px;padding:8px 14px}
@@ -42,4 +42,13 @@
  body.has-inline-literature #article :is(h2,h3,h4){scroll-margin-top:187px}
  .literature-lookup{right:12px;max-width:calc(100vw - 24px);padding:18px}
  .literature-candidates{grid-template-columns:minmax(0,1fr)}
+}
+
+/* Leave room for every account link, including the administrator review entry. */
+@media(max-width:380px){
+ body.has-inline-literature .topbar{height:156px;min-height:156px}
+ body.has-inline-literature{--reader-header:208px}
+ body.has-inline-literature .reader-toolbar{top:156px}
+ body.has-inline-literature .topbar .member-navigation{flex-basis:100%;justify-content:flex-end;min-height:40px}
+ body.has-inline-literature #article :is(h2,h3,h4){scroll-margin-top:231px}
 }
