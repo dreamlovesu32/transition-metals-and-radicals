@@ -1253,7 +1253,9 @@ function mountReadingTools(metadata, readerTouched) {
     if(mounting)return mounting;
     mounting=(async()=>{
       const members=window.ReadMembers||await window.ReadEnsureMembers?.();if(!members)return;
-      await members.ready;if(members.state.authStatus!=="ready"||!members.state.libraryReady)return;
+      await members.ready;
+      if(members.state.authStatus==="cached")await members.refreshAuthSession();
+      if(members.state.authStatus!=="ready"||!members.state.libraryReady)return;
       const next=readingIdentity();if(owner&&sameReadingIdentity(owner))return;
       mounted?.destroy?.();owner=next;
       const mount=reviewMode?members.mountReviewReader:members.mountReader;

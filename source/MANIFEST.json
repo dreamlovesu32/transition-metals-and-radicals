@@ -373,8 +373,8 @@
     },
     {
       "path": "导读工作台/article_config.py",
-      "bytes": 9284,
-      "sha256": "c2af964dc94749f13dfde0f13034daebfad00bed0947d329236bf027085987a8",
+      "bytes": 9929,
+      "sha256": "7ab76c7742c3e0d0426e825057602ec059ca00b6c1ed7f38b32360cec8c4b898",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -409,8 +409,8 @@
     },
     {
       "path": "导读工作台/export_github_pages.py",
-      "bytes": 15816,
-      "sha256": "3ec1310703d548ab341a5c3477aaeb7722657044f13ce3acabf3386532b2a022",
+      "bytes": 15983,
+      "sha256": "92f376bb5649a488f41012d75c7e48cda2f2152482473ea4965ecc67a503897b",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -481,8 +481,8 @@
     },
     {
       "path": "导读工作台/member-system/article-export.js",
-      "bytes": 30492,
-      "sha256": "25fa5b92ebc2bb0007c0e5f8eca06ced06647f6c1fa4aa2408adf448920f144e",
+      "bytes": 31621,
+      "sha256": "cf06e74aabf45ae15c8eaa5975ee40d24469cbd7a4e9dea4efc31a6062ce30f6",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -601,8 +601,8 @@
     },
     {
       "path": "导读工作台/reader-core.js",
-      "bytes": 65797,
-      "sha256": "3c000f06449c702141fe67aaa8b08c856f4d6314ecd0e12091ba3202b8d2bfe1",
+      "bytes": 65884,
+      "sha256": "79c6219dbb0b9b66b3a3fbad879345c59125b362e66424d979c19f4aeba000a8",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -672,6 +672,12 @@
       "origin": "byte-for-byte source copy"
     },
     {
+      "path": "导读工作台/tests/export-source-labels.test.cjs",
+      "bytes": 1826,
+      "sha256": "f9d5861f303bda4e79672aa8cb601e50f865a55b0da24181aec79220c00dfbf7",
+      "origin": "byte-for-byte source copy"
+    },
+    {
       "path": "导读工作台/tests/figure-native-touch.test.cjs",
       "bytes": 2904,
       "sha256": "72e7f4e271c560d1ae8c4880b98a726bfddd1e03d869539aa9bc97921fd46ad2",
@@ -715,8 +721,8 @@
     },
     {
       "path": "导读工作台/tests/member-loader.test.cjs",
-      "bytes": 3228,
-      "sha256": "349d1a53fe55f7ec2c0c61d4c592e7e7802a661b6f85d8afd4772950fd3c9e92",
+      "bytes": 4356,
+      "sha256": "57c8c57adb50dacc6f01af229a0a0855bcbd6d7598126ea344b6d07613a73837",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -787,8 +793,8 @@
     },
     {
       "path": "导读工作台/tests/test_article_interface.py",
-      "bytes": 6595,
-      "sha256": "cb6b8a099216f3f76a11f0202004d34a0ec0732919c51611652ca7ccac4b6be8",
+      "bytes": 7638,
+      "sha256": "ceeb0c703006d5a9188132627a221ab82df6450d0789a1aa61884ec6bb434646",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -835,8 +841,8 @@
     },
     {
       "path": "导读工作台/文章模板.md",
-      "bytes": 7103,
-      "sha256": "dda82bba321cba03d6a58bb0cb70646c724529bbeb12275e7279a444d6c3adde",
+      "bytes": 7617,
+      "sha256": "ce7be6caca042a04160a82e52f5b0aea61ad79a5d6a412812f5f242e1c129c6b",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -847,14 +853,14 @@
     },
     {
       "path": "工具/同步网站源码.py",
-      "bytes": 17979,
-      "sha256": "7649dcebb3e8d2e6f817599078cce054a5496d0110d7f260fb7262dfbbf740e6",
+      "bytes": 18018,
+      "sha256": "cae9e031b31697c3c2fba1811626d0809f228db13a2d385f4a6c59f512a45589",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "工具/构建审稿预览.py",
-      "bytes": 7820,
-      "sha256": "dc66572ee48d40aedc7541f15fbffe0f3dccf4c23e263632b8641f1e1dd5c0a9",
+      "bytes": 8011,
+      "sha256": "bd781e4146b9347eae8dced26f8bf8e8d11ad5aa6993082da4a15da8428f558b",
       "origin": "byte-for-byte source copy"
     }
   ]

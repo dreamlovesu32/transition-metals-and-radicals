@@ -135,6 +135,9 @@ def export_article(stage: Path, article: dict) -> dict:
         "scrollThreshold": article["scrollThreshold"],
         "figureMedia": export_media(stage, article),
     }
+    labels = {f"figures/{f['file']}": f["sourceLabel"] for f in article["figures"] if "sourceLabel" in f}
+    if labels:
+        public["figureSourceLabels"] = labels
     if "reading" in article:
         public["reading"] = article["reading"]
     write_text(stage / "data" / f"{article_id}.json", json.dumps({"article": public, "blocks": blocks, "version_hash": hashlib.sha256(json.dumps(blocks, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()}, ensure_ascii=False, indent=2) + "\n")

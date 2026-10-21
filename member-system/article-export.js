@@ -68,15 +68,25 @@
   });
  }
  function readingUrl(id){if(typeof id!=='string'||!/^[-\w]+$/.test(id))throw Error('文章编号无效。');return 'https://metalradical.xyz/read.html?article='+encodeURIComponent(id);}
- function figurePlan(blocks){
+ function figurePlan(blocks,sourceLabels={}){
+  const types='扩展图式|扩展图|扩展表|图式|图|表';
+  const canonical=match=>match[1]+match[2].replace(/^0+(?=\d)/,'').toUpperCase();
   return blocks.filter(b=>b.kind==='figure').map((block,index)=>{
-   const file=String(block.src||'').split('/').pop(),source=/^(figure|fig|table|scheme)[-_]?(\d+[a-z]?)(?:[-_.]|$)/i.exec(file);
-   const caption=String(block.text||'').replace(/[*`]/g,''),labelMatch=/(图式|图|表)\s*(\d+[A-Za-z]?)/.exec(caption);
-   const label=source?({figure:'图',fig:'图',table:'表',scheme:'图式'}[source[1].toLowerCase()]+source[2].toUpperCase()):labelMatch?labelMatch[1]+labelMatch[2]:'配图';
+   const file=String(block.src||'').split('/').pop(),legacy=/^(figure|fig|table|scheme)[-_]?(\d+[a-z]?)(?:[-_.]|$)/i.exec(file);
+   const caption=String(block.text||'').replace(/[*`]/g,''),labelMatch=new RegExp('('+types+')\\s*(\\d+[A-Za-z]{0,3})').exec(caption);
+   // The standard guide caption explicitly identifies its figure with a leading
+   // type/number and a vertical separator. Asset sequence numbers are not paper IDs.
+   const explicit=new RegExp('^(?:原文\\s*)?('+types+')\\s*(\\d+[A-Za-z]{0,3})\\s*[｜|]').exec(caption.trim());
+   const raw=Object.hasOwn(sourceLabels,block.id)?sourceLabels[block.id]:Object.hasOwn(sourceLabels,block.src)?sourceLabels[block.src]:block.sourceLabel;
+   const metadata=typeof raw==='string'?new RegExp('^('+types+')\\s*(\\d+[A-Za-z]{0,3})([（(]局部[）)])?$').exec(raw.trim()):null;
+   const known=metadata||(Object.keys(sourceLabels).length?explicit:null),label=known?canonical(known):legacy?({figure:'图',fig:'图',table:'表',scheme:'图式'}[legacy[1].toLowerCase()]+legacy[2].toUpperCase()):labelMatch?labelMatch[1]+labelMatch[2]:'配图';
+   // Keep existing legacy origin wording and deliberate guide/source renumbering.
+   const origin=metadata||legacy?'原文':'文中',reference=label==='配图'?'本段配图':origin+label+(metadata?.[3]?'（局部）':'')+(!known&&legacy&&labelMatch&&labelMatch[1]+labelMatch[2]!==label?'｜文中'+labelMatch[1]+labelMatch[2]:'');
    const number=String(index+1).padStart(2,'0'),stem=number+'-'+label.replace(/[^\p{Script=Han}A-Za-z0-9_-]/gu,'');
-   return {key:block.id||'figure-'+index,src:block.src,number,label,reference:label==='配图'?'本段配图':(source?'原文':'文中')+label+(source&&labelMatch&&labelMatch[1]+labelMatch[2]!==label?'｜文中'+labelMatch[1]+labelMatch[2]:''),stem};
+   return {key:block.id||'figure-'+index,src:block.src,number,label,reference,stem};
   });
  }
+
  function citationBlockIds(blocks){
   // Determine this once from the complete original snapshot, never from each part.
   const content=blocks.filter(b=>b.kind!=='title'),first=content[0];
@@ -98,7 +108,7 @@
  }
  function footer(){return `<p data-export-footer style="${esc(TEXT_STYLE)}margin-top:28px;padding-top:16px;border-top:1px solid #dce5ee">更好的图文阅读体验，欢迎访问 <a href="https://metalradical.xyz" style="color:#315f8b;text-decoration:underline;font-family:${esc(FONT)}">metalradical.xyz</a>，或点击下方“阅读原文”。</p>`;}
  function render(blocks,images=new Map(),options={}){
-  const figures=options.figures||figurePlan(blocks),citationIds=new Set(options.citationIds||[]);let n=0;
+  const figures=options.figures||figurePlan(blocks,options.sourceLabels),citationIds=new Set(options.citationIds||[]);let n=0;
   const body=blocks.filter(b=>b.kind!=='title').map(b=>{
    const t=exportInline(b.text),citation=citationIds.has(b.id)&&b.kind==='paragraph',style=esc(TEXT_STYLE+(citation?'font-size:12pt;':''));
    if(b.kind==='figure'){
@@ -171,6 +181,7 @@ async function runCopy(kind){const status=document.querySelector('#copy-status')
     const path=`admin/drafts/${articleId}/export-plan?source=${effective}`+(['static','history'].includes(effective)?`&version=${revision}`:'');
     if(!saved||effective==='static')saved=await recoverRead(()=>api(path),isCurrent);
     if(!isCurrent())throw Object.assign(Error('登录已变化，已停止导出。'),{kind:'identity',code:'identity_changed'});if(effective==='draft'||effective==='history'){if((source==='draft-content'?saved.content_hash:saved.version_hash)!==revision)throw Object.assign(Error('稿件版本已变化，已停止导出。'),{kind:'version',code:'version_changed'});body=saved;}
+    const sourceLabels=body.article?.figureSourceLabels||snapshot.article?.figureSourceLabels||{};
     const blocks=body.blocks.filter(b=>b.kind!=='title'),citationIds=citationBlockIds(body.blocks),url=readingUrl(articleId),published=['published','static'].includes(effective);
     let titleText=body.title||body.article?.title?.zh||snapshot.article.title.zh;
     const month=body.article?.published||metadata?.published||(body.article?.firstPublishedOn||metadata?.firstPublishedOn||'').slice(0,7).replace('-','.');
@@ -210,7 +221,7 @@ async function runCopy(kind){const status=document.querySelector('#copy-status')
       const result={bytes,ext};cache.set(key,result);loadedImages++;status(`正在准备素材：图片${loadedImages} / ${imageCount}…`);return result;
      };
      for(let i=0;i<groups.length;i++){
-      const {part,index,count}=groups[i],prefix=`day-${String(index+1).padStart(2,'0')}/`,images=new Map(),figures=figurePlan(part.blocks);
+      const {part,index,count}=groups[i],prefix=`day-${String(index+1).padStart(2,'0')}/`,images=new Map(),figures=figurePlan(part.blocks,sourceLabels);
       for(const slot of figures){const image=await getImage(slot.src),name=`images/${slot.stem}.${image.ext}`;slot.fileName=slot.stem+'.'+image.ext;images.set(slot.key,name);files.push([prefix+name,image.bytes]);}
       const cover=await getImage('cover',true);files.push([prefix+`cover.${cover.ext}`,cover.bytes]);
       const titleValue=title.value+(count>1?`（${index+1}/${count}）`:''),copyHtml=render(part.blocks,new Map(),{placeholders:true,figures,footer:true,citationIds}),html=render(part.blocks,images,{figures,footer:true,citationIds});

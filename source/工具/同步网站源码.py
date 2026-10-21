@@ -19,7 +19,7 @@ REPOSITORY = ROOT / "发布" / "github-pages"
 FRONTEND = (
     "member-loader.js", "toast.js", "toast.css",
     "reader-core.js", "reader-contract.js", "reader_contract.py", "workbench-reader.js", "README.md", "文章模板.md",
-    "tests/literature-inline.test.cjs", "tests/auth-local-validation.test.cjs", "tests/media-auto-recovery-ae71.test.cjs", "tests/outline-layout-regression.test.cjs", "tests/historic-toolbar.test.cjs", "tests/preparation-image-recovery.test.cjs", "tests/panel-image-recovery.test.cjs",
+    "tests/export-source-labels.test.cjs", "tests/literature-inline.test.cjs", "tests/auth-local-validation.test.cjs", "tests/media-auto-recovery-ae71.test.cjs", "tests/outline-layout-regression.test.cjs", "tests/historic-toolbar.test.cjs", "tests/preparation-image-recovery.test.cjs", "tests/panel-image-recovery.test.cjs",
     "tests/public-load-recovery.test.cjs", "tests/automatic-sync.test.cjs", "tests/member-loader.test.cjs", "tests/section-resume.test.cjs", "tests/reading-resume-sync.test.cjs", "tests/toast-toolbar.test.cjs", "tests/preload-harness.cjs", "tests/preload-queue.test.cjs", "tests/catalog-patch.test.cjs", "tests/catalog-sort-ae71.test.cjs",
     "tests/reader-contract.test.cjs", "tests/test_article_interface.py", "tests/fixtures/reading-contract.json",
     "tests/figure-native-touch.test.cjs", "tests/highlight-entry.test.cjs", "tests/private-review-reader.test.cjs", "tests/version-history.test.cjs",

@@ -18,6 +18,18 @@ from reader_contract import compile_reading_plan
 
 
 class ArticleInterfaceTests(unittest.TestCase):
+    def test_private_catalog_skips_only_unbuilt_states_and_reports_corruption(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            missing = Path(temporary) / 'not-built.json'
+            built = Path(temporary) / 'built.json'
+            built.write_text('{}', encoding='utf-8')
+            articles = [{'id': 'unbuilt', 'state': {'zh': missing}}, {'id': 'built', 'state': {'zh': built}, 'cover': built}]
+            with patch.object(config, 'load_catalog', return_value=articles), patch.object(config, 'catalog_entry', side_effect=lambda a, cover: {'id': a['id']}), patch('media_assets.dimensions', return_value={'width': 1, 'height': 1}):
+                self.assertEqual([a['id'] for a in config.public_catalog()], ['built'])
+            with patch.object(config, 'load_catalog', return_value=articles), patch.object(config, 'catalog_entry', side_effect=ValueError('corrupt built state')):
+                with self.assertRaisesRegex(ValueError, 'corrupt built state'):
+                    config.public_catalog()
+
     def test_shared_contract(self):
         fixture = json.loads((APP / 'tests/fixtures/reading-contract.json').read_text(encoding='utf-8'))
         for case in fixture['cases']:

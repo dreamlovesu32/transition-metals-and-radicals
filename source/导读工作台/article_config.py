@@ -83,6 +83,8 @@ def load_manifest(path: Path) -> dict:
             raise ValueError("Invalid figure filename")
         if figure["file"].lower() in names or Path(figure["file"]).stem.lower() in media_stems or type(figure.get("page")) is not int or figure["page"] < 1:
             raise ValueError("Duplicate figure or invalid source PDF page")
+        if "sourceLabel" in figure and (not isinstance(figure["sourceLabel"], str) or not re.fullmatch(r"(?:扩展图式|扩展图|扩展表|图式|图|表)\d+[A-Z]{0,3}(?:（局部）)?", figure["sourceLabel"])):
+            raise ValueError("Invalid source figure label")
         names.add(figure["file"].lower())
         media_stems.add(Path(figure["file"]).stem.lower())
     threshold = data.get("scrollThreshold", 0.52)
@@ -168,11 +170,13 @@ def catalog_entry(article: dict, cover: str) -> dict:
 
 def public_catalog() -> list[dict]:
     from media_assets import dimensions
+    # Private manifests may arrive before the standard build creates their state.
+    # Existing states still pass catalog_entry validation; corruption is never hidden.
     return [{**catalog_entry(article, f"/covers/{article['id']}.png"),
              "coverDisplay": f"/media/{article['id']}/cover.webp",
              "coverPreview": f"/media/{article['id']}/cover-small.webp",
              "coverWidth": dimensions(article["cover"])["width"],
-             "coverHeight": dimensions(article["cover"])["height"]} for article in load_catalog()]
+             "coverHeight": dimensions(article["cover"])["height"]} for article in load_catalog() if article["state"]["zh"].is_file()]
 
 
 def public_article(config: dict) -> dict:
@@ -185,6 +189,9 @@ def public_article(config: dict) -> dict:
             "figurePages": {f"figures/{f['file']}": f["page"] for f in config["figures"]},
             "scrollThreshold": config["scrollThreshold"],
             "figureMedia": article_media(config, f"/media/{config['id']}")}
+    labels = {f"figures/{f['file']}": f["sourceLabel"] for f in config["figures"] if "sourceLabel" in f}
+    if labels:
+        result["figureSourceLabels"] = labels
     if "reading" in config:
         result["reading"] = config["reading"]
     return result
