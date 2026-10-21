@@ -147,6 +147,17 @@ class Handler(DemoMixin, BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def text_response(self, status, text, content_type):
+        data = text.encode("utf-8")
+        if content_type.startswith("text/html"):
+            data = self.demo_html(data)
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(data)
+
     def do_GET(self):
         if self.demo_handle(): return
         parsed = urlparse(self.path)
@@ -155,7 +166,18 @@ class Handler(DemoMixin, BaseHTTPRequestHandler):
         if path in ("/", "/catalog", "/index.html"):
             return self.file_response(ROOT / "catalog.html", "text/html; charset=utf-8")
         if path in ("/read", "/read.html"):
+            html = (ROOT / "public-site/read.html").read_text(encoding="utf-8")
+            html = html.replace('<html ', '<html data-reader-source="workbench" ', 1).replace('<script src="./reader.js', '<script src="./workbench-reader.js" defer></script>\n  <script src="./reader.js', 1)
+            return self.text_response(200, html, "text/html; charset=utf-8")
+        if path == "/workbench.html":
             return self.file_response(ROOT / "index.html", "text/html; charset=utf-8")
+        if path == "/reader.js":
+            from export_github_pages import public_reader_script
+            return self.text_response(200, public_reader_script(), "text/javascript; charset=utf-8")
+        if path in ("/workbench-reader.js", "/reader-core.js", "/reader-contract.js"):
+            return self.file_response(ROOT / path[1:])
+        if path == "/published-library.js":
+            return self.file_response(ROOT / "public-site/published-library.js")
         member_file = re.fullmatch(r"/member-system/(members\.js|members\.css|article-export\.js|account\.html|favorites\.html|admin\.html)", path)
         if member_file:
             return self.file_response(ROOT / "member-system" / member_file.group(1))
@@ -212,7 +234,7 @@ class Handler(DemoMixin, BaseHTTPRequestHandler):
                 from export_github_pages import public_blocks
                 blocks = public_blocks(state, article, require_approval=False)
                 version_hash = hashlib.sha256(json.dumps(blocks, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-                return self.json_response(200, {**state, "article": public_article(article), "version_hash": version_hash})
+                return self.json_response(200, {**state, "blocks": blocks if query.get("view") == ["reader"] else state["blocks"], "article": public_article(article), "version_hash": version_hash})
         if path == "/api/export-selections":
             try:
                 lang = language(query.get("lang", ["zh"])[0])

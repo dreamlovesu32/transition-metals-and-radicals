@@ -20,7 +20,8 @@ class SourcePublicationTests(unittest.TestCase):
                 self.assertFalse(set(Path(name).parts) & forbidden)
                 self.assertNotIn("local_demo", name)
                 self.assertNotIn("grant_admin_shared", name)
-                self.assertNotIn("fixture", name)
+                if name != "导读工作台/tests/fixtures/reading-contract.json":
+                    self.assertNotIn("fixture", name)
 
     def test_source_audit_rejects_secret_material_and_nonfictional_addresses(self):
         values = ["AKID" + "a" * 20, "-----BEGIN " + "PRIVATE KEY-----", "person" + "@" + "mail.invalid"]

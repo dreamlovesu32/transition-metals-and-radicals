@@ -1,3 +1,49 @@
+/* Versioned, pure reading-plan compiler. Does not modify article snapshots. */
+(function(root) {
+ "use strict";
+ function compile(article, blocks) {
+  const has = (o,k) => Object.prototype.hasOwnProperty.call(o,k);
+  const object = o => o && typeof o === "object" && !Array.isArray(o);
+  const allowed = (o, keys) => object(o) && Object.keys(o).every(k=>keys.includes(k));
+  const fraction = (v, name, open=false) => {if(typeof v!=="number" || !Number.isFinite(v) || (open ? v<=0||v>=1 : v<0||v>1))throw new Error(`Invalid ${name}`);return v;};
+  const config = has(article,"reading") ? article.reading : {};
+  if(!allowed(config,["version","downThreshold","upBuffer","endBuffer","switches"]) || (has(article,"reading") && config.version!==1))throw new Error("Invalid reading settings/version");
+  const overrides = has(config,"switches") ? config.switches : [];
+  if(!Array.isArray(overrides) || !Array.isArray(blocks) || !blocks.length)throw new Error("Invalid reading blocks/switches");
+  const result = {version:1,downThreshold:fraction(has(config,"downThreshold") ? config.downThreshold : has(article,"scrollThreshold") ? article.scrollThreshold : .52,"downThreshold",true),upBuffer:fraction(has(config,"upBuffer") ? config.upBuffer : .18,"upBuffer"),endBuffer:fraction(has(config,"endBuffer") ? config.endBuffer : .25,"endBuffer"),switches:[]};
+  const ids=new Set(), figures=[];
+  // Full manifests have figures; API snapshots expose the same allowed assets as figurePages.
+  const assets=new Set(article.figures ? article.figures.map(f=>`figures/${f.file}`) : Object.keys(article.figurePages || {}));
+  for(const block of blocks){
+   if(!object(block)||typeof block.id!=="string"||!block.id.trim()||ids.has(block.id))throw new Error("Missing or duplicate block id");
+   ids.add(block.id);
+   if(!["title","heading","paragraph","figure","bullet","number","quote","table"].includes(block.kind))throw new Error("Unsupported block kind");
+   if(block.kind==="heading"&&(!Number.isInteger(has(block,"level")?block.level:2)||(block.level??2)<2||(block.level??2)>4))throw new Error("Invalid heading level");
+   if(block.kind==="figure"){if(!assets.has(block.src))throw new Error("Unlisted figure asset");figures.push(block);}
+   else if(has(block,"scrollTrigger"))throw new Error("Invalid scrollTrigger");
+  }
+  if(!figures.length)throw new Error("Article requires figures");
+  const figureIds=new Set(figures.map(b=>b.id)), byId=new Map(), last=figures.at(-1).id;
+  for(const item of overrides){
+   if(!allowed(item,["figureId","trigger","anchorId"])||!figureIds.has(item.figureId)||byId.has(item.figureId)||!["block","article-end"].includes(item.trigger))throw new Error("Invalid figure switch");
+   if(item.trigger==="article-end"&&(item.figureId!==last||has(item,"anchorId")))throw new Error("article-end requires final figure without anchor");
+   if(item.trigger==="block"&&!ids.has(has(item,"anchorId") ? item.anchorId : item.figureId))throw new Error("Unknown anchorId");
+   byId.set(item.figureId,item);
+  }
+  result.switches=figures.map(block=>{
+   if(block.scrollTrigger!=null&&(block.scrollTrigger!=="article-end"||block.id!==last))throw new Error("Invalid legacy trigger");
+   const item=byId.get(block.id)||{trigger:block.scrollTrigger||"block"};
+   const entry={figureId:block.id,trigger:item.trigger};
+   if(item.trigger==="block")entry.anchorId=has(item,"anchorId") ? item.anchorId : block.id;
+   return entry;
+  });
+  return result;
+ }
+ const api=Object.freeze({compile});
+ if(typeof module!=="undefined"&&module.exports)module.exports=api;
+ root.ReadArticle=api;
+})(typeof window!=="undefined"?window:globalThis);
+
 "use strict";
 
 let documentState = null;
@@ -78,6 +124,7 @@ function articleAsset(path) {
     if (!assetId || !/^[\w-]+$/.test(assetId)) throw new Error("稿件图片尚未就绪");
     return requestedVersion ? `/api/member/admin/drafts/${encodeURIComponent(articleId())}/versions/${encodeURIComponent(requestedVersion)}/assets/${encodeURIComponent(assetId)}` : `/api/member/admin/drafts/${encodeURIComponent(articleId())}/assets/${encodeURIComponent(assetId)}`;
   }
+  if(window.ReadWorkbenchRead) return window.ReadWorkbenchRead.asset(path, articleId());
   if(documentState?.cloudPublished)return window.ReadPublished.asset(articleId(),documentState.asset_map?.[path],documentState.review_version_hash);
   return `./figures/${encodeURIComponent(articleId())}/${encodeURIComponent(path.split("/").pop())}`;
 }
@@ -103,9 +150,25 @@ function configureReviewNavigation() {
   document.body.dataset.reviewMode = "true";
 }
 function figurePage(src) { return documentState?.article?.figurePages?.[src] ?? "?"; }
+
+function updateReadingChrome() {
+  document.documentElement.lang = "zh-CN";
+  document.title = `${documentState.article.title.zh} · 文献导读`;
+  $(".eyebrow").innerHTML = `<span class="eyebrow-line"></span> ${documentState.article.kind === "review" ? "综述" : "研究论文"} <span class="separator">/</span> 导读`;
+  $(".top-link").href = documentState.article.sourceUrl;
+  updatePanelFigurePosition();
+  $("#figure-stage").removeAttribute("title");
+  $(".figure-scale-controls").removeAttribute("title");
+  setFigureAuto(figureAuto);
+  setFigureFillPane(figureFillPane);
+  setFigureScale(figureScale);
+}
+
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
 function inlineMarkdown(text) { return window.ReadInline.html(text); }
 
+
+// Canonical reader rendering, media, layout and progress. Data adapters live separately.
 function blockElement(block) {
   const wrap = document.createElement("section");
   wrap.className = "block";
@@ -133,6 +196,7 @@ function blockElement(block) {
     default: content = `<p>${inlineMarkdown(block.text)}</p>`;
   }
   wrap.innerHTML = content;
+  window.ReadBlockTools?.attach?.(block, wrap);
   if (block.kind === "figure") {
     installDragPan(wrap.querySelector(".inline-figure-stage"));
     const image = wrap.querySelector(".inline-figure-canvas img");
@@ -159,6 +223,7 @@ function renderArticle() {
   const article = $("#article");
   article.replaceChildren();
   $("#toc").replaceChildren();
+  documentState.readingPlan = window.ReadArticle.compile(documentState.article, documentState.blocks);
   figureBlocks = documentState.blocks.filter(block => block.kind === "figure");
   const body = document.createElement("div");
   body.className = "article-body";
@@ -193,19 +258,6 @@ function renderArticle() {
   renderFigurePanel();
   observeFigures();
   requestAnimationFrame(applyAllInlineFigureScales);
-}
-
-function updateReadingChrome() {
-  document.documentElement.lang = "zh-CN";
-  document.title = `${documentState.article.title.zh} · 文献导读`;
-  $(".eyebrow").innerHTML = `<span class="eyebrow-line"></span> ${documentState.article.kind === "review" ? "综述" : "研究论文"} <span class="separator">/</span> 导读`;
-  $(".top-link").href = documentState.article.sourceUrl;
-  updatePanelFigurePosition();
-  $("#figure-stage").removeAttribute("title");
-  $(".figure-scale-controls").removeAttribute("title");
-  setFigureAuto(figureAuto);
-  setFigureFillPane(figureFillPane);
-  setFigureScale(figureScale);
 }
 
 function inlineFigureScale(wrap) {
@@ -400,6 +452,57 @@ function handlePanelVisibleLoad(changed=false) {
   }
 }
 
+function figureMedia(block) {
+  return documentState?.article?.figureMedia?.[block.src] || {};
+}
+
+function figureImageMarkup(block, alt) {
+  const media = figureMedia(block);
+  const dimensions = media.width && media.height ? ` width="${media.width}" height="${media.height}"` : "";
+  return `<img data-src="${articleAsset(block.src)}" alt="${alt}"${dimensions} decoding="async" loading="lazy">`;
+}
+
+async function decodeFigureImage(image) {
+  if (!image.naturalWidth) throw new Error("图片无法解码");
+  if (image.dataset.decoded === "true") return;
+  if (typeof image.decode === "function") {
+    if (!image.readDecodePromise) image.readDecodePromise = image.decode().catch(error => {delete image.readDecodePromise; throw error;});
+    await image.readDecodePromise;
+  }
+  image.dataset.decoded = "true";
+}
+
+function primeCurrentFigure() {
+  const blocks = documentState?.blocks?.filter(block => block.kind === "figure") || [];
+  const block = blocks[Math.max(0, Math.min(currentFigureIndex, blocks.length - 1))];
+  if (!block) return;
+  const url = articleAsset(block.src);
+  if (backgroundFigureImages.some(image => image.getAttribute("src") === url)) return;
+  const image = new Image();
+  image.decoding = "async"; image.fetchPriority = "high";
+  image.dataset.figureSource = block.src;
+  const media = figureMedia(block);
+  if (media.width && media.height) {image.width = media.width; image.height = media.height;}
+  backgroundFigureImages.push(image);
+  // Start the known current original before building DOM or restoring layout.
+  image.src = url;
+}
+
+function updatePanelFigurePosition() {
+  const number = String(currentFigureIndex + 1).padStart(2, "0");
+  $(".figure-panel-head .rail-kicker").textContent = currentLanguage === "zh" ? `原文配图 / ${number}` : `SOURCE FIGURES / ${number}`;
+  $("#figure-position").textContent = `${number} / ${String(figureBlocks.length).padStart(2, "0")}`;
+}
+
+function commitPanelFigure(block) {
+  const page = figurePage(block.src);
+  $("#panel-figure-image").alt = `${tr("source")}${page}${tr("page")}`;
+  updatePanelFigurePosition();
+  $("#panel-figure-page").textContent = `${tr("source")}${page}${tr("page")}`;
+  $("#panel-figure-caption").innerHTML = inlineMarkdown(block.text);
+  $("#panel-figure-note").textContent = currentLanguage === "zh" ? "原论文裁图 · 栏内查看" : "Original paper crop";
+}
+
 function requestPanelFigure(block, retry=false) {
   const requestId = ++panelFigureRequest;
   const base = articleAsset(block.src);
@@ -442,47 +545,6 @@ function requestPanelFigure(block, retry=false) {
     if (candidate.complete) candidate.naturalWidth ? loaded() : failed();
   });
   return panelFigureReady;
-}
-
-async function decodeFigureImage(image) {
-  if (!image.naturalWidth) throw new Error("图片无法解码");
-  if (image.dataset.decoded === "true") return;
-  if (typeof image.decode === "function") {
-    if (!image.readDecodePromise) image.readDecodePromise = image.decode().catch(error => {delete image.readDecodePromise; throw error;});
-    await image.readDecodePromise;
-  }
-  image.dataset.decoded = "true";
-}
-
-function primeCurrentFigure() {
-  const blocks = documentState?.blocks?.filter(block => block.kind === "figure") || [];
-  const block = blocks[Math.max(0, Math.min(currentFigureIndex, blocks.length - 1))];
-  if (!block) return;
-  const url = articleAsset(block.src);
-  if (backgroundFigureImages.some(image => image.getAttribute("src") === url)) return;
-  const image = new Image();
-  image.decoding = "async"; image.fetchPriority = "high";
-  image.dataset.figureSource = block.src;
-  const media = figureMedia(block);
-  if (media.width && media.height) {image.width = media.width; image.height = media.height;}
-  backgroundFigureImages.push(image);
-  // Start the known current original before building DOM or restoring layout.
-  image.src = url;
-}
-
-function updatePanelFigurePosition() {
-  const number = String(currentFigureIndex + 1).padStart(2, "0");
-  $(".figure-panel-head .rail-kicker").textContent = currentLanguage === "zh" ? `原文配图 / ${number}` : `SOURCE FIGURES / ${number}`;
-  $("#figure-position").textContent = `${number} / ${String(figureBlocks.length).padStart(2, "0")}`;
-}
-
-function commitPanelFigure(block) {
-  const page = figurePage(block.src);
-  $("#panel-figure-image").alt = `${tr("source")}${page}${tr("page")}`;
-  updatePanelFigurePosition();
-  $("#panel-figure-page").textContent = `${tr("source")}${page}${tr("page")}`;
-  $("#panel-figure-caption").innerHTML = inlineMarkdown(block.text);
-  $("#panel-figure-note").textContent = currentLanguage === "zh" ? "原论文裁图 · 栏内查看" : "Original paper crop";
 }
 
 function retryPanelFigure() {
@@ -696,7 +758,8 @@ function isReadingAtEnd(scrollY, viewportHeight, contentHeight) {
 }
 
 function articleEndFigureIndex() {
-  const index = figureBlocks.findIndex(block => block.scrollTrigger === "article-end");
+  const switches = documentState?.readingPlan?.switches;
+  const index = switches ? switches.findIndex(item => item.trigger === "article-end") : figureBlocks.findIndex(block => block.scrollTrigger === "article-end");
   return index === figureBlocks.length - 1 ? index : -1;
 }
 
@@ -706,15 +769,15 @@ function readingVisibleHeight() {
   return Math.max(1, window.innerHeight - Math.max(0, headerBottom));
 }
 
-function selectAutoFigure(tops, current, endIndex, downLine, visibleHeight, bottomGap, atEnd, force=false) {
+function selectAutoFigure(tops, current, endIndex, downLine, visibleHeight, bottomGap, atEnd, force=false, settings={}) {
   if (atEnd && tops.length) return tops.length - 1;
   let next = 0;
   tops.forEach((top, index) => {if (index !== endIndex && top <= downLine) next = index;});
   if (force || current < 0 || current >= tops.length) return next;
-  if (current === tops.length - 1 && bottomGap < visibleHeight * .25) return current;
-  if (endIndex >= 0 && current === endIndex) return bottomGap < visibleHeight * .25 ? endIndex : next;
+  if (current === tops.length - 1 && bottomGap < visibleHeight * (settings.endBuffer ?? .25)) return current;
+  if (endIndex >= 0 && current === endIndex) return bottomGap < visibleHeight * (settings.endBuffer ?? .25) ? endIndex : next;
   if (next >= current) return next;
-  const upLine = downLine + visibleHeight * .18;
+  const upLine = downLine + visibleHeight * (settings.upBuffer ?? .18);
   let previous = 0;
   tops.forEach((top, index) => {if (index !== endIndex && top <= upLine) previous = index;});
   return Math.min(current, previous);
@@ -757,12 +820,14 @@ function syncFigureToScroll(force=false) {
   if (jump != null) {
     syncFigureToScroll.jumpTarget = Math.abs(window.scrollY - targetY) <= 6 ? null : targetY;
   }
-  const anchors = [...document.querySelectorAll(".block[data-figure-index]")];
+  const plan = documentState.readingPlan;
+  const allBlocks = [...document.querySelectorAll(".block[data-block-id]")];
+  const anchors = plan ? plan.switches.map(item => allBlocks.find(node => node.dataset.blockId === (item.anchorId || item.figureId))) : [...document.querySelectorAll(".block[data-figure-index]")];
   const tops = anchors.map(anchor => anchor.getBoundingClientRect().top + window.scrollY - targetY);
-  const downLine = window.innerHeight * (documentState.article?.scrollThreshold ?? .52);
+  const downLine = window.innerHeight * (documentState.readingPlan?.downThreshold ?? documentState.article?.scrollThreshold ?? .52);
   const index = selectAutoFigure(tops, currentFigureIndex, articleEndFigureIndex(), downLine,
     readingVisibleHeight(), Math.max(0, contentHeight - window.innerHeight - targetY),
-    isReadingAtEnd(targetY, window.innerHeight, contentHeight), force === true || (!readingPrepared && !readingPreparationSaved) || jump != null);
+    isReadingAtEnd(targetY, window.innerHeight, contentHeight), force === true || (!readingPrepared && !readingPreparationSaved) || jump != null, documentState.readingPlan);
   showFigure(index);
 }
 
@@ -990,7 +1055,7 @@ async function restoreReadingState(saved) {
 
 function currentInlineFigure() {
   const anchors = [...document.querySelectorAll("#article .block[data-figure-index]")];
-  const threshold = innerHeight * (documentState.article?.scrollThreshold ?? .52);
+  const threshold = innerHeight * (documentState.readingPlan?.downThreshold ?? documentState.article?.scrollThreshold ?? .52);
   let index = 0;
   anchors.forEach((anchor, i) => { if (anchor.getBoundingClientRect().top <= threshold) index = i; });
   return anchors[index] || null;
@@ -1089,16 +1154,6 @@ async function finishReadingPreparation(retry=false, textOnly=false) {
   }
   revealReadingContent(attempt);
   preloadOtherFigures();
-}
-
-function figureMedia(block) {
-  return documentState?.article?.figureMedia?.[block.src] || {};
-}
-
-function figureImageMarkup(block, alt) {
-  const media = figureMedia(block);
-  const dimensions = media.width && media.height ? ` width="${media.width}" height="${media.height}"` : "";
-  return `<img data-src="${articleAsset(block.src)}" alt="${alt}"${dimensions} decoding="async" loading="lazy">`;
 }
 
 async function resumeRemoteProgress(readerTouched) {
@@ -1210,10 +1265,11 @@ async function start() {
       assertReviewIdentity();
       documentState = adaptReviewDraft(reviewDraft, requestedArticleId);
     } else {
-    window.ReadPublished.catalog('./catalog.json').then(data => {
+    const transport = window.ReadWorkbenchRead || window.ReadPublished;
+    transport.catalog('./catalog.json').then(data => {
       articles = data.articles; window.ReadMembers?.setPublicCatalog?.(articles); configureReadingNavigation(articles);
     }).catch(() => {});
-    documentState = await window.ReadPublished.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
+    documentState = await transport.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
     }
     restoringReadingState = true;
     const localSaved = storedReadingState();

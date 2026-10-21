@@ -3,7 +3,7 @@
   'use strict';
   const KEY = 'read-guest-library-v1';
   const staticMode=locationIsStatic();
-  function locationIsStatic(){return typeof location!=='undefined'&&(location.pathname.endsWith('.html')||location.pathname.includes('/member-system/'));}
+  function locationIsStatic(){if(typeof document!=='undefined'&&document.documentElement?.dataset?.readerSource==='workbench')return false;return typeof location!=='undefined'&&(location.pathname.endsWith('.html')||location.pathname.includes('/member-system/'));}
   function pageUrl(name){return new URL(name,document.currentScript?.src||new URL('/member-system/members.js',location.origin)).href;}
   const scriptRoot=typeof document!=='undefined' ? new URL('../',document.currentScript?.src||new URL('/member-system/members.js',location.origin)):null;
   function readUrl(id){return staticMode?new URL('read.html?article='+encodeURIComponent(id),scriptRoot).href:'/read?article='+encodeURIComponent(id);}

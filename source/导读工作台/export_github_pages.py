@@ -18,23 +18,6 @@ PUBLIC_IDS = ("paper01", "r20261017-01", "r20261017-02", "r20261017-04", "r20261
 BASELINE = json.loads((ROOT / "publication-baseline.json").read_text(encoding="utf-8"))["articles"]
 PUBLIC_SOURCE = ROOT / "public-site"
 EXPORT_MARKER = ".nojekyll"
-READER_FUNCTIONS = (
-    "inlineFigureScale", "applyInlineFigureScale", "resetInlineFigureOrigin", "updateDragPanState", "installDragPan", "setInlineFigureScale",
-    "applyAllInlineFigureScales", "setPanelFigureState", "handlePanelVisibleLoad", "requestPanelFigure",
-    "decodeFigureImage", "primeCurrentFigure", "updatePanelFigurePosition", "commitPanelFigure", "retryPanelFigure", "showFigure", "setFigureFillPane",
-    "applyFigureScale", "setFigureScale", "wheelDeltaPixels", "handleFigureWheel",
-    "schedulePaneFigureFit", "applyPaneRatio", "paneRatioAt", "endPaneDrag",
-    "handlePaneKey", "setFigureAuto", "chooseFigure", "renderFigurePanel",
-    "isReadingAtEnd", "articleEndFigureIndex", "readingVisibleHeight", "selectAutoFigure", "resetAutoFigureTracking", "beginFigureJump", "cancelFigureJump", "syncFigureToScroll", "observeFigures", "isDesktopLayout", "applyLayoutPreference",
-    "loadLayoutPreference", "reflowReaderLayout", "readingMode", "readingKey",
-    "scrollFraction", "restoreScrollFraction", "readingAnchor",
-    "captureReadingState", "saveReadingState", "scheduleReadingSave",
-    "storedReadingState", "animationFrame", "imageSettled", "handleReadingScroll",
-    "restoreArticleScroll", "restoreReadingState", "currentInlineFigure",
-    "waitForInlineImage", "preloadOtherFigures", "showPreparationFailure",
-    "revealReadingContent", "finishReadingPreparation", "figureMedia", "figureImageMarkup", "resumeRemoteProgress", "mountReadingTools",
-)
-
 
 def write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -42,26 +25,10 @@ def write_text(path: Path, text: str) -> None:
 
 
 def public_reader_script() -> str:
-    source = (ROOT / "app.js").read_text(encoding="utf-8")
-    matches = list(re.finditer(r"(?m)^(?:async )?function (\w+)\(", source))
-    definitions = {
-        match.group(1): source[match.start():matches[index + 1].start() if index + 1 < len(matches) else len(source)].strip()
-        for index, match in enumerate(matches)
-    }
-    missing = set(READER_FUNCTIONS) - definitions.keys()
-    if missing:
-        raise RuntimeError(f"Shared reader functions changed: {sorted(missing)}")
-    prelude = (PUBLIC_SOURCE / "reader-prelude.js").read_text(encoding="utf-8").strip()
-    boot = (PUBLIC_SOURCE / "reader-boot.js").read_text(encoding="utf-8").strip()
-    # Draft review reuses the renderer but must not read/write public reading progress.
-    if 'reviewMode ? "review:"' not in definitions["readingKey"]:
-        definitions["readingKey"] = definitions["readingKey"].replace(
-            '${articleId()}:${readingMode()}',
-            '${reviewMode ? "review:" + documentState.version_hash + ":" : ""}${articleId()}:${readingMode()}')
-    definitions["saveReadingState"] = definitions["saveReadingState"].replace(
-        'if (window.ReadMembers) window.ReadMembers.saveProgress',
-        'if (!reviewMode && window.ReadMembers) window.ReadMembers.saveProgress')
-    result = "\n\n".join([prelude, *(definitions[name] for name in READER_FUNCTIONS), boot]) + "\n"
+    """The same complete runtime serves local, published and private review pages."""
+    sources = (ROOT / "reader-contract.js", PUBLIC_SOURCE / "reader-prelude.js",
+               ROOT / "reader-core.js", PUBLIC_SOURCE / "reader-boot.js")
+    result = "\n\n".join(path.read_text(encoding="utf-8").strip() for path in sources) + "\n"
     forbidden = ("/source.pdf", "openEditor", "captureSelection", "renderSelections",
                  "openLightbox", "closeLightbox", "#lightbox", "selection", "editor", "audit")
     present = [token for token in forbidden if token.lower() in result.lower()]
@@ -95,6 +62,8 @@ def publication_digest(article: dict, blocks: list[dict]) -> str:
     metadata = {key: article[key] for key in ("id", "readingId", "displayNumber", "title", "doi", "sourceUrl", "journal", "published", "firstPublishedOn", "kind", "scrollThreshold")}
     metadata["reviewStatus"] = article.get("reviewStatus", "existing-public-baseline")
     metadata["figures"] = article["figures"]
+    if "reading" in article:
+        metadata["reading"] = article["reading"]
     payload = json.dumps({"metadata": metadata, "blocks": blocks}, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     digest = hashlib.sha256(payload)
     for image in [article["cover"], *(article["figuresDir"] / item["file"] for item in article["figures"])]:
@@ -142,6 +111,8 @@ def public_blocks(state: dict, article: dict, *, require_approval: bool = True) 
         blocks.append(clean)
     if not blocks or blocks[0]["kind"] != "title":
         raise RuntimeError(f"No public article title in {article['id']}")
+    from reader_contract import compile_reading_plan
+    compile_reading_plan(article, blocks)
     if require_approval:
         digest = hashlib.sha256(json.dumps(blocks, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
         if digest != approval["publicBlocksSha256"]:
@@ -164,6 +135,8 @@ def export_article(stage: Path, article: dict) -> dict:
         "scrollThreshold": article["scrollThreshold"],
         "figureMedia": export_media(stage, article),
     }
+    if "reading" in article:
+        public["reading"] = article["reading"]
     write_text(stage / "data" / f"{article_id}.json", json.dumps({"article": public, "blocks": blocks, "version_hash": hashlib.sha256(json.dumps(blocks, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()}, ensure_ascii=False, indent=2) + "\n")
     shutil.copyfile(article["cover"], stage / "covers" / f"{article_id}.png")
     (stage / "figures" / article_id).mkdir(parents=True, exist_ok=True)

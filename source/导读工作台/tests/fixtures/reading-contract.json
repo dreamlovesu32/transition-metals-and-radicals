@@ -1,0 +1,1579 @@
+{
+  "cases": [
+    {
+      "name": "legacy-default",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "downThreshold": 0.52,
+        "upBuffer": 0.18,
+        "endBuffer": 0.25,
+        "switches": [
+          {
+            "figureId": "f1",
+            "trigger": "block",
+            "anchorId": "f1"
+          },
+          {
+            "figureId": "f2",
+            "trigger": "block",
+            "anchorId": "f2"
+          }
+        ]
+      }
+    },
+    {
+      "name": "explicit-anchor-and-end",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "downThreshold": 0.6,
+          "upBuffer": 0,
+          "endBuffer": 1,
+          "switches": [
+            {
+              "figureId": "f1",
+              "trigger": "block",
+              "anchorId": "p"
+            },
+            {
+              "figureId": "f2",
+              "trigger": "article-end"
+            }
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "downThreshold": 0.6,
+        "upBuffer": 0,
+        "endBuffer": 1,
+        "switches": [
+          {
+            "figureId": "f1",
+            "trigger": "block",
+            "anchorId": "p"
+          },
+          {
+            "figureId": "f2",
+            "trigger": "article-end"
+          }
+        ]
+      }
+    },
+    {
+      "name": "legacy-end",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png",
+          "scrollTrigger": "article-end"
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "downThreshold": 0.52,
+        "upBuffer": 0.18,
+        "endBuffer": 0.25,
+        "switches": [
+          {
+            "figureId": "f1",
+            "trigger": "block",
+            "anchorId": "f1"
+          },
+          {
+            "figureId": "f2",
+            "trigger": "article-end"
+          }
+        ]
+      }
+    },
+    {
+      "name": "repeat-asset",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        },
+        {
+          "id": "f3",
+          "kind": "figure",
+          "text": "One again",
+          "src": "figures/one.png"
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "downThreshold": 0.52,
+        "upBuffer": 0.18,
+        "endBuffer": 0.25,
+        "switches": [
+          {
+            "figureId": "f1",
+            "trigger": "block",
+            "anchorId": "f1"
+          },
+          {
+            "figureId": "f2",
+            "trigger": "block",
+            "anchorId": "f2"
+          },
+          {
+            "figureId": "f3",
+            "trigger": "block",
+            "anchorId": "f3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown-anchor",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "switches": [
+            {
+              "figureId": "f1",
+              "trigger": "block",
+              "anchorId": "absent"
+            }
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "unknown-figure",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "switches": [
+            {
+              "figureId": "absent",
+              "trigger": "block"
+            }
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "nonfinal-end",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "switches": [
+            {
+              "figureId": "f1",
+              "trigger": "article-end"
+            }
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "end-with-anchor",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "switches": [
+            {
+              "figureId": "f2",
+              "trigger": "article-end",
+              "anchorId": "p"
+            }
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "unknown-switch-field",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "switches": [
+            {
+              "figureId": "f1",
+              "trigger": "block",
+              "extra": true
+            }
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "duplicate-switch",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "switches": [
+            {
+              "figureId": "f1",
+              "trigger": "block",
+              "anchorId": "f1"
+            },
+            {
+              "figureId": "f1",
+              "trigger": "block",
+              "anchorId": "f1"
+            }
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "duplicate-block",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "invalid-downThreshold",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "downThreshold": 0
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "invalid-upBuffer",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "upBuffer": true
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "invalid-endBuffer",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "endBuffer": 1.01
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "invalid-version",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": true
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "null-downThreshold",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "downThreshold": null
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "null-upBuffer",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "upBuffer": null
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "null-endBuffer",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "endBuffer": null
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "null-switches",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "switches": null
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "null-version",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": null
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "null-anchorId",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1,
+          "switches": [
+            {
+              "figureId": "f1",
+              "trigger": "block",
+              "anchorId": null
+            }
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "null-reading",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": null
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "null-scrollThreshold",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": null
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "unknown-block-kind",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "unknown",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "invalid-heading-1",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "heading",
+          "text": "Text",
+          "level": 1
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "invalid-heading-5",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "heading",
+          "text": "Text",
+          "level": 5
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "invalid-heading-None",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "heading",
+          "text": "Text",
+          "level": null
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "invalid-heading-True",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "heading",
+          "text": "Text",
+          "level": true
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "invalid-heading-2.5",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "heading",
+          "text": "Text",
+          "level": 2.5
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "missing-heading",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "heading",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "downThreshold": 0.52,
+        "upBuffer": 0.18,
+        "endBuffer": 0.25,
+        "switches": [
+          {
+            "figureId": "f1",
+            "trigger": "block",
+            "anchorId": "f1"
+          },
+          {
+            "figureId": "f2",
+            "trigger": "block",
+            "anchorId": "f2"
+          }
+        ]
+      }
+    },
+    {
+      "name": "float-heading",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "heading",
+          "text": "Text",
+          "level": 2.0
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "downThreshold": 0.52,
+        "upBuffer": 0.18,
+        "endBuffer": 0.25,
+        "switches": [
+          {
+            "figureId": "f1",
+            "trigger": "block",
+            "anchorId": "f1"
+          },
+          {
+            "figureId": "f2",
+            "trigger": "block",
+            "anchorId": "f2"
+          }
+        ]
+      }
+    },
+    {
+      "name": "float-version",
+      "article": {
+        "figures": [
+          {
+            "file": "one.png",
+            "page": 1
+          },
+          {
+            "file": "two.png",
+            "page": 2
+          }
+        ],
+        "scrollThreshold": 0.52,
+        "reading": {
+          "version": 1.0
+        }
+      },
+      "blocks": [
+        {
+          "id": "t",
+          "kind": "title",
+          "text": "Fixture"
+        },
+        {
+          "id": "p",
+          "kind": "paragraph",
+          "text": "Text"
+        },
+        {
+          "id": "f1",
+          "kind": "figure",
+          "text": "One",
+          "src": "figures/one.png"
+        },
+        {
+          "id": "f2",
+          "kind": "figure",
+          "text": "Two",
+          "src": "figures/two.png"
+        }
+      ],
+      "expected": {
+        "version": 1,
+        "downThreshold": 0.52,
+        "upBuffer": 0.18,
+        "endBuffer": 0.25,
+        "switches": [
+          {
+            "figureId": "f1",
+            "trigger": "block",
+            "anchorId": "f1"
+          },
+          {
+            "figureId": "f2",
+            "trigger": "block",
+            "anchorId": "f2"
+          }
+        ]
+      }
+    }
+  ]
+}

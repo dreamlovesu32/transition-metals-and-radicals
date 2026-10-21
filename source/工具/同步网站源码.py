@@ -17,6 +17,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = ROOT / "发布" / "github-pages"
 FRONTEND = (
+    "reader-core.js", "reader-contract.js", "reader_contract.py", "workbench-reader.js", "README.md", "文章模板.md",
+    "tests/reader-contract.test.cjs", "tests/test_article_interface.py", "tests/fixtures/reading-contract.json",
+    "tests/figure-native-touch.test.cjs", "tests/highlight-entry.test.cjs", "tests/private-review-reader.test.cjs", "tests/version-history.test.cjs",
     "app.css", "app.js", "media_assets.py", "progressive-media.js", "progressive-media.css", "card-actions.js", "card-actions.css", "article_config.py", "catalog.css", "catalog.html",
     "catalog.js", "export_github_pages.py", "index.html", "literature-lookup.css",
     "literature-lookup.js", "reader-chrome.css", "reader-chrome.js", "inline-format.js", "server.py",
@@ -215,6 +218,7 @@ def allowlist():
     files.add("会员服务/private_schema_hardening.sql")
     files.add("工具/同步网站源码.py")
     files.add("工具/test_source_sync.py")
+    files.add("工具/构建审稿预览.py")
     return sorted(files)
 
 

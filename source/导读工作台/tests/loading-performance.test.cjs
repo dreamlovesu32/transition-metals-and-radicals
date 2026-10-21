@@ -35,7 +35,7 @@ test('nonfinite, future and expired presentation timestamps never suppress refre
  }
 });
 function preparationHarness(desktop=true){
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
  const at=source.indexOf('function revealReadingContent('),end=source.indexOf('\nasync function resumeRemoteProgress(',at);
  const nodes=new Map(),node=selector=>{if(!nodes.has(selector))nodes.set(selector,{hidden:false,inert:true,textContent:'',classList:{remove(){}},querySelector:()=>null});return nodes.get(selector);};
  const picture=deferred();let preloads=0,failures=0;
@@ -69,8 +69,11 @@ test('public cache and static reading have no artificial wait for publication se
  try{const api=require(target),start=performance.now();assert.equal(await api.read('synthetic','/base.json'),base);assert(performance.now()-start<100);}finally{global.fetch=original;}
 });
 test('initial reader startup renders before any account request is awaited',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8'),start=source.slice(source.indexOf('async function start()'));
- const normal=start.slice(start.indexOf('}else documentState'),start.indexOf('renderArticle();'));
+ const source=fs.readFileSync(path.join(__dirname,'../public-site/reader-boot.js'),'utf8'),start=source.slice(source.indexOf('async function start()'));
+ const from=start.indexOf('const transport ='),to=start.indexOf('renderArticle();');
+ assert(from>=0 && to>from,'normal transport and renderer must exist');
+ const normal=start.slice(from,to);
+ assert(normal.includes('await transport.read('));
  assert(!normal.includes('await window.ReadMembers.ready'));assert(!normal.includes('await window.ReadMembers.loadProgress'));
 });
 function accountHarness(fetch){
@@ -105,7 +108,7 @@ test('401 clears CSRF and cached admin hints; direct re-login gets fresh preauth
  assert.equal(requests.filter(x=>x.url.endsWith('/session')).length,1);assert.equal(requests.at(-1).options.headers['X-CSRF-Token'],'fresh-preauth');
 });
 test('figure warm-up is bounded to the next two, then advances in reading order',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8'),at=source.indexOf('function preloadOtherFigures()'),end=source.indexOf('\nfunction showPreparationFailure',at),requests=[];
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8'),at=source.indexOf('function preloadOtherFigures()'),end=source.indexOf('\nfunction showPreparationFailure',at),requests=[];
  class Image{constructor(){this.dataset={};}set src(value){requests.push(value);queueMicrotask(()=>this.onload());}}
  const context={Image,figurePreloadActive:false,figurePreloadQueued:false,documentState:{},figureBlocks:Array.from({length:39},(_,i)=>({src:'figure-'+i})),currentFigureIndex:0,backgroundFigureImages:[],reviewMode:false,isDesktopLayout:()=>false,articleAsset:x=>x,setTimeout,clearTimeout};
  vm.createContext(context);vm.runInContext(source.slice(at,end)+';this.warm=preloadOtherFigures;',context);
@@ -138,7 +141,7 @@ test('highlighter has no second notes button; history retains a read-only record
 
 
 test('panel switching hides the old image until current decode; stale and failed requests stay hidden',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
  const at=source.indexOf('async function decodeFigureImage('),end=source.indexOf('\nfunction retryPanelFigure(',at);
  const images=[],nodes=new Map(),states=[],commits=[];
  const node=s=>{if(!nodes.has(s))nodes.set(s,{textContent:'old',innerHTML:'old',remove(){},naturalWidth:300,dataset:{},alt:'old',setAttribute(k,v){this[k]=v;},replaceWith(next){nodes.set('#panel-figure-image',next);}});return nodes.get(s);};
@@ -174,7 +177,7 @@ test('panel switching hides the old image until current decode; stale and failed
 
 });
 test('single-column current image waits for decode and reports decode failure',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
  const start=source.indexOf('function waitForInlineImage('),end=source.indexOf('\nfunction preloadOtherFigures(',start);
  for(const failed of [false,true]){
   let resolveDecode,rejectDecode;const pending={promise:new Promise((resolve,reject)=>{resolveDecode=resolve;rejectDecode=reject;})},handlers={};let settled=false;
@@ -196,7 +199,7 @@ test('a text-only article has no artificial picture failure',async()=>{
  await h.ctx.finish();assert.equal(h.ctx.readingPrepared,true);assert.equal(h.failures,0);
 });
 test('late remote progress offers explicit resume, never jumps on response, and expires with its owner',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
  const at=source.indexOf('async function resumeRemoteProgress('),end=source.indexOf('\nfunction mountReadingTools(',at);
  for(const expire of [false,true]){
   const handlers={},buttons=[];let figures=0,restores=0,finishes=0;
@@ -213,7 +216,7 @@ test('late remote progress offers explicit resume, never jumps on response, and 
 
 
 test('unchanged remote progress and a restored local position never create a resume prompt',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
  const at=source.indexOf('async function resumeRemoteProgress('),end=source.indexOf('\nfunction mountReadingTools(',at);
  for(const localPreferred of [false,true]){
   let created=0;const remote={figure:{index:localPreferred?4:0}},state={user:{id:'A'},epoch:1};
@@ -224,7 +227,7 @@ test('unchanged remote progress and a restored local position never create a res
 
 
 test('sequential preloading drops an obsolete window after a figure jump',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function preloadOtherFigures('),end=source.indexOf('\nfunction showPreparationFailure(',at);
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');const at=source.indexOf('function preloadOtherFigures('),end=source.indexOf('\nfunction showPreparationFailure(',at);
  const requests=[],images=[];
  class FakeImage{constructor(){this.dataset={};images.push(this);}set src(value){requests.push(value);}}
  const ctx={Image:FakeImage,setTimeout,clearTimeout,isDesktopLayout:()=>true,$:()=>({dataset:{imageState:'ready'}}),documentState:{},currentFigureIndex:0,figureBlocks:Array.from({length:39},(_,i)=>({src:'figure-'+i})),backgroundFigureImages:[],figurePreloadActive:false,figurePreloadQueued:false,reviewMode:false,articleAsset:x=>x,decodeFigureImage:async()=>{}};
@@ -235,7 +238,7 @@ test('sequential preloading drops an obsolete window after a figure jump',async(
 
 
 test('reading originals omit small previews and opacity transitions while navigation covers stay progressive',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function figureImageMarkup('),end=source.indexOf('\nasync function decodeFigureImage(',at);
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');const at=source.indexOf('function figureImageMarkup('),end=source.indexOf('\nasync function decodeFigureImage(',at);
  const ctx={figureMedia:()=>({width:800,height:600,preview:'/small.webp'}),articleAsset:()=>'/original.png'};vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
  const html=ctx.figureImageMarkup({src:'original'},'source');assert.ok(html.includes('data-src="/original.png"'));assert.ok(html.includes('width="800" height="600"'));assert.ok(!html.includes('data-preview'));
  const css=fs.readFileSync(path.join(__dirname,'../progressive-media.css'),'utf8');assert.ok(css.includes('.source-figure .inline-figure-stage img[data-src]{transition:none}'));assert.ok(css.includes('.progressive-media img[data-src]{opacity:0;transition:opacity .2s ease}'));
@@ -244,7 +247,7 @@ test('reading originals omit small previews and opacity transitions while naviga
 
 
 test('configured final figure retains a quarter viewport buffer and releases on scrolling farther back',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
  for(const height of [400,950]){
   const selected=[],anchors=[10,30,2000].map(top=>({getBoundingClientRect:()=>({top})}));
   const ctx={currentFigureIndex:0,figureBlocks:[{},{},{scrollTrigger:'article-end'}],restoringReadingState:false,figureAuto:true,isDesktopLayout:()=>true,readingPrepared:true,documentState:{article:{scrollThreshold:.52}},window:{scrollY:2000-height-4,innerHeight:height},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelectorAll:()=>anchors},showFigure:i=>selected.push(i)};
@@ -259,7 +262,7 @@ test('configured final figure retains a quarter viewport buffer and releases on 
  }
 });
 test('ordinary final figures fall back at document bottom while single-column keeps its own active figure',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
  const selected=[],ctx={currentFigureIndex:0,figureBlocks:[{},{},{}],restoringReadingState:false,figureAuto:true,isDesktopLayout:()=>true,readingPrepared:true,documentState:{article:{}},window:{scrollY:1400,innerHeight:600},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelectorAll:()=>[0,10,2000].map(top=>({getBoundingClientRect:()=>({top})}))},showFigure:i=>selected.push(i)};
  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);ctx.syncFigureToScroll();assert.equal(selected.at(-1),2);
  ctx.figureBlocks[0].scrollTrigger='article-end';assert.equal(ctx.articleEndFigureIndex(),-1);
@@ -268,7 +271,7 @@ test('ordinary final figures fall back at document bottom while single-column ke
 
 
 test('ordinary anchor hysteresis accumulates micro scrolls and uses distinct stable upward/downward lines',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function selectAutoFigure('),end=source.indexOf('\nfunction resetAutoFigureTracking(',at);const ctx={};vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');const at=source.indexOf('function selectAutoFigure('),end=source.indexOf('\nfunction resetAutoFigureTracking(',at);const ctx={};vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
  const pick=(tops,current,force=false)=>ctx.selectAutoFigure(tops,current,-1,300,500,900,false,force);
  assert.equal(pick([0,299,700],0),1);
  for(let top=301;top<=390;top++)assert.equal(pick([0,top,top+400],1),1);
@@ -279,7 +282,7 @@ test('ordinary anchor hysteresis accumulates micro scrolls and uses distinct sta
  assert.ok(!source.slice(at,end).includes('setTimeout'));
 });
 test('reading height excludes the chrome and explicit jumps bypass hysteresis only until their clamped target',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
  const chosen=[];const ctx={currentFigureIndex:1,figureBlocks:[{},{},{}],figureAuto:true,readingPrepared:true,readingPreparationSaved:null,restoringReadingState:false,documentState:{article:{}},isDesktopLayout:()=>true,window:{scrollY:500,innerHeight:600},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelector:()=>({getBoundingClientRect:()=>({bottom:100})}),querySelectorAll:()=>[0,320,900].map(top=>({getBoundingClientRect:()=>({top})}))},showFigure:i=>chosen.push(i)};
  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);assert.equal(ctx.readingVisibleHeight(),500);
  ctx.syncFigureToScroll();assert.equal(chosen.at(-1),1);
@@ -292,7 +295,7 @@ test('reading height excludes the chrome and explicit jumps bypass hysteresis on
  ctx.readingPreparationSaved=null;ctx.syncFigureToScroll();assert.equal(chosen.at(-1),0);
 });
 test('explicit navigation, auto toggles, reflow and resize all route through immediate recalibration',()=>{
- const root=path.join(__dirname,'..');const app=fs.readFileSync(path.join(root,'app.js'),'utf8'),chrome=fs.readFileSync(path.join(root,'reader-chrome.js'),'utf8'),boot=fs.readFileSync(path.join(root,'public-site/reader-boot.js'),'utf8');
+ const root=path.join(__dirname,'..');const app=fs.readFileSync(path.join(root,'reader-core.js'),'utf8'),chrome=fs.readFileSync(path.join(root,'reader-chrome.js'),'utf8'),boot=fs.readFileSync(path.join(root,'public-site/reader-boot.js'),'utf8');
  assert.ok(chrome.includes('beginFigureJump(h.getBoundingClientRect().top+window.scrollY'));
  assert.ok(chrome.includes("beginFigureJump(edge==='top'?0:document.documentElement.scrollHeight)"));
  assert.ok(app.includes('if (enabled) syncFigureToScroll(true);'));
@@ -305,12 +308,12 @@ test('classic centered loading card retains its larger vertical R mark below usa
  const finalCard=css.slice(css.lastIndexOf('.reading-preparation-card{width:min(360px'));
  assert.match(finalCard,/padding:32px;display:block/);assert.match(finalCard,/font:700 38px Georgia/);
  assert(!finalCard.includes('font-size:22px'));assert(!finalCard.includes('padding:14px 16px'));
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
  assert(source.includes('textContent = "正在准备阅读…"'));
 });
 
 test('known restored original starts before DOM and layout recovery and shares one pending decode',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
  const at=source.indexOf('async function decodeFigureImage('),end=source.indexOf('function commitPanelFigure(',at);
  const images=[];let decodeCalls=0;
  class FakeImage{constructor(){this.dataset={};this.naturalWidth=500;images.push(this);}getAttribute(k){return this[k];}decode(){decodeCalls++;return Promise.resolve();}}
@@ -323,7 +326,7 @@ test('known restored original starts before DOM and layout recovery and shares o
 });
 
 test('single-column adopts the already requested original instead of starting a second element',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8'),at=source.indexOf('function waitForInlineImage('),end=source.indexOf('function preloadOtherFigures(',at);
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8'),at=source.indexOf('function waitForInlineImage('),end=source.indexOf('function preloadOtherFigures(',at);
  const requested={dataset:{},complete:true,naturalWidth:300,getAttribute:()=>'/current',addEventListener(){},removeEventListener(){}};let replacement,decoded;
  const placeholder={dataset:{src:'/current'},alt:'current original',replaceWith:image=>{replacement=image;}};
  const ctx={backgroundFigureImages:[requested],setTimeout,clearTimeout,IMAGE_READY_TIMEOUT_MS:100,decodeFigureImage:async image=>{decoded=image;},window:{ReadMedia:{load:image=>assert.equal(image,requested)}}};
@@ -338,7 +341,7 @@ test('single-column adopts the already requested original instead of starting a 
 
 
 test('figure sequence labels follow the requested image immediately in desktop and single-column modes',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
  const labelStart=source.indexOf('function updatePanelFigurePosition('),labelEnd=source.indexOf('function commitPanelFigure(',labelStart);
  const showStart=source.indexOf('function showFigure('),showEnd=source.indexOf('function setFigureFillPane(',showStart);
  for(const desktop of [true,false]){
@@ -365,11 +368,11 @@ test('loading overlays are centered in fixed viewports and no stylesheet can rev
  const inline=css.match(/\.inline-figure-status\{([^}]*)\}/)[1];for(const rule of ['position:absolute','inset:0','align-items:center','justify-content:center'])assert(inline.includes(rule));
  assert(css.includes('.source-figure .inline-figure-canvas img:not([data-decoded="true"]){visibility:hidden}'));
  assert(css.includes('.inline-figure-viewport:has(img[data-decoded="true"]) .inline-figure-status'));
- const exporter=fs.readFileSync(path.join(root,'export_github_pages.py'),'utf8');assert(exporter.slice(exporter.indexOf('READER_FUNCTIONS = ('),exporter.indexOf('def public_reader_script')).includes('"updatePanelFigurePosition"'));
+ const exporter=fs.readFileSync(path.join(root,'export_github_pages.py'),'utf8');assert(exporter.includes('ROOT / "reader-core.js"'));assert(!exporter.includes('READER_FUNCTIONS'));assert(fs.readFileSync(path.join(root,'reader-core.js'),'utf8').includes('function updatePanelFigurePosition('));
 });
 
 test('both private and exported single-column load handlers wait for decode before revealing and report decode errors',async()=>{
- for(const file of ['app.js','public-site/reader-prelude.js'])for(const failure of [false,true]){
+ for(const file of ['reader-core.js'])for(const failure of [false,true]){
   const source=fs.readFileSync(path.join(__dirname,'..',file),'utf8'),at=source.indexOf('function blockElement('),end=source.indexOf('\nfunction renderArticle(',at);
   let finish,revealed=0,errors=0;const handlers={};const image={addEventListener:(name,fn)=>handlers[name]=fn,dispatchEvent:event=>{assert.equal(event.type,'error');errors++;}};
   const wrap={dataset:{},querySelector:selector=>selector.includes('img')?image:{addEventListener(){}},};
@@ -382,7 +385,7 @@ test('both private and exported single-column load handlers wait for decode befo
 
 
 test('a committed panel image starts at top-left at the same zoom, and an old sizing frame cannot move it',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8'),resize=source.slice(source.indexOf('function applyFigureScale('),source.indexOf('function setFigureScale(')),commit=source.slice(source.indexOf('function handlePanelVisibleLoad('),source.indexOf('function figureMedia('));
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8'),resize=source.slice(source.indexOf('function applyFigureScale('),source.indexOf('function setFigureScale(')),commit=source.slice(source.indexOf('function handlePanelVisibleLoad('),source.indexOf('function figureMedia('));
  const frames=[],canvas={style:{},getBoundingClientRect:()=>({left:0,top:0,width:1000,height:1000})};let image={naturalWidth:1000,naturalHeight:1000};
  const stage={style:{},clientWidth:400,clientHeight:300,scrollLeft:140,scrollTop:180,get scrollWidth(){return parseFloat(canvas.style.width)||1000;},get scrollHeight(){return parseFloat(canvas.style.height)||1000;}};
  const ctx={$:key=>key==='#figure-stage'?stage:key==='#figure-canvas'?canvas:image,panelFigureRequest:1,figureScale:3,pendingPanelViewport:null,getComputedStyle:()=>({paddingLeft:0,paddingRight:0,paddingTop:0,paddingBottom:0}),requestAnimationFrame:fn=>frames.push(fn),updateDragPanState(){},restoreScrollFraction:(node,axis,value)=>{node[axis==='x'?'scrollLeft':'scrollTop']=(axis==='x'?node.scrollWidth-node.clientWidth:node.scrollHeight-node.clientHeight)*value;}};
@@ -395,7 +398,7 @@ test('a committed panel image starts at top-left at the same zoom, and an old si
 });
 
 test('switching into an inline image resets only its own viewport, retaining zoom and defeating old frames or saved offsets',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8'),at=source.indexOf('function applyInlineFigureScale('),end=source.indexOf('function updateDragPanState(',at);
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8'),at=source.indexOf('function applyInlineFigureScale('),end=source.indexOf('function updateDragPanState(',at);
  const frames=[],image={naturalWidth:1000,naturalHeight:1000},canvas={style:{},querySelector:()=>image,getBoundingClientRect:()=>({left:0,top:0,width:1000,height:1000})},stage={style:{},clientWidth:400,clientHeight:300,scrollLeft:140,scrollTop:180,get scrollWidth(){return parseFloat(canvas.style.width)||1000;},get scrollHeight(){return parseFloat(canvas.style.height)||1000;}},wrap={dataset:{blockId:'target'},querySelector:selector=>selector.includes('canvas')?canvas:stage};
  const saved={target:{x:.8,y:.9}},ctx={pendingInlinePositions:saved,inlineFigureScale:()=>2.5,getComputedStyle:()=>({paddingLeft:0,paddingRight:0,paddingTop:0,paddingBottom:0}),requestAnimationFrame:fn=>frames.push(fn),updateDragPanState(){}};
  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
@@ -406,7 +409,7 @@ test('switching into an inline image resets only its own viewport, retaining zoo
 
 
 test('a short final section still selects its last figure at true document bottom and keeps an upward buffer',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8'),at=source.indexOf('function selectAutoFigure('),end=source.indexOf('function resetAutoFigureTracking(',at),ctx={};vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
+ const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8'),at=source.indexOf('function selectAutoFigure('),end=source.indexOf('function resetAutoFigureTracking(',at),ctx={};vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
  // At bottom a short final section leaves its anchor below the ordinary 52% trigger line.
  assert.equal(ctx.selectAutoFigure([0,200,750],1,-1,468,820,0,true),2);
  assert.equal(ctx.selectAutoFigure([0,210,760],2,-1,468,820,20,false),2);

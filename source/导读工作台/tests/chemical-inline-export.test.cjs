@@ -3,7 +3,7 @@ const tool=require('../member-system/article-export.js');
 const root=path.resolve(__dirname,'..'),formatter=require('../inline-format.js');
 const sup='<sup class="chem-ligand-star" style="font-size:0.75em;line-height:0;vertical-align:super">&#42;</sup>';
 function reader(file){const s=fs.readFileSync(path.join(root,file),'utf8');const a=s.indexOf('function escapeHtml('),b=s.indexOf('\nfunction ',s.indexOf('function inlineMarkdown(',a)+1);const ctx=vm.createContext({window:{ReadInline:formatter}});vm.runInContext(s.slice(a,b),ctx);return text=>ctx.inlineMarkdown(text);}
-const local=reader('app.js'),publicReader=reader('public-site/reader-prelude.js');
+const local=reader('reader-core.js'),publicReader=reader('reader-core.js');
 const canonical=html=>html.replace(/\sstyle="[^"]*"/g,'');
 const hasFormatted=(html,expected)=>canonical(html).includes(canonical(expected));
 const ref=(kind,number)=>`<span class="figure-reference" style="white-space:nowrap;word-spacing:normal;letter-spacing:normal">${kind}<strong class="figure-reference-number" style="font-family:inherit;font-size:inherit;line-height:inherit;font-weight:600;vertical-align:baseline">${number}</strong></span>`;

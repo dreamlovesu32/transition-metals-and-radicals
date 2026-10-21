@@ -354,6 +354,12 @@
       "origin": "byte-for-byte source copy"
     },
     {
+      "path": "导读工作台/README.md",
+      "bytes": 2187,
+      "sha256": "f21b0bfbb69c6fd190c25ae15238f75623c12c3a1229198b85790369cf7a5283",
+      "origin": "byte-for-byte source copy"
+    },
+    {
       "path": "导读工作台/app.css",
       "bytes": 47001,
       "sha256": "695d525a222a42c9da5f041337b5a69c6f7b8272dc974339945a08d71ae32b77",
@@ -361,14 +367,14 @@
     },
     {
       "path": "导读工作台/app.js",
-      "bytes": 80684,
-      "sha256": "3e395759b03b721e39c499a1c43311a0af3d4fcf4ce4e11ffba07fec50fbff70",
+      "bytes": 28450,
+      "sha256": "ef05e3346ef2a750c6b127d3ed8c642a7724319146a9edfe5fd31da6ba6c0387",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/article_config.py",
-      "bytes": 7300,
-      "sha256": "be42166968960e31fb26fa683b4988434bd237415774209ce736f6a0c2b46bc7",
+      "bytes": 9284,
+      "sha256": "c2af964dc94749f13dfde0f13034daebfad00bed0947d329236bf027085987a8",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -403,14 +409,14 @@
     },
     {
       "path": "导读工作台/export_github_pages.py",
-      "bytes": 18039,
-      "sha256": "e50efc41b8702a2e5dcf28343a2876dac5c7810b769904a3804d4965cac82ea4",
+      "bytes": 15770,
+      "sha256": "ee11be220dbcf21f23da2dcab7996d00b47c16e5d1f9dc0ab47160482cdf3017",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/index.html",
-      "bytes": 9099,
-      "sha256": "394b0ab6c5296b8827d91ccfe5f2fa4a06d799e3a0796a610b26c903484bb7db",
+      "bytes": 9199,
+      "sha256": "a891890b6fc03310abbddc4b529f57f2041f691c612574c46fbde793738bf5d9",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -493,8 +499,8 @@
     },
     {
       "path": "导读工作台/member-system/members.js",
-      "bytes": 92343,
-      "sha256": "5f9bd897ec0de4f239206980ec801f3113838ff354b015c150f59e39e9ae447b",
+      "bytes": 92452,
+      "sha256": "43a27e58a3b08bac328a159911aacfcd5162e1dbc96494973912c054d2f1f1e4",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -559,14 +565,14 @@
     },
     {
       "path": "导读工作台/public-site/reader-boot.js",
-      "bytes": 9017,
-      "sha256": "58e0583a0759fab5539f6139d23e27bded7bd16eb12f37a9a65a9ab9d5a9210a",
+      "bytes": 9067,
+      "sha256": "c1bdca4cf32c377a582c6e8880d4bab013ee113c5433ad0e194e05b332cd0343",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/public-site/reader-prelude.js",
-      "bytes": 10968,
-      "sha256": "498d91191eab5483e3afd65057d1d6d4e226af0b501d0b02b9a6d87cf296a2ad",
+      "bytes": 5929,
+      "sha256": "a57bb942c36b7054489b8ff5103bc1029d1d93032b4ce404a22b18a10d70396a",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -582,15 +588,33 @@
       "origin": "byte-for-byte source copy"
     },
     {
+      "path": "导读工作台/reader-contract.js",
+      "bytes": 3679,
+      "sha256": "6e0b50a7a7ebe4e2703fc236b6cd12002c455393308164d5a35a2132e6cacdb8",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/reader-core.js",
+      "bytes": 53197,
+      "sha256": "192c66fbbc3b898958d99d79b8aeaddf8c8757b7e615a9425a8da6e1c461be78",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/reader_contract.py",
+      "bytes": 4692,
+      "sha256": "2339d31678db1f02fe349e11199e8fa669dab50f58d79961c4d418639cc40ad6",
+      "origin": "byte-for-byte source copy"
+    },
+    {
       "path": "导读工作台/server.py",
-      "bytes": 15724,
-      "sha256": "5d7c35a48964b46e290d2c5adca616e92055190f9a7266c9d6d4415d63a14816",
+      "bytes": 17111,
+      "sha256": "1393e13e2c8a57402ce75e7f2bbf3c1573f89412e6a1bbebe2043d45233b4287",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/templates/article-manifest.example.json",
-      "bytes": 747,
-      "sha256": "27b0c44ea3c6d568de9ffa9385e8fbf0f3eaee6677bc3a01cb5aa9395b3118e8",
+      "bytes": 1140,
+      "sha256": "a65ea0ebcc9478f5a09ab4a3604d4a7b86fcc52e98f9db6b268cc8abcdda7b77",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -613,20 +637,62 @@
     },
     {
       "path": "导读工作台/tests/chemical-inline-export.test.cjs",
-      "bytes": 7726,
-      "sha256": "e3ccc5ca3b84eaa739687b451a2afbaec1e3cc56630970da7ca88a8a9937042d",
+      "bytes": 7719,
+      "sha256": "4a22432a71a9fc986683cbb17f245cf5618c38a86b3b94c2258d73e53567c529",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/figure-native-touch.test.cjs",
+      "bytes": 2904,
+      "sha256": "72e7f4e271c560d1ae8c4880b98a726bfddd1e03d869539aa9bc97921fd46ad2",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/fixtures/reading-contract.json",
+      "bytes": 32880,
+      "sha256": "3a5285f547317bb08a226a14365b2c4ac8e093b7af3c38a5a6b4ae8bbebc8406",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/highlight-entry.test.cjs",
+      "bytes": 3339,
+      "sha256": "4d97c92adf6f020e7bd28566562f9d9473672d95b516b1c03e3e0b3811256bf7",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/tests/loading-performance.test.cjs",
-      "bytes": 47449,
-      "sha256": "d0815debbd7a0dcda07a04780562e3c631857a5fb48e1b5694f2b73583db2301",
+      "bytes": 47816,
+      "sha256": "cccabff5e9409056706842c383cfe6dd4c1e14258b51a4127039b802449043f5",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/private-review-reader.test.cjs",
+      "bytes": 5286,
+      "sha256": "6027c3aca88c4d4b84a06511f260b3b943ea5b6d919a3899a795b0d939a2260b",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/tests/published-library.test.cjs",
       "bytes": 5915,
       "sha256": "c456d62fcdab4ff056d3acbacd988733ca60c956fe17f96e3a5da2884d175033",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/reader-contract.test.cjs",
+      "bytes": 5259,
+      "sha256": "2c14fb3883efb216abd71b4b32c593db5633816d5ae5472065b85458f623d649",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/test_article_interface.py",
+      "bytes": 6595,
+      "sha256": "cb6b8a099216f3f76a11f0202004d34a0ec0732919c51611652ca7ccac4b6be8",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/version-history.test.cjs",
+      "bytes": 4743,
+      "sha256": "437d9a6ccaeb7e755bf840a8904c6bc3e187aa3724002179773ec7340a48db91",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -637,20 +703,38 @@
     },
     {
       "path": "导读工作台/validate_article.py",
-      "bytes": 2316,
-      "sha256": "1e98e5ad736ba124413f886627be2bda12d23e8ba3c0a8e73c09ff040a95679f",
+      "bytes": 8175,
+      "sha256": "2b74fdcfe0f1d9ec09a22dc5b9ab830aa9c924675a6c7b6361b9ed0938641503",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/workbench-reader.js",
+      "bytes": 543,
+      "sha256": "b1c8b137469c9225d45b222998a4d7dea161bf7321062d6012bc9fd44d8405d8",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/文章模板.md",
+      "bytes": 7103,
+      "sha256": "dda82bba321cba03d6a58bb0cb70646c724529bbeb12275e7279a444d6c3adde",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "工具/test_source_sync.py",
-      "bytes": 4171,
-      "sha256": "4cda71d08a8158f5a6b053c104e8520a8d7092807a149fd796676c1601d48d94",
+      "bytes": 4258,
+      "sha256": "b63a7276fe63889554720df73ffb82e16ebe5c71da46df343b63e4379c1f3e9d",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "工具/同步网站源码.py",
-      "bytes": 16874,
-      "sha256": "4317c50ef8e871461d698b744cb45ac6a8b0fcde6f1db85c8636eeb702d803f3",
+      "bytes": 17304,
+      "sha256": "b96ba457fb02bb17dd591bac171a26ee351dfbc80e944a8c89b79dc0a109ac19",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "工具/构建审稿预览.py",
+      "bytes": 7775,
+      "sha256": "8de930f215c2398da251cd2f1a5f2a087aef880eaa6932ab96b9b0486c86ad79",
       "origin": "byte-for-byte source copy"
     }
   ]

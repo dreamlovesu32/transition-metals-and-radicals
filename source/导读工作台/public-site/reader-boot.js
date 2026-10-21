@@ -45,10 +45,11 @@ async function start() {
       assertReviewIdentity();
       documentState = adaptReviewDraft(reviewDraft, requestedArticleId);
     } else {
-    window.ReadPublished.catalog('./catalog.json').then(data => {
+    const transport = window.ReadWorkbenchRead || window.ReadPublished;
+    transport.catalog('./catalog.json').then(data => {
       articles = data.articles; window.ReadMembers?.setPublicCatalog?.(articles); configureReadingNavigation(articles);
     }).catch(() => {});
-    documentState = await window.ReadPublished.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
+    documentState = await transport.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
     }
     restoringReadingState = true;
     const localSaved = storedReadingState();

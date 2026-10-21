@@ -15,10 +15,27 @@
     "en": "data/replace-with-article-id/state-en.json"
   },
   "sourcePdf": "原文/YYYY-MM-DD/02/paper.pdf",
-  "sourceUrl": "https://doi.org/10.xxxx/replace-with-verified-doi",
+  "sourceUrl": "https://doi.org/10.1234/replace-with-verified-doi",
   "figuresDir": "articles/replace-with-article-id/figures",
   "figures": [
-    {"file": "figure-01.png", "page": 1}
+    {
+      "file": "figure-01.png",
+      "page": 1
+    }
   ],
-  "scrollThreshold": 0.52
+  "scrollThreshold": 0.52,
+  "doi": "10.1234/replace-with-verified-doi",
+  "journal": "填写完整期刊名",
+  "published": "2026.10",
+  "firstPublishedOn": "2026-10-01",
+  "kind": "research",
+  "reviewStatus": "pending",
+  "cover": "covers/replace-with-article-id.png",
+  "reading": {
+    "version": 1,
+    "downThreshold": 0.52,
+    "upBuffer": 0.18,
+    "endBuffer": 0.25,
+    "switches": []
+  }
 }

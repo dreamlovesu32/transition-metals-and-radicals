@@ -11,11 +11,10 @@ ROOT = Path(__file__).resolve().parent
 WORKSPACE = ROOT.parent
 IMAGE_NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._-]*\.(?:png|jpe?g|webp)", re.I)
 ARTICLE_ID = re.compile(r"[a-z0-9][a-z0-9-]{1,63}")
-CATALOG_IDS = ("paper01", "r20261017-01", "r20261017-02", "r20261017-04", "r20261017-05", "r20261018-01", "r20261018-02", "r20261018-03")
 
 
 def confined(base: Path, value: str) -> Path:
-    if not isinstance(value, str) or not value or Path(value).is_absolute():
+    if not isinstance(value, str) or not value or Path(value).is_absolute() or "\\" in value or ":" in value:
         raise ValueError(f"Invalid relative path: {value!r}")
     target = (base / value).resolve()
     if not target.is_relative_to(base.resolve()):
@@ -25,11 +24,15 @@ def confined(base: Path, value: str) -> Path:
 
 def load_manifest(path: Path) -> dict:
     path = path.resolve()
-    if not path.is_relative_to((ROOT / "articles").resolve()):
-        raise ValueError("Article manifest must be inside articles/")
+    if path.parent != (ROOT / "articles").resolve():
+        raise ValueError("Article manifest must be directly inside articles/")
     data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("Article manifest must be an object")
     if not ARTICLE_ID.fullmatch(data.get("id", "")):
         raise ValueError("Article id must be lowercase letters, digits or hyphens")
+    if path.name != f"{data['id']}.json":
+        raise ValueError("Manifest filename must match article id")
     if not isinstance(data.get("readingId"), str) or not data["readingId"]:
         raise ValueError("readingId is required")
     if not isinstance(data.get("displayNumber"), str) or not data["displayNumber"]:
@@ -51,7 +54,11 @@ def load_manifest(path: Path) -> dict:
     data["figuresDir"] = confined(ROOT, data["figuresDir"])
     if data.get("kind") not in ("research", "review"):
         raise ValueError("kind must be research or review")
-    if data.get("reviewStatus", "existing-public-baseline") not in ("pending", "approved", "proofreading", "existing-public-baseline"):
+    if "reviewStatus" not in data:
+        baseline_path = ROOT / "publication-baseline.json"
+        baseline = json.loads(baseline_path.read_text(encoding="utf-8"))["articles"] if baseline_path.is_file() else {}
+        data["reviewStatus"] = baseline.get(data["id"], {}).get("status", "pending")
+    if data["reviewStatus"] not in ("pending", "approved", "proofreading", "existing-public-baseline"):
         raise ValueError("Invalid review status")
     if not re.fullmatch(r"\d{4}\.\d{2}", data.get("published", "")):
         raise ValueError("published must be YYYY.MM")
@@ -63,24 +70,64 @@ def load_manifest(path: Path) -> dict:
         raise ValueError("firstPublishedOn must match published month")
     if not isinstance(data.get("journal"), str) or not data["journal"]:
         raise ValueError("journal is required")
-    if not isinstance(data.get("doi"), str) or not data["doi"].startswith("10."):
-        raise ValueError("doi is required")
+    if not isinstance(data.get("doi"), str) or not re.fullmatch(r"10\.\d{4,9}/\S+", data["doi"]):
+        raise ValueError("doi must be a complete DOI without URL prefix or spaces")
     data["cover"] = confined(ROOT, data["cover"])
     figures = data.get("figures")
     if not isinstance(figures, list) or not figures:
         raise ValueError("figures must be a nonempty ordered list")
     names = set()
+    media_stems = set()
     for figure in figures:
         if not isinstance(figure, dict) or not IMAGE_NAME.fullmatch(figure.get("file", "")):
             raise ValueError("Invalid figure filename")
-        if figure["file"] in names or type(figure.get("page")) is not int or figure["page"] < 1:
+        if figure["file"].lower() in names or Path(figure["file"]).stem.lower() in media_stems or type(figure.get("page")) is not int or figure["page"] < 1:
             raise ValueError("Duplicate figure or invalid source PDF page")
-        names.add(figure["file"])
+        names.add(figure["file"].lower())
+        media_stems.add(Path(figure["file"]).stem.lower())
     threshold = data.get("scrollThreshold", 0.52)
     if not isinstance(threshold, (int, float)) or isinstance(threshold, bool) or not 0 < threshold < 1:
         raise ValueError("scrollThreshold must be between 0 and 1")
     data["scrollThreshold"] = threshold
+    from reader_contract import reading_settings
+    reading_settings(data)
     return data
+
+
+def discover_articles() -> dict[str, Path]:
+    """Discover private manifests afresh; this does not grant publication approval."""
+    result = {}
+    reading_ids = set()
+    state_paths = set()
+    for path in sorted((ROOT / "articles").glob("*.json")):
+        article = load_manifest(path)
+        article_id = article["id"]
+        if article_id in result:
+            raise ValueError(f"Duplicate article id: {article_id}")
+        if article["readingId"] in reading_ids:
+            raise ValueError(f"Duplicate readingId: {article['readingId']}")
+        for state_path in article["state"].values():
+            if state_path in state_paths:
+                raise ValueError(f"Shared state path: {state_path}")
+            state_paths.add(state_path)
+        result[article_id] = path
+        reading_ids.add(article["readingId"])
+    return result
+
+
+class _CatalogIds:
+    """Retain existing import sites while discovering additions without source edits."""
+    def __iter__(self):
+        return iter(discover_articles())
+
+    def __contains__(self, article_id):
+        return article_id in discover_articles()
+
+    def __len__(self):
+        return len(discover_articles())
+
+
+CATALOG_IDS = _CatalogIds()
 
 
 def load_active_article() -> dict:
@@ -92,13 +139,14 @@ def load_active_article() -> dict:
 def load_article(article_id: str | None = None) -> dict:
     if article_id is None:
         return load_active_article()
-    if article_id not in CATALOG_IDS:
+    manifests = discover_articles()
+    if article_id not in manifests:
         raise ValueError("Unknown article")
-    return load_manifest(ROOT / "articles" / f"{article_id}.json")
+    return load_manifest(manifests[article_id])
 
 
 def load_catalog() -> list[dict]:
-    articles = [load_article(article_id) for article_id in CATALOG_IDS]
+    articles = [load_manifest(path) for path in discover_articles().values()]
     articles.sort(key=lambda item: (item["published"], item["readingId"]), reverse=True)
     return articles
 
@@ -129,7 +177,7 @@ def public_catalog() -> list[dict]:
 
 def public_article(config: dict) -> dict:
     from media_assets import article_media
-    return {"id": config["id"], "readingId": config["readingId"],
+    result = {"id": config["id"], "readingId": config["readingId"],
             "displayNumber": config["displayNumber"], "title": config["title"],
             "sourceUrl": config.get("sourceUrl"),
             "journal": config["journal"], "published": config["published"],
@@ -137,3 +185,6 @@ def public_article(config: dict) -> dict:
             "figurePages": {f"figures/{f['file']}": f["page"] for f in config["figures"]},
             "scrollThreshold": config["scrollThreshold"],
             "figureMedia": article_media(config, f"/media/{config['id']}")}
+    if "reading" in config:
+        result["reading"] = config["reading"]
+    return result
