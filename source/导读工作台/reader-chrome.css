@@ -36,6 +36,7 @@ body[data-reader-layout=desktop] .left-rail,body[data-reader-layout=desktop] .pa
 .reader-outline details{margin-bottom:12px}
 .reader-outline summary{display:list-item;cursor:pointer;color:#91a3b5}
 .reader-outline a{display:inline-block;padding:6px 0;color:#566b7f;text-decoration:none;font-weight:500;line-height:1.8}
+.reader-outline .reader-panel-body > a{display:block;min-height:44px}
 .reader-outline a[aria-current=location]{color:#225d91;font-weight:700}
 .reader-outline a:hover{color:#225d91}
 .reader-outline a.reader-outline-child{display:block;margin-left:16px;font-size:13px;font-weight:400}

@@ -337,7 +337,36 @@ function commitPanelFigure(block) {
   $("#panel-figure-note").textContent = currentLanguage === "zh" ? "原论文裁图 · 栏内查看" : "Original paper crop";
 }
 
-function requestPanelFigure(block, retry=false) {
+function schedulePanelFigureRecovery(block, failedRequest, attempt=1) {
+  if (typeof documentState==="undefined" || !documentState?.article || typeof fetch!=="function") return;
+  const owner=readingIdentity();let stopped=false,timer=null,controller=null;
+  const current=()=>!stopped && panelFigureRequest===failedRequest && sameReadingIdentity(owner);
+  const stop=()=>{stopped=true;clearTimeout(timer);controller?.abort();if(requestPanelFigure.recovery?.stop===stop)delete requestPanelFigure.recovery;};
+  const schedule=delay=>{timer=setTimeout(check,delay??Math.min(300000,1000*2**Math.min(attempt-1,9)));timer?.unref?.();};
+  const check=async()=>{
+    if(!current()){stop();return;}
+    controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),15000);
+    try {
+      const response=await fetch(articleAsset(block.src),{credentials:"same-origin",cache:"no-store",signal:controller.signal});
+      try{await response.body?.cancel();}catch{}
+      if(!current()){stop();return;}
+      if(response.ok && /^image\//i.test(response.headers.get("Content-Type")||"")){
+        stop();const pending=requestPanelFigure(block,true,attempt),renewedRequest=panelFigureRequest;
+        const result=await pending;
+        if(result==="ready" && panelFigureRequest===renewedRequest && sameReadingIdentity(owner))await recoverReadingPreparationImage({target:$("#panel-figure-image")});
+      } else if(!response.ok && [408,425,429,502,503,504].includes(response.status)) {
+        attempt++;const retryAfter=Math.min(300000,Math.max(0,Number(response.headers.get("Retry-After"))||0)*1000);schedule(retryAfter||undefined);
+      } else {
+        console.warn("Read image recovery diagnostic",{scope:"panel-image",kind:response.ok?"protocol":"http",status:response.status||0});stop();
+      }
+    } catch {if(current()){attempt++;schedule();}}
+    finally {clearTimeout(timeout);}
+  };
+  requestPanelFigure.recovery?.stop();requestPanelFigure.recovery={stop};schedule();
+}
+
+function requestPanelFigure(block, retry=false, recoveryAttempt=0) {
+  requestPanelFigure.recovery?.stop();
   const requestId = ++panelFigureRequest;
   const base = articleAsset(block.src);
   const url = retry ? `${base}${base.includes("?") ? "&" : "?"}imageRetry=${++imageRetryNumber}` : base;
@@ -357,7 +386,7 @@ function requestPanelFigure(block, retry=false) {
       candidate.removeEventListener("load", loaded); candidate.removeEventListener("error", failed);
       if (requestId !== panelFigureRequest) {resolve("stale"); return;}
       if(requestPanelFigure.pendingCandidate===candidate)delete requestPanelFigure.pendingCandidate;
-      if (result !== "ready") {setPanelFigureState("failed");preloadOtherFigures.trim?.(); resolve(result); return;}
+      if (result !== "ready") {setPanelFigureState("failed");preloadOtherFigures.trim?.();schedulePanelFigureRecovery(block,requestId,recoveryAttempt+1);resolve(result);return;}
       candidate.id = "panel-figure-image";
       const visible = $("#panel-figure-image");
       const changed = Boolean(visible.dataset.figureSource && (visible.dataset.figureSource !== block.src || (block.id && visible.dataset.figureBlockId !== block.id)));
@@ -682,6 +711,7 @@ function isDesktopLayout() {
 }
 
 function applyLayoutPreference() {
+  document.body.classList.toggle("reader-outline-open", !!window.ReadOutlineOpen);
   const mode = isDesktopLayout() ? "desktop" : "single";
   document.body.dataset.readerLayout = mode;
   document.body.dataset.paneSide = paneSide;
@@ -788,8 +818,14 @@ function readingAnchor() {
   let anchor = blocks[0];
   const line=readingSectionInset()+2;
   for (const block of blocks) {
-    const marker=block.querySelector("h2,h3,h4")||block;
-    if (marker.getBoundingClientRect().top > line) break;
+    const heading=block.querySelector("h2,h3,h4");
+    const marker=heading||block;
+    if (marker.getBoundingClientRect().top > line) {
+      // Outline targets sit just below this line; keep that visible heading,
+      // rather than an earlier paragraph whose height changes on reflow.
+      if (heading && marker.getBoundingClientRect().top <= line + 16) anchor=block;
+      break;
+    }
     anchor = block;
   }
   const top = anchor ? anchor.getBoundingClientRect().top + window.scrollY : 0;
@@ -1035,17 +1071,45 @@ function preloadOtherFigures() {
   pump();
 }
 
-function showPreparationFailure(message) {
+async function recoverReadingPreparationImage(event) {
+  const owner=showPreparationFailure.recoveryOwner;
+  if (!owner || owner.document!==documentState || owner.attempt!==preparationAttempt || !documentState?.article || readingPrepared) return;
+  if (reviewMode) {try {assertReviewIdentity();} catch {return;}}
+  const current=isDesktopLayout()?$("#panel-figure-image"):currentInlineFigure()?.querySelector(".inline-figure-canvas img");
+  if (event.target!==current || !current?.complete || !current.naturalWidth) return;
+  showPreparationFailure.recoveryOwner=null;
+  try {await finishReadingPreparation();}
+  catch {showPreparationFailure("阅读准备暂未完成，当前内容已保留。");}
+}
+
+function showPreparationFailure(message, deferImageActions=false) {
+  showPreparationFailure.recoveryOwner={document:documentState,attempt:preparationAttempt};
+  clearTimeout(showPreparationFailure.actionsTimer);
+  if (!showPreparationFailure.watchingImages) {
+    document.addEventListener?.("load",recoverReadingPreparationImage,true);
+    showPreparationFailure.watchingImages=true;
+  }
   readingPrepared = false;
   document.body.classList.add("reader-preparing");
   $(".layout").inert = true; $("#reading-preparation").hidden = false;
-  $("#reading-preparation-message").textContent = message;
-  $("#reading-preparation-retry").hidden = false;
-  $("#reading-preparation-continue").hidden = !documentState?.article;
+  $("#reading-preparation-message").textContent = deferImageActions?"正在准备阅读…":message;
+  $("#reading-preparation-retry").hidden = deferImageActions;
+  $("#reading-preparation-continue").hidden = deferImageActions || !documentState?.article;
+  if(deferImageActions){
+    const owner=showPreparationFailure.recoveryOwner;
+    showPreparationFailure.actionsTimer=setTimeout(()=>{
+      if(readingPrepared || showPreparationFailure.recoveryOwner!==owner || owner.document!==documentState || owner.attempt!==preparationAttempt)return;
+      $("#reading-preparation-message").textContent=message;
+      $("#reading-preparation-retry").hidden=false;
+      $("#reading-preparation-continue").hidden=!documentState?.article;
+    },8000);
+  }
 }
 
 function revealReadingContent(attempt) {
   if (attempt !== preparationAttempt) return;
+  if(showPreparationFailure.actionsTimer)clearTimeout(showPreparationFailure.actionsTimer);
+  showPreparationFailure.recoveryOwner=null;
   if (readingPreparationSaved?.scroll?.atBottom) window.scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});
   readingPrepared = true;
   $(".topbar").inert = false; $(".layout").inert = false;
@@ -1081,7 +1145,7 @@ async function finishReadingPreparation(retry=false, textOnly=false) {
   }
   if (attempt !== preparationAttempt) return;
   if (result !== "ready") {
-    showPreparationFailure("当前原图暂未就绪，请重试或先读正文。");
+    showPreparationFailure("正文已就绪，可先阅读正文。",true);
     return;
   }
   revealReadingContent(attempt);
@@ -1104,7 +1168,8 @@ function sectionHeading(id) {
 
 function readingSectionId() {
   let id=null;
-  const line=readingSectionInset()+2;
+  // Match readingAnchor's nearby-heading band so reload resumes this section.
+  const line=readingSectionInset()+18;
   for(const block of documentState.blocks.filter(item=>item.kind==="heading")){
     const heading=sectionHeading(block.id);
     if(heading&&heading.node.getBoundingClientRect().top<=line)id=block.id;

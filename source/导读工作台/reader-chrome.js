@@ -88,7 +88,6 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
   async function closePanel() {
     if(!openPanel)return;
     const panel=openPanel;openPanel=null;panel.hidden=true;backdrop.hidden=true;
-    document.body.classList.remove('reader-outline-open');
     if(panel.dataset.outline){
       window.ReadOutlineOpen=false;
       if(typeof reflowReaderLayout==='function')await reflowReaderLayout();
@@ -105,7 +104,7 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
     panel.querySelectorAll('.reader-panel-body > details').forEach(d=>{d.open=true;});
     trigger.setAttribute('aria-expanded','true');backdrop.hidden=!panel.classList.contains('reader-dialog');
     if(panel.dataset.outline){
-      window.ReadOutlineOpen=true;document.body.classList.add('reader-outline-open');
+      window.ReadOutlineOpen=true;
       if(typeof reflowReaderLayout==='function')await reflowReaderLayout();
     }
     panel.querySelector('.reader-panel-close')?.focus({preventScroll:true});
@@ -195,7 +194,10 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
     });
     source.querySelectorAll('.member-notes-panel').forEach(d=>convertDetails(d,'批注','notes',false));
     source.querySelectorAll('.member-version-panel').forEach(d=>convertDetails(d,'版本记录','versions',false));
-    source.querySelectorAll('.reader-historical-banner').forEach(n=>{n.classList.add('reader-historical-status');actions.prepend(n);});
+    source.querySelectorAll('.reader-historical-banner').forEach(n=>{
+      n.classList.add('reader-historical-status');actions.prepend(n);
+      if(!annotationButton)dress(penPlaceholder,'pen','历史版本只读，无法新增荧光笔标记');
+    });
     source.querySelectorAll('.member-export-panel').forEach(d=>convertDetails(d,'公众号导出','export',true));
     source.querySelectorAll('.member-review-decisions').forEach(d=>convertDetails(d,'提交审核','review',true));
     const extras=source.querySelector('.member-review-tools .member-reader-actions');
