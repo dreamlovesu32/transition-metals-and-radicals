@@ -361,8 +361,8 @@
     },
     {
       "path": "导读工作台/app.js",
-      "bytes": 80593,
-      "sha256": "3b5da26ef4d7575701677d414b1cdb3ebd15a881627e9c65985ed55097a6a8f7",
+      "bytes": 80684,
+      "sha256": "3e395759b03b721e39c499a1c43311a0af3d4fcf4ce4e11ffba07fec50fbff70",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -487,14 +487,14 @@
     },
     {
       "path": "导读工作台/member-system/members.css",
-      "bytes": 20948,
-      "sha256": "af1db8ce765bd365fe58eca894522eda914e80e878c30ce1e4307664e14bad49",
+      "bytes": 21182,
+      "sha256": "6b3b24340c06f776235cb0d57d20d437d8a3fa7df2954fe14eccd80177b58651",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/member-system/members.js",
-      "bytes": 91098,
-      "sha256": "2e66b2ab462384e9718961845022ab72f1cfad6b5bbfc620b432534ba25bc1cb",
+      "bytes": 92343,
+      "sha256": "5f9bd897ec0de4f239206980ec801f3113838ff354b015c150f59e39e9ae447b",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -511,8 +511,8 @@
     },
     {
       "path": "导读工作台/member-system/reader-ui.test.cjs",
-      "bytes": 6088,
-      "sha256": "1506382021a7f0367440054ffb92b66dbae229d0cfd0cc302b668624fa511eeb",
+      "bytes": 8565,
+      "sha256": "94649794beadccb7203b9b11dab3323fc4c9918c4a48b4ddefdaf73f66abba38",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -577,8 +577,8 @@
     },
     {
       "path": "导读工作台/reader-chrome.js",
-      "bytes": 15064,
-      "sha256": "17d857f224a6e9fa793c9bdcb1b5963fe5430d4af3c141139c1e814f1e5fc107",
+      "bytes": 15132,
+      "sha256": "4ad2eaf8083a73c976f950b28df6df747ee4683f8d93c8623d8fa7aa485ab97d",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -607,8 +607,8 @@
     },
     {
       "path": "导读工作台/tests/card-actions.test.cjs",
-      "bytes": 7168,
-      "sha256": "f3a801b258ceb30177afb88cb67bd5f26f7f1335c37e824b0f040b0b881c677f",
+      "bytes": 7261,
+      "sha256": "49784b30b9e4500af16d1c6398362d95641f1b38c68839746fdeb4e0e1b79e54",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -619,8 +619,8 @@
     },
     {
       "path": "导读工作台/tests/loading-performance.test.cjs",
-      "bytes": 46648,
-      "sha256": "4a3d56b40e5b5e10122abb51dbb26b40748ca85595d21c5c777bf8295142cd8a",
+      "bytes": 47449,
+      "sha256": "d0815debbd7a0dcda07a04780562e3c631857a5fb48e1b5694f2b73583db2301",
       "origin": "byte-for-byte source copy"
     },
     {

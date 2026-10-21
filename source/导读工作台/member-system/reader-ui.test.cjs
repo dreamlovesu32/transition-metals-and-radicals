@@ -20,7 +20,7 @@ test('page jumps return to the original reading anchor without browser history',
 test('archived versions return the read-only reader before mutable controls mount',()=>{
  const src=fs.readFileSync(path.join(__dirname,'members.js'),'utf8');let readonly=0;
  const context={URLSearchParams,location:{search:'?review=1&version=archived'},mountHistoricReader:()=>{readonly++;return 'readonly';}};vm.createContext(context);
- const at=src.indexOf('  function mountReviewReader('),end=src.indexOf('\n  function ',at+4);vm.runInContext(src.slice(at,end)+';this.mount=mountReviewReader;',context);
+ const at=src.indexOf('  function mountReviewReader('),end=src.indexOf('\n  function ',at+4);vm.runInContext(src.slice(src.indexOf('  function clearPendingAnnotation('),src.indexOf('  function annotationPopupPosition('))+src.slice(at,end)+';this.mount=mountReviewReader;',context);
  assert.equal(context.mount({articleId:'synthetic',revision:'a'.repeat(64)}),'readonly');assert.equal(readonly,1);
 });
 test('opening a reading drawer dismisses the sentence editor first',async()=>{
@@ -30,14 +30,31 @@ test('opening a reading drawer dismisses the sentence editor first',async()=>{
  await context.open(panel,trigger);assert.equal(editor.hidden,true);assert.equal(panel.hidden,false);
 });
 test('existing feedback reuses one editor and saves via versioned PUT; new feedback uses POST',async()=>{
- const src=fs.readFileSync(path.join(__dirname,'members.js'),'utf8'),nodes=[],calls=[];
+ const src=fs.readFileSync(path.join(__dirname,'members.js'),'utf8'),nodes=[],calls=[],highlights=new Map(),CSS={highlights};class Highlight{constructor(...ranges){this.ranges=ranges;}}
  class Node{constructor(tag,text,cls){this.tag=tag;this.textContent=text;this.className=cls;this.children=[];this.hidden=false;this.value='';this.classList={add(){},remove(){}};}append(...n){this.children.push(...n);}replaceChildren(...n){this.children=n;}setAttribute(){}addEventListener(){}removeEventListener(){}querySelectorAll(){return [];}querySelector(){return null;}remove(){this.hidden=true;}focus(){}}
  const el=(tag,text,cls)=>{const n=new Node(tag,text,cls);nodes.push(n);return n;},root=el('main'),toolbar=el('nav'),draft={feedback:[{id:'f1',uid:'admin',version_hash:'a'.repeat(64),target_type:'paragraph',target_id:'b1',quote:'synthetic quote',comment:'original'}]},selection={isCollapsed:true,removeAllRanges(){}};
  const document={body:el('body'),addEventListener(){},removeEventListener(){},querySelectorAll:()=>nodes.filter(n=>n.className==='member-review-editor')};
- const context={document,URLSearchParams,location:{search:'?review=1'},state:{epoch:1,user:{id:'admin'}},el,global:{getSelection:()=>selection},positionAnnotationPopup(){},mountVersionHistory(){},mountArticleExport(){},mountHistoricReader(){throw Error('must be current')},mountHighlightNotes:()=>()=>{},reviewLocation:()=>null,reviewAnchor:()=>null,closeAnnotationButton:action=>{const n=el('button','X');n.act=action;return n;},button:(text,action)=>{const n=el('button',text);n.act=action;return n;},notify(){},clearTimeout,setTimeout,api:async(route,data,method)=>{calls.push({route,data,method});return {id:method==='PUT'?'f1':'f2',comment:data.comment,edit_revision:1};}};
- vm.createContext(context);const at=src.indexOf('  function mountReviewReader('),end=src.indexOf('\n  function ',at+4);vm.runInContext(src.slice(at,end)+';this.mount=mountReviewReader;',context);
+ const context={document,CSS,Highlight,URLSearchParams,location:{search:'?review=1'},state:{epoch:1,user:{id:'admin'}},el,global:{CSS,Highlight,getSelection:()=>selection},positionAnnotationPopup(){},mountVersionHistory(){},mountArticleExport(){},mountHistoricReader(){throw Error('must be current')},mountHighlightNotes:()=>()=>{},reviewLocation:()=>null,reviewAnchor:()=>null,closeAnnotationButton:action=>{const n=el('button','X');n.act=action;return n;},button:(text,action)=>{const n=el('button',text);n.act=action;return n;},notify(){},clearTimeout,setTimeout,api:async(route,data,method)=>{calls.push({route,data,method});return {id:method==='PUT'?'f1':'f2',comment:data.comment,edit_revision:1};}};
+ vm.createContext(context);const at=src.indexOf('  function mountReviewReader('),end=src.indexOf('\n  function ',at+4);vm.runInContext(src.slice(src.indexOf('  function clearPendingAnnotation('),src.indexOf('  function annotationPopupPosition('))+src.slice(at,end)+';this.mount=mountReviewReader;',context);
  context.mount({articleId:'paper',revision:'a'.repeat(64),root,toolbar,draft});
  const editor=nodes.find(n=>n.className==='member-review-editor'),input=nodes.find(n=>n.tag==='textarea');
  nodes.find(n=>n.textContent==='查看 / 修改批注').act();assert.equal(editor.hidden,false);assert.equal(input.value,'original');input.value='edited';await nodes.find(n=>n.textContent==='保存批注').act();assert.equal(editor.hidden,true);assert.equal(calls[0].method,'PUT');assert.equal(calls[0].route,'admin/drafts/paper/feedback/f1');assert.equal(calls[0].data.edit_revision,0);
  nodes.find(n=>n.textContent==='整篇意见').act();assert.equal(editor.hidden,false);assert.equal(input.value,'');input.value='new article note';await nodes.find(n=>n.textContent==='保存批注').act();assert.equal(calls[1].method,undefined);assert.equal(calls[1].route,'admin/drafts/paper/feedback');assert.equal(editor.hidden,true);assert.equal(nodes.filter(n=>n.className==='member-review-editor').length,1);
+ const clone={kind:'cloned-native-selection'},range={cloneRange:()=>clone};selection.isCollapsed=false;selection.rangeCount=1;selection.getRangeAt=()=>range;context.reviewAnchor=()=>({blockId:'b1',quote:'new quote',start:0,end:9});
+ const before=calls.length;nodes.find(n=>n.textContent==='写批注').act();assert.equal(calls.length,before);assert.equal(highlights.get('read-pending-annotation').ranges[0],clone);assert.equal(editor.hidden,false);
+ selection.isCollapsed=true;selection.rangeCount=0;assert(highlights.has('read-pending-annotation'),'trace must survive focus collapsing the native selection');
+ nodes.find(n=>n.textContent==='X').act();assert.equal(highlights.has('read-pending-annotation'),false);assert.equal(calls.length,before,'cancel never saves');
+ selection.isCollapsed=false;selection.rangeCount=1;nodes.find(n=>n.textContent==='写批注').act();input.value='explicit save';await nodes.find(n=>n.textContent==='保存批注').act();assert.equal(calls.length,before+1);assert.equal(highlights.has('read-pending-annotation'),false);assert(highlights.has('read-review-notes'),'saved yellow feedback registry remains independent');
+
+});
+
+
+test('annotation editor returns to bottom-right on desktop and avoids the selected text with a mobile keyboard',()=>{
+ const {annotationPopupPosition}=require('./members.js');
+ const desktop=annotationPopupPosition({left:100,right:200,top:200,bottom:225},{height:350},{left:0,top:0,width:1440,height:900});assert.equal(desktop.left,1008);assert.equal(desktop.top,538);
+ for(const viewport of [{left:0,top:0,width:390,height:844},{left:10,top:30,width:320,height:300}]){
+  const anchor={left:40,right:260,top:viewport.top+viewport.height-80,bottom:viewport.top+viewport.height-60};
+  const p=annotationPopupPosition(anchor,{height:350},viewport),height=Math.min(350,p.maxHeight);
+  assert(p.top+height<=anchor.top||p.top>=anchor.bottom,'mobile editor must leave the selected text exposed');assert(p.left>=viewport.left+12);assert(p.top>=viewport.top+12);assert(p.left+p.width<=viewport.left+viewport.width-12);assert(p.top+height<=viewport.top+viewport.height-12);
+ }
 });

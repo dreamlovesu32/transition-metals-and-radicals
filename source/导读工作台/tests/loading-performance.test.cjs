@@ -258,10 +258,10 @@ test('configured final figure retains a quarter viewport buffer and releases on 
   assert.equal(ctx.isReadingAtEnd(100,0,100),false);
  }
 });
-test('unconfigured and single-column figures keep natural anchor behavior',()=>{
+test('ordinary final figures fall back at document bottom while single-column keeps its own active figure',()=>{
  const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const at=source.indexOf('function isReadingAtEnd('),end=source.indexOf('\nfunction observeFigures(',at);
  const selected=[],ctx={currentFigureIndex:0,figureBlocks:[{},{},{}],restoringReadingState:false,figureAuto:true,isDesktopLayout:()=>true,readingPrepared:true,documentState:{article:{}},window:{scrollY:1400,innerHeight:600},document:{scrollingElement:{scrollHeight:2000},documentElement:{scrollHeight:2000},querySelectorAll:()=>[0,10,2000].map(top=>({getBoundingClientRect:()=>({top})}))},showFigure:i=>selected.push(i)};
- vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);ctx.syncFigureToScroll();assert.equal(selected.at(-1),1);
+ vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);ctx.syncFigureToScroll();assert.equal(selected.at(-1),2);
  ctx.figureBlocks[0].scrollTrigger='article-end';assert.equal(ctx.articleEndFigureIndex(),-1);
  ctx.updatePanelFigurePosition=()=>{};let resetWrap=null;ctx.resetInlineFigureOrigin=wrap=>resetWrap=wrap;ctx.isDesktopLayout=()=>false;ctx.currentInlineFigure=()=>({dataset:{figureIndex:'2'}});ctx.currentFigureIndex=0;ctx.preloadOtherFigures=()=>{};ctx.syncFigureToScroll();assert.equal(ctx.currentFigureIndex,2);assert.equal(resetWrap.dataset.figureIndex,'2');assert.equal(selected.length,1);
 });
@@ -402,4 +402,14 @@ test('switching into an inline image resets only its own viewport, retaining zoo
  ctx.applyInlineFigureScale(wrap);ctx.resetInlineFigureOrigin(wrap);assert.equal(stage.scrollLeft,0);assert.equal(stage.scrollTop,0);assert.equal(saved.target,undefined);assert.equal(ctx.inlineFigureScale(wrap),2.5);assert(parseFloat(canvas.style.width)>stage.clientWidth);
  stage.scrollLeft=25;stage.scrollTop=30;frames.shift()();assert.equal(stage.scrollLeft,25);assert.equal(stage.scrollTop,30);
  image.naturalWidth=0;ctx.resetInlineFigureOrigin(wrap);assert.equal(wrap.dataset.figureStartPending,'true');image.naturalWidth=1000;ctx.applyInlineFigureScale(wrap,false);frames.shift()();assert.equal(stage.scrollLeft,0);assert.equal(stage.scrollTop,0);assert.equal(wrap.dataset.figureStartPending,undefined);
+});
+
+
+test('a short final section still selects its last figure at true document bottom and keeps an upward buffer',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8'),at=source.indexOf('function selectAutoFigure('),end=source.indexOf('function resetAutoFigureTracking(',at),ctx={};vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
+ // At bottom a short final section leaves its anchor below the ordinary 52% trigger line.
+ assert.equal(ctx.selectAutoFigure([0,200,750],1,-1,468,820,0,true),2);
+ assert.equal(ctx.selectAutoFigure([0,210,760],2,-1,468,820,20,false),2);
+ assert.equal(ctx.selectAutoFigure([0,460,1000],2,-1,468,820,230,false),1);
+ assert.equal(ctx.selectAutoFigure([0,200,750],1,-1,468,820,20,false),1);
 });

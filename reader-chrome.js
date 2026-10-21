@@ -82,6 +82,7 @@ if(typeof module!=='undefined')module.exports={createReaderJumpController};
   async function showPanel(panel,trigger) {
     // The drawer and a sentence editor share one reading workspace.
     document.querySelectorAll('.member-review-editor').forEach(editor=>{editor.hidden=true;});
+    globalThis.CSS?.highlights?.delete('read-pending-annotation');
     if(openPanel===panel){await closePanel();return;}
     await closePanel();returnFocus=trigger;openPanel=panel;panel.hidden=false;panel._trigger=trigger;
     panel.querySelectorAll('.reader-panel-body > details').forEach(d=>{d.open=true;});

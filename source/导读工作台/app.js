@@ -757,10 +757,11 @@ function readingVisibleHeight() {
 }
 
 function selectAutoFigure(tops, current, endIndex, downLine, visibleHeight, bottomGap, atEnd, force=false) {
-  if (endIndex >= 0 && atEnd) return endIndex;
+  if (atEnd && tops.length) return tops.length - 1;
   let next = 0;
   tops.forEach((top, index) => {if (index !== endIndex && top <= downLine) next = index;});
   if (force || current < 0 || current >= tops.length) return next;
+  if (current === tops.length - 1 && bottomGap < visibleHeight * .25) return current;
   if (endIndex >= 0 && current === endIndex) return bottomGap < visibleHeight * .25 ? endIndex : next;
   if (next >= current) return next;
   const upLine = downLine + visibleHeight * .18;

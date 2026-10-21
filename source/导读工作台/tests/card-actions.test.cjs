@@ -16,7 +16,7 @@ test('favorite presentation persists only explicitly public IDs, without notes/r
  const shown=await createSessionCache(storage).read(()=>{throw Error('fresh presentation must not refetch');});assert.deepEqual(shown.favoriteIds,['public-1']);assert.equal(shown.user.role,undefined);assert.equal(shown.csrfToken,'');
  assert(!JSON.stringify([...values.values()]).includes('private-draft'));cache.invalidate();assert.equal(values.size,0);
 });
-test('selection popup stays beside desktop text and inside mobile/keyboard viewport',()=>{
+test('selection popup fits the mobile keyboard viewport',()=>{
  for(const viewport of [{left:0,top:0,width:1440,height:900},{left:0,top:0,width:390,height:844},{left:10,top:30,width:320,height:300}]){
   const p=annotationPopupPosition({left:50,right:200,top:viewport.top+viewport.height-35,bottom:viewport.top+viewport.height-20},{height:350},viewport);
   assert(p.left>=viewport.left+12);assert(p.top>=viewport.top+12);assert(p.left+p.width<=viewport.left+viewport.width-12);assert(p.maxHeight<=viewport.height-24);
@@ -43,7 +43,7 @@ test('highlighter is off by default; only enabled selection opens the same edito
  class Element extends Node{constructor(tag,text,cls){super(tag);this.textContent=text;this.className=cls;this.value='';this.hidden=false;this.classList={add(){},remove(){}};}replaceChildren(...items){this.children=items;}querySelectorAll(){return [];}focus(){}}
  const el=(tag,text,cls)=>{const n=new Element(tag,text,cls);nodes.push(n);return n;},root=el('main'),toolbar=el('nav');let selection=null;
  const context={document:{body:el('body'),addEventListener:(name,fn)=>listeners[name]=fn,removeEventListener(){},querySelectorAll:()=>nodes.filter(n=>n.className==='member-review-editor')},URLSearchParams,location:{search:'?review=1'},state:{epoch:1,user:{id:'admin'}},el,global:{getSelection:()=>({isCollapsed:true,removeAllRanges(){}})},mountVersionHistory(){},mountArticleExport(){},mountHistoricReader(){},mountHighlightNotes:()=>()=>{},positionAnnotationPopup(){},reviewLocation:()=>null,reviewAnchor:()=>selection,closeAnnotationButton:action=>{const n=el('button','X');n.act=action;return n;},button:(text,action)=>{const n=el('button',text);n.act=action;return n;},notify(){},clearTimeout:()=>timers.splice(0),setTimeout:fn=>{timers.push(fn);return 1;}};
- vm.createContext(context);vm.runInContext(source.slice(at,end)+';this.mount=mountReviewReader;',context);context.mount({articleId:'synthetic',revision:'a'.repeat(64),root,toolbar,draft:{feedback:[]}});
+ vm.createContext(context);vm.runInContext(source.slice(source.indexOf('  function clearPendingAnnotation('),source.indexOf('  function annotationPopupPosition('))+source.slice(at,end)+';this.mount=mountReviewReader;',context);context.mount({articleId:'synthetic',revision:'a'.repeat(64),root,toolbar,draft:{feedback:[]}});
  const marker=nodes.find(n=>n.textContent==='荧光笔'),editor=nodes.find(n=>n.className==='member-review-editor');assert.equal(marker.getAttribute('aria-pressed'),'false');
  listeners.selectionchange();assert.equal(timers.length,0);marker.act();assert.equal(marker.getAttribute('aria-pressed'),'true');assert.equal(editor.hidden,true);
  selection={blockId:'b1',quote:'synthetic quote',start:0,end:15};listeners.selectionchange();timers.shift()();assert.equal(editor.hidden,false);

@@ -83,3 +83,6 @@
 @media(max-width:600px){.export-workspace{gap:20px}.export-workspace .export-intro{padding:15px}.export-scopes{grid-template-columns:1fr}.export-copy-actions>.export-button{flex:1}.export-copy-actions>.export-primary{flex-basis:100%}.export-download-actions>.export-button{width:100%}.export-link-section{padding:14px}.export-image-row{grid-template-columns:60px minmax(0,1fr)}}
 
 .export-scopes>.export-scope:only-child{grid-column:1/-1}.export-workspace .export-intro{padding:14px 18px}.export-workspace .export-intro h3{font-size:20px;margin:5px 0}.export-workspace .export-intro p{margin-top:4px;font-size:13px}@media(max-width:600px){.export-field input{font-size:16px!important}.export-workspace .export-intro{padding:12px 14px}}
+
+/* Unsaved selection is blue; saved notes retain their yellow highlight. */
+::highlight(read-pending-annotation){background:#dcecff;color:inherit;text-decoration:underline;text-decoration-color:#7cadd5;text-decoration-thickness:1px}
