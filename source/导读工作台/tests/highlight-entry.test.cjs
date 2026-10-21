@@ -4,9 +4,9 @@ function setup(){const events={},body=[],selection={isCollapsed:true};let cleare
 test('existing highlight click opens actual saved annotation and closes cleanly',()=>{const h=setup();h.events.pointerdown({clientX:20,clientY:20});h.events.click({clientX:20,clientY:20});assert.equal(h.cleared(),1);assert.equal(h.body[0].children[2].text,'actual comment');h.body[0].children.at(-1).close();assert.equal(h.body[0].removed,true);h.dispose();assert.equal(Object.keys(h.events).length,0);});
 test('native text selection and dragging do not activate existing annotations',()=>{const h=setup();h.events.pointerdown({clientX:20,clientY:20});h.selection.isCollapsed=false;h.events.click({clientX:20,clientY:20});assert.equal(h.body.length,0);h.selection.isCollapsed=true;h.events.pointerdown({clientX:0,clientY:20});h.events.click({clientX:20,clientY:20});assert.equal(h.body.length,0);});
 test('navigation and review entries open new tabs while retaining direct URLs',()=>{const catalog=fs.readFileSync(path.join(__dirname,'../catalog.js'),'utf8');assert.match(catalog,/link.target = "_blank"/);assert.match(catalog,/link.rel = "noopener"/);assert.match(source,/link.href=readUrl\(a.id\);link.target='_blank';link.rel='noopener'/);assert.match(source,/link.href=readUrl\(id\)\+'&review=1';link.target='_blank';link.rel='noopener'/);});
-test('missing account API offers a retry toast outside the scientific body',()=>{
+test('missing account context leaves the body intact for the automatic ready bridge',()=>{
  let toast,reloads=0;const body={append(){throw Error('must not append account error to article body')}};
  const ctx=vm.createContext({global:{ReadToast:{show:value=>toast=value}},staticMode:false,state:{libraryReady:false},mountArticleExport(){},mountVersionHistory(){},location:{reload(){reloads++;}}});
  vm.runInContext(source.slice(source.indexOf('  function mountReader('),source.indexOf('  function field(')),ctx);
- const mounted=ctx.mountReader({root:{parentElement:body}});assert.equal(toast.action.label,'重试连接');assert.match(toast.message,/可以继续阅读/);toast.action.onClick();assert.equal(reloads,1);mounted.destroy();
+ const mounted=ctx.mountReader({root:{parentElement:body}});assert.equal(toast,undefined);assert.equal(reloads,0);mounted.destroy();
 });

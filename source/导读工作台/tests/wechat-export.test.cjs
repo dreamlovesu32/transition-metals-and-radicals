@@ -70,15 +70,15 @@ class Element{
  remove(){if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(n=>n!==this);}
 }
 async function mountHarness(source='draft',options={}){
- const previous={document:global.document,location:global.location,fetch:global.fetch,ClipboardItem:global.ClipboardItem,setTimeout:global.setTimeout,navigator:Object.getOwnPropertyDescriptor(global,'navigator')},oldCreate=URL.createObjectURL,oldRevoke=URL.revokeObjectURL;
+ const previous={document:global.document,location:global.location,fetch:global.fetch,ClipboardItem:global.ClipboardItem,setTimeout:global.setTimeout,ReadToast:global.ReadToast,navigator:Object.getOwnPropertyDescriptor(global,'navigator')},oldCreate=URL.createObjectURL,oldRevoke=URL.revokeObjectURL;
  const doc={createElement:tag=>new Element(tag),addEventListener(){},removeEventListener(){}};global.document=doc;global.location=new URL('https://example.org/read');global.fetch=()=>{throw Error('copy must not download images');};
- let written,valid=true,downloadBlob,downloadName;const imageRequests=[];if(options.downloads){global.setTimeout=()=>0;URL.createObjectURL=blob=>{downloadBlob=blob;return 'blob:fixture';};URL.revokeObjectURL=()=>{};global.fetch=async url=>{imageRequests.push(String(url));return {ok:true,headers:{get:()=> 'image/png'},arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer};};doc.createElement=tag=>{const element=new Element(tag);if(tag==='a')element.click=()=>{downloadName=element.download;};return element;};}global.ClipboardItem=class{constructor(values){this.values=values;}};Object.defineProperty(global,'navigator',{configurable:true,value:{clipboard:{write:async items=>{written=items[0];},writeText:async text=>{written=text;}}}});
+ let written,valid=true,downloadBlob,downloadName;const imageRequests=[],notices=[];global.ReadToast={show:value=>notices.push(value)};if(options.downloads){global.setTimeout=fn=>{fn();return 0;};URL.createObjectURL=blob=>{downloadBlob=blob;return 'blob:fixture';};URL.revokeObjectURL=()=>{};global.fetch=async url=>{imageRequests.push(String(url));if(options.assetStatus&&imageRequests.length===1)return {ok:false,status:options.assetStatus};return {ok:true,headers:{get:()=> 'image/png'},arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer};};doc.createElement=tag=>{const element=new Element(tag);if(tag==='a')element.click=()=>{downloadName=element.download;};return element;};}global.ClipboardItem=class{constructor(values){this.values=values;}};Object.defineProperty(global,'navigator',{configurable:true,value:{clipboard:{write:async items=>{written=items[0];},writeText:async text=>{written=text;}}}});
  const revision='a'.repeat(64),snapshot={article:{id:'sample-paper',title:{zh:'标题'},kind:'research'},blocks:sample,version_hash:'c'.repeat(64),review_version_hash:options.expectedReview},calls=[];
  const saved={...snapshot,content_hash:source==='draft-content'?'c'.repeat(64):revision,version_hash:options.serverReview||revision,title:'标题',plan:options.plan||null,asset_map:{cover:'cover.png','figures/scheme-1.png':'scheme.png','figures/figure-2A.png':'figure.png'}};
- const toolbar=new Element('div');const api=async(path,body,method='GET')=>{calls.push({path,body,method});return options.finalMismatch&&imageRequests.length?{...saved,version_hash:'changed'}:saved;};
+ const toolbar=new Element('div');const api=async(path,body,method='GET')=>{calls.push({path,body,method});if(options.saveFailure&&method==='PUT')throw Object.assign(Error('内部应用错误'),{kind:'http',status:500,code:'internal_error'});if(options.readFailure&&method==='GET')throw options.readFailure;return options.finalMismatch&&imageRequests.length?{...saved,version_hash:'changed'}:saved;};
  const node=await tool.mount({articleId:'sample-paper',revision:source==='draft-content'?'c'.repeat(64):revision,snapshot,toolbar,source,api,isCurrent:()=>valid,metadata:{},assetUrl:src=>'/'+src,coverUrl:'/cover.png'});node.open=true;await node.fire('toggle');await new Promise(r=>setImmediate(r));
  const buttons=()=>node.querySelectorAll('button'),find=label=>buttons().find(b=>b.textContent===label);
- return {node,calls,find,saved,imageRequests,get downloadBlob(){return downloadBlob;},get downloadName(){return downloadName;},get written(){return written;},expire(){valid=false;},restore(){URL.createObjectURL=oldCreate;URL.revokeObjectURL=oldRevoke;for(const [key,value]of Object.entries(previous)){if(key==='navigator'){if(value)Object.defineProperty(global,key,value);else delete global.navigator;}else if(value===undefined)delete global[key];else global[key]=value;}}};
+ return {node,calls,find,saved,imageRequests,notices,get downloadBlob(){return downloadBlob;},get downloadName(){return downloadName;},get written(){return written;},expire(){valid=false;},restore(){URL.createObjectURL=oldCreate;URL.revokeObjectURL=oldRevoke;for(const [key,value]of Object.entries(previous)){if(key==='navigator'){if(value)Object.defineProperty(global,key,value);else delete global.navigator;}else if(value===undefined)delete global[key];else global[key]=value;}}};
 }
 
 test('actual mounted current/history/workbench export has one download action and keeps copying inside the package',async()=>{
@@ -87,7 +87,7 @@ test('actual mounted current/history/workbench export has one download action an
    assert(h.find('下载素材包'));assert(!h.find('复制排版正文'));assert(!h.find('复制纯文本'));assert(!h.find('复制标题'));assert(!h.find('复制阅读原文链接'));
    assert(h.calls.every(c=>c.method==='GET'));assert(h.calls.every(c=>c.path.includes(source==='history'?'source=history':'source=draft')));
    if(source==='history')assert(!h.find('保存分篇方案'));
-   h.expire();await h.find('下载素材包').fire('click');assert(h.node.textContent.includes('身份已变化'));assert.equal(h.written,undefined);
+   h.expire();await h.find('下载素材包').fire('click');assert(h.notices.some(n=>n.message.includes('身份已变化')));assert.equal(h.written,undefined);
   }finally{h.restore();}
  }
 });
@@ -108,11 +108,11 @@ test('real download creates complete full or selected-part bundles with independ
    const puts=h.calls.filter(c=>c.method==='PUT');assert.equal(puts.length,source==='history'?0:2);
   }finally{h.restore();}
  }
- const h=await mountHarness('draft',{downloads:true,finalMismatch:true});try{await h.find('下载素材包').fire('click');assert.equal(h.downloadBlob,undefined);assert(h.node.textContent.includes('已停止导出'));}finally{h.restore();}
+ const h=await mountHarness('draft',{downloads:true,finalMismatch:true});try{await h.find('下载素材包').fire('click');assert.equal(h.downloadBlob,undefined);assert(h.notices.some(n=>n.message.includes('已停止导出')));}finally{h.restore();}
 });
 
 test('published review hash must match even when its body hash is unchanged, so new pictures cannot replace cached viewed pictures',async()=>{
- const h=await mountHarness('published',{expectedReview:'old-review',serverReview:'new-review'});try{assert(!h.find('复制排版正文'));assert(h.node.textContent.includes('刷新'));assert(h.node.textContent.includes('重新载入'));}finally{h.restore();}
+ const h=await mountHarness('published',{expectedReview:'old-review',serverReview:'new-review'});try{assert(!h.find('复制排版正文'));assert(h.notices.some(n=>n.message.includes('版本已更新')));assert(!h.find('重新载入'));assert.equal(h.calls.length,1);}finally{h.restore();}
 });
 
 test('12pt citation styling follows only original opening ids across whole and chapter exports',()=>{
@@ -122,4 +122,23 @@ test('12pt citation styling follows only original opening ids across whole and c
  const parts=tool.split(blocks,['section']);assert.equal((tool.render(parts[0].blocks,new Map(),{citationIds:ids}).match(/data-export-citation/g)||[]).length,2);assert(!tool.render(parts[1].blocks,new Map(),{citationIds:ids}).includes('font-size:12pt'));
  assert.deepEqual(tool.exportGroups(blocks,['section'],'parts').map(g=>g.index),[0,1]);assert.equal(tool.exportGroups(blocks,['section'],'1')[0].part.blocks.at(-1).id,'later');assert.throws(()=>tool.exportGroups(blocks,['section'],'9'));
  assert.equal(JSON.stringify(blocks),frozen);
+});
+
+test('read-only recovery is bounded and classifies transport, service, permission, and application failures exactly',async()=>{
+ for(const error of [Object.assign(Error('offline'),{kind:'network'}),Object.assign(Error('busy'),{kind:'http',status:503})]){let calls=0;const waits=[];assert.equal(await tool.recoverRead(()=>{if(++calls<3)throw error;return 'ok';},()=>true,async ms=>waits.push(ms)),'ok');assert.equal(calls,3);assert.deepEqual(waits,[250,1000]);}
+ for(const error of [Object.assign(Error('server bug'),{status:500,kind:'http'}),Object.assign(Error('forbidden'),{status:403,kind:'http'}),Object.assign(Error('version'),{kind:'version'}),new TypeError('programming error')]){let calls=0;await assert.rejects(tool.recoverRead(()=>{calls++;throw error;},()=>true,async()=>{}),e=>e===error);assert.equal(calls,1);}
+ let calls=0;await assert.rejects(tool.recoverRead(()=>{calls++;throw Object.assign(Error('offline'),{kind:'network'});},()=>true,async()=>{}));assert.equal(calls,3);
+ let current=true;calls=0;await assert.rejects(tool.recoverRead(()=>{calls++;throw Object.assign(Error('offline'),{kind:'network'});},()=>current,async()=>{current=false;}),/身份已变化/);assert.equal(calls,1);
+});
+
+test('a temporary asset service failure recovers in place while a 500 plan write preserves user input without replay',async()=>{
+ const h=await mountHarness('draft',{downloads:true,assetStatus:503});try{const title=h.node.querySelectorAll('input')[0];title.value='保留用户标题';await h.find('下载素材包').fire('click');assert(h.downloadBlob);assert.equal(h.imageRequests.length,4);assert.equal(h.node.querySelectorAll('input')[0],title);assert.equal(title.value,'保留用户标题');assert(h.notices.some(n=>n.message.startsWith('已下载')));}finally{h.restore();}
+ const failed=await mountHarness('draft',{downloads:true,saveFailure:true});try{const title=failed.node.querySelectorAll('input')[0];title.value='不丢失的标题';await failed.find('下载素材包').fire('click');assert.equal(failed.calls.filter(c=>c.method==='PUT').length,1);assert.equal(failed.imageRequests.length,0);assert.equal(failed.downloadBlob,undefined);assert.equal(title.value,'不丢失的标题');assert.equal(failed.node.querySelectorAll('input')[0],title);assert(failed.notices.some(n=>n.kind==='error'&&n.message.includes('分篇设置仍保留')&&!n.message.includes('内部应用错误')));assert(!failed.node.textContent.includes('内部应用错误'));}finally{failed.restore();}
+ const forbidden=await mountHarness('published',{readFailure:Object.assign(Error('没有权限'),{kind:'http',status:403,code:'forbidden'})});try{assert.equal(forbidden.calls.length,1);assert(!forbidden.find('下载素材包'));assert(forbidden.notices.some(n=>n.message.includes('没有导出此内容的权限')));assert(!forbidden.calls.some(c=>c.path.includes('source=static')));}finally{forbidden.restore();}
+});
+
+test.skip('browser E2E deliberately skipped: no external browser execution authorized for this recovery task',()=>{});
+
+test('an HTTP 500 image response is not called offline, not retried, and cannot create a partial ZIP',async()=>{
+ const h=await mountHarness('draft',{downloads:true,assetStatus:500});try{const input=h.node.querySelectorAll('input')[0];input.value='题名仍在';await h.find('下载素材包').fire('click');assert.equal(h.imageRequests.length,1);assert.equal(h.downloadBlob,undefined);assert.equal(h.node.querySelectorAll('input')[0],input);assert.equal(input.value,'题名仍在');assert(h.notices.some(n=>n.kind==='error'&&n.message.includes('HTTP 500')));assert(!h.notices.some(n=>n.message.includes('网络')));}finally{h.restore();}
 });

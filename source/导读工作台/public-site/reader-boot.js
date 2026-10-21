@@ -28,27 +28,39 @@ async function start() {
   $("#reading-preparation-continue").addEventListener("click", () => finishReadingPreparation(false, true));
   $("#panel-figure-retry").addEventListener("click", retryPanelFigure);
   $("#reading-preparation-retry").addEventListener("click", () => {
-    if (!documentState?.article) location.reload();
+    if (!documentState?.article) void prepareContent();
     else finishReadingPreparation(true);
   });
-  try {
-    let articles = [];
+  let articles=[],navigationFlight=null,navigationFailed=false,contentFlight=null;
+  const safeMessage=error=>window.ReadPublished?.failureMessage?.(error)||error?.publicMessage||"内容暂时无法读取，当前页面已保留。";
+  const report=error=>window.ReadPublished?.reportReadFailure?.(error,"reader-start");
+  function refreshReadingNavigation(refresh=false){
+    if(navigationFlight)return navigationFlight;
+    const transport=window.ReadWorkbenchRead||window.ReadPublished;
+    navigationFlight=transport.catalog('./catalog.json',{refresh}).then(data=>{
+      if(!Array.isArray(data.articles))throw Object.assign(Error('Invalid catalog'),{kind:'application',code:'invalid_catalog'});
+      articles=data.articles;navigationFailed=false;window.ReadMembers?.setPublicCatalog?.(articles);configureReadingNavigation(articles);
+    }).catch(error=>{navigationFailed=true;report(error);window.ReadToast?.show({key:'reader-navigation',kind:'error',message:safeMessage(error)});}).finally(()=>{navigationFlight=null;});
+    return navigationFlight;
+  }
+  function prepareContent(){if(contentFlight)return contentFlight;contentFlight=readContent().finally(()=>{contentFlight=null;});return contentFlight;}
+  async function readContent(){
+   try {
     if (reviewMode) {
       if (!requestedArticleId || !/^[\w-]+$/.test(requestedArticleId)) throw new Error("稿件编号无效");
       await reviewMemberBridge();
       await (window.ReadMembers.authReady || window.ReadMembers.ready);
       reviewIdentity = {epoch:window.ReadMembers.state.epoch, uid:window.ReadMembers.state.user?.id};
       assertReviewIdentity();
-      const response = await fetch(`/api/member/admin/drafts/${encodeURIComponent(requestedArticleId)}${requestedVersion ? "?version="+encodeURIComponent(requestedVersion) : ""}`, {credentials:"same-origin", cache:"no-store", signal:AbortSignal.timeout(15000)});
-      if (!response.ok) throw new Error([401,403].includes(response.status) ? "请使用管理员账号登录后查看稿件" : "稿件暂时无法载入，请重试");
-      reviewDraft = await response.json();
+      const url=`/api/member/admin/drafts/${encodeURIComponent(requestedArticleId)}${requestedVersion ? "?version="+encodeURIComponent(requestedVersion) : ""}`;
+      const current=()=>{try{assertReviewIdentity();return true;}catch{return false;}};
+      if(window.ReadPublished?.json)reviewDraft=await window.ReadPublished.json(url,15000,{fetchOptions:{credentials:"same-origin",cache:"no-store"},current});
+      else {const response=await fetch(url,{credentials:"same-origin",cache:"no-store",signal:AbortSignal.timeout(15000)});if(!response.ok)throw Object.assign(Error('Draft read failed'),{kind:'http',status:response.status,code:'read_http_'+response.status});reviewDraft=await response.json();}
       assertReviewIdentity();
       documentState = adaptReviewDraft(reviewDraft, requestedArticleId);
     } else {
     const transport = window.ReadWorkbenchRead || window.ReadPublished;
-    transport.catalog('./catalog.json').then(data => {
-      articles = data.articles; window.ReadMembers?.setPublicCatalog?.(articles); configureReadingNavigation(articles);
-    }).catch(() => {});
+    void refreshReadingNavigation();
     documentState = await transport.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
     }
     restoringReadingState = true;
@@ -70,11 +82,14 @@ async function start() {
     if (!reviewMode) configureReadingNavigation(articles);
     mountReadingTools(articles.find(a=>a.id===articleId()),()=>readerTouched);
   } catch(error) {
-    console.error("Reader preparation failed", error);
-    restoringReadingState = false;
-    $("#article").innerHTML = '<h1 class="article-title">阅读内容暂时无法载入</h1><p>' + (reviewMode ? escapeHtml(error.message || "请返回稿件审核重试。") : '请从文献导航重新选择文章。') + '</p>';
-    showPreparationFailure(reviewMode ? error.message || "稿件暂时无法载入，请重试。" : "阅读内容暂时无法载入，请重试。");
+    report(error);restoringReadingState=false;
+    if(reviewMode&&error.kind==='identity')clearPrivateReview();
+    showPreparationFailure(safeMessage(error));
+   }
   }
+  await prepareContent();
+  window.addEventListener('online',()=>{if(!readingPrepared){if(documentState?.article)void finishReadingPreparation(true);else void prepareContent();}else if(!reviewMode&&navigationFailed)void refreshReadingNavigation(true);});
+  window.addEventListener('focus',()=>{if(!reviewMode&&navigationFailed)void refreshReadingNavigation(true);});
   $("#nav-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; beginFigureJump(0); window.scrollTo({top:0,behavior:"smooth"});});
   $("#nav-bottom").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("bottom");readingBottomIntent = true; beginFigureJump(document.documentElement.scrollHeight); window.scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});});
   window.addEventListener("wheel", event => {if(!event.ctrlKey) {readingBottomIntent = false; cancelFigureJump(event);}}, {passive:true});

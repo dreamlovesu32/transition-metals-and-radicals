@@ -3,7 +3,30 @@
  'use strict';
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const formatter=global.ReadInline||(typeof require==='function'?require('../inline-format.js'):null);
- function inline(s){if(!formatter)throw Error('排版工具尚未载入，请刷新重试。');return formatter.html(s);}
+ function inline(s){const active=global.ReadInline||formatter;if(!active)throw Object.assign(Error('排版工具尚未准备好。'),{kind:'resource',code:'inline_script_unavailable'});return active.html(s);}
+ const readDelay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+ function retryableRead(error){return ['network','transport'].includes(error?.kind)||[429,502,503,504].includes(error?.status);}
+ function failureMessage(error){
+  if(typeof error?.publicMessage==='string')return error.publicMessage;
+  if(error.kind==='identity'||error.status===401)return '管理员身份已变化，已停止本次导出。';
+  if(error.status===403)return '当前账号没有导出此内容的权限。';
+  if(error.kind==='version')return '文章版本已更新，已停止导出；当前阅读内容不会被替换。';
+  if(/^asset_http_\d{3}$/.test(error.code||''))return `素材服务返回错误（HTTP ${error.status}），本次导出未完成。`;
+  const known=new Set(['分篇起点已失效，请重新保存方案。','分篇范围已变化，请重新选择。','配图缺失，已停止导出。','导出文件路径重复','导出文件名无效','文章编号无效。','导出图片必须来自本站。','素材响应不是图片，已停止导出。','图片总量超过本次导出容量，请缩小分篇。']);
+  return known.has(error.message)?error.message:'导出尚未完成，标题与分篇设置仍保留。';
+ }
+ async function recoverRead(operation,current=()=>true,wait=readDelay){
+  for(let attempt=0;;attempt++){
+   if(!current())throw Object.assign(Error('管理员身份已变化，本次读取已停止。'),{kind:'identity',code:'identity_changed'});
+   try{const result=await operation();if(!current())throw Object.assign(Error('管理员身份已变化，本次读取已停止。'),{kind:'identity',code:'identity_changed'});return result;}
+   catch(error){if(!current()||!retryableRead(error)||attempt>=2)throw error;await wait([250,1000][attempt]);}
+  }
+ }
+ function exportFault(error){
+  const detail={scope:'article-export',kind:error.kind||(error.status?'http':'application'),status:error.status||0,code:error.code||'unclassified'};
+  if(global.CustomEvent&&global.document&&typeof document.dispatchEvent==='function')document.dispatchEvent(new global.CustomEvent('read-operation-error',{detail}));
+  if(detail.kind!=='network')global.console?.error?.('Article export operation failed',detail);
+ }
  function visible(s){return String(s||'').replace(/<\/?sub>/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/[*`\s]/g,'');}
  function stats(blocks){return {characters:blocks.reduce((n,b)=>n+visible(b.text).length,0),figures:blocks.filter(b=>b.kind==='figure').length};}
  function split(blocks,starts){
@@ -110,7 +133,7 @@
  }
  async function copyPayload(payload,env=globalThis){
   // Called directly inside the click. Do not insert an API/image/save await here.
-  if(payload.isCurrent&& !payload.isCurrent())throw Error('管理员身份已变化，请重新打开导出。');
+  if(payload.isCurrent&& !payload.isCurrent())throw Object.assign(Error('管理员身份已变化，已停止导出。'),{kind:'identity',code:'identity_changed'});
   try{
    if(payload.html&&env.navigator?.clipboard?.write&&env.ClipboardItem){
     const item=new env.ClipboardItem({'text/html':new env.Blob([payload.html],{type:'text/html'}),'text/plain':new env.Blob([payload.text],{type:'text/plain'})});
@@ -118,7 +141,7 @@
    }
    if(!payload.html&&env.navigator?.clipboard?.writeText){await env.navigator.clipboard.writeText(payload.text);return 'text';}
   }catch{}
-  if(payload.isCurrent&& !payload.isCurrent())throw Error('管理员身份已变化，请重新打开导出。');
+  if(payload.isCurrent&& !payload.isCurrent())throw Object.assign(Error('管理员身份已变化，已停止导出。'),{kind:'identity',code:'identity_changed'});
   if(copyFallback(payload,env))return payload.html?'rich-fallback':'text-fallback';
   throw Error('复制未完成。请允许浏览器使用剪贴板后重试，或尝试“复制纯文本”。');
  }
@@ -136,17 +159,18 @@ async function runCopy(kind){const status=document.querySelector('#copy-status')
  }
  async function mount({articleId,revision,snapshot,assetUrl,toolbar,source,api,isCurrent,coverUrl,metadata}){
   const node=document.createElement('details');node.className='member-export-panel';node.innerHTML='<summary>公众号导出</summary>';toolbar.append(node);
-  const area=document.createElement('div');area.className='export-workspace';node.append(area);let loaded=false;
-  function status(text,error=false){const box=area.querySelector('[data-export-status]');if(box){box.textContent=text;box.dataset.tone=error?'error':'normal';}}
-  function fail(error){area.replaceChildren();const message=document.createElement('p');message.className='export-status';message.setAttribute('role','alert');message.textContent=error.message||'暂时不能导出。';const retry=document.createElement('button');retry.type='button';retry.className='export-button';retry.textContent='重新载入';retry.addEventListener('click',()=>{loaded=false;load();});area.append(message,retry);}
-  async function load(){
+  const area=document.createElement('div');area.className='export-workspace';node.append(area);let loaded=false,loading=null;
+  function status(text,error=false){global.ReadToast?.show({key:'article-export:'+articleId,kind:error?'error':/已下载|已保存/.test(text)?'success':'info',message:text});}
+  function fail(error){exportFault(error);status(failureMessage(error),true);if(!loaded)area.replaceChildren();}
+  function load(){if(loaded)return Promise.resolve();if(loading)return loading;loading=performLoad().finally(()=>{loading=null;});return loading;}
+  async function performLoad(){
    if(loaded)return;area.textContent='正在核对管理员权限与文章版本…';area.setAttribute('aria-busy','true');
    try{
     if(!isCurrent())throw Error('请重新登录管理员账号。');let effective=source==='draft-content'?'draft':source,saved,body=snapshot;
-    if(source==='published'){try{saved=await api(`admin/drafts/${articleId}/export-plan?source=published`);if(saved.content_hash!==revision||((snapshot.review_version_hash||metadata?.reviewVersion)&&saved.version_hash!==(snapshot.review_version_hash||metadata?.reviewVersion)))throw Error('页面内容已更新，请刷新后再导出。');body=saved;}catch(e){if(e.status!==404)throw e;effective='static';}}
+    if(source==='published'){try{saved=await recoverRead(()=>api(`admin/drafts/${articleId}/export-plan?source=published`),isCurrent);if(saved.content_hash!==revision||((snapshot.review_version_hash||metadata?.reviewVersion)&&saved.version_hash!==(snapshot.review_version_hash||metadata?.reviewVersion)))throw Object.assign(Error('文章版本已更新，已停止导出；当前阅读内容不会被替换。'),{kind:'version',code:'version_changed'});body=saved;}catch(e){if(e.status!==404)throw e;effective='static';}}
     const path=`admin/drafts/${articleId}/export-plan?source=${effective}`+(['static','history'].includes(effective)?`&version=${revision}`:'');
-    if(!saved||effective==='static')saved=await api(path);
-    if(!isCurrent())throw Error('登录已变化，请重新打开文章。');if(effective==='draft'||effective==='history'){if((source==='draft-content'?saved.content_hash:saved.version_hash)!==revision)throw Error('稿件已更新，请重新打开。');body=saved;}
+    if(!saved||effective==='static')saved=await recoverRead(()=>api(path),isCurrent);
+    if(!isCurrent())throw Object.assign(Error('登录已变化，已停止导出。'),{kind:'identity',code:'identity_changed'});if(effective==='draft'||effective==='history'){if((source==='draft-content'?saved.content_hash:saved.version_hash)!==revision)throw Object.assign(Error('稿件版本已变化，已停止导出。'),{kind:'version',code:'version_changed'});body=saved;}
     const blocks=body.blocks.filter(b=>b.kind!=='title'),citationIds=citationBlockIds(body.blocks),url=readingUrl(articleId),published=['published','static'].includes(effective);
     let titleText=body.title||body.article?.title?.zh||snapshot.article.title.zh;
     const month=body.article?.published||metadata?.published||(body.article?.firstPublishedOn||metadata?.firstPublishedOn||'').slice(0,7).replace('-','.');
@@ -161,10 +185,10 @@ async function runCopy(kind){const status=document.querySelector('#copy-status')
     const report=add(downloads,'p','素材包包含排版正文、按编号配图、独立封面和本站阅读原文链接。','export-status');report.dataset.exportStatus='';report.setAttribute('role','status');report.setAttribute('aria-live','polite');
     if(!published)add(downloads,'p','本文尚未发布，阅读原文链接发布后可访问。','export-link-hint');
     const adjust=add(area,'details',undefined,'export-adjust');add(adjust,'summary','调整与保存分篇');add(adjust,'p','按章节分篇，不拆散段落与配图。4000字符 / 8图为编辑参考，不是微信后台硬上限。');const choices=add(adjust,'div',undefined,'export-split-choices');
-    function action(parent,text,name,fn,primary=false){const b=add(parent,'button',undefined,'export-button'+(primary?' export-primary':''));b.type='button';b.innerHTML=icon(name)+'<span>'+esc(text)+'</span>';b.addEventListener('click',async()=>{if(b.disabled)return;const controls=[...area.querySelectorAll('button,input')];controls.forEach(n=>n.disabled=true);area.setAttribute('aria-busy','true');try{if(!isCurrent())throw Error('管理员身份已变化，请重新打开导出。');await fn();}catch(error){status(error.message||'操作未完成，请重试。',true);}finally{controls.forEach(n=>n.disabled=false);area.setAttribute('aria-busy','false');}});return b;}
+    function action(parent,text,name,fn,primary=false){const b=add(parent,'button',undefined,'export-button'+(primary?' export-primary':''));b.type='button';b.innerHTML=icon(name)+'<span>'+esc(text)+'</span>';b.addEventListener('click',async()=>{if(b.disabled)return;const controls=[...area.querySelectorAll('button,input')];controls.forEach(n=>n.disabled=true);area.setAttribute('aria-busy','true');try{if(!isCurrent())throw Object.assign(Error('管理员身份已变化，已停止导出。'),{kind:'identity',code:'identity_changed'});await fn();}catch(error){exportFault(error);status(failureMessage(error),true);}finally{controls.forEach(n=>n.disabled=false);area.setAttribute('aria-busy','false');}});return b;}
     function refresh(){parts=split(blocks,starts);if(!['whole','parts'].includes(selection)&&Number(selection)>=parts.length)selection='whole';scopes.replaceChildren();const addScope=(value,label,detail)=>{const b=add(scopes,'button',undefined,'export-scope');b.type='button';b.setAttribute('aria-pressed',String(selection===value));add(b,'strong',label);add(b,'small',detail);b.addEventListener('click',()=>{selection=value;refresh();});};const whole=stats(blocks);addScope('whole','整篇',`${whole.characters}字 · ${whole.figures}张图`);if(parts.length>1){addScope('parts','全部分篇',`共${parts.length}篇 · 按章节分别整理`);parts.forEach((part,i)=>addScope(String(i),`第${i+1}篇 / 共${parts.length}篇`,`${part.stats.characters}字 · ${part.stats.figures}张图`));}}
     for(const b of blocks.filter((b,i)=>i>0&&b.kind==='heading')){const label=add(choices,'label',undefined,'export-split-choice'),check=add(label,'input');check.type='checkbox';check.checked=starts.includes(b.id);check.value=b.id;check.addEventListener('change',()=>{starts=[...choices.querySelectorAll('input:checked')].map(n=>n.value);refresh();});add(label,'span','从此章节开始下一篇：'+plainText(inline(b.text)));}
-    const save=async()=>{if(effective==='history')return;if(!isCurrent())throw Error('登录已失效。');await api(path,{version_hash:planRevision,starts,title:title.value},'PUT');};
+    const save=async()=>{if(effective==='history')return;if(!isCurrent())throw Object.assign(Error('登录状态已失效，已停止导出。'),{kind:'identity',code:'identity_changed'});await api(path,{version_hash:planRevision,starts,title:title.value},'PUT');};
     action(adjust,'按章节建议分篇','split',()=>{starts=suggest(blocks);for(const c of choices.querySelectorAll('input'))c.checked=starts.includes(c.value);refresh();status('已更新分篇建议，可选择范围后下载。');});
     if(effective!=='history')action(adjust,'保存分篇方案','save',async()=>{await save();status('标题与分篇方案已保存。');});
     async function download(){
@@ -176,10 +200,13 @@ async function runCopy(kind){const status=document.querySelector('#copy-status')
       else if(effective==='draft')asset=`/api/member/admin/drafts/${articleId}/assets/${body.asset_map[key]}`;
       else if(effective==='published')asset=`/api/member/public/articles/${articleId}/assets/${body.asset_map[key]}?v=${planRevision}`;
       else asset=cover?coverUrl:assetUrl(src);
-      const parsed=new URL(asset,location.href);if(parsed.origin!==location.origin)throw Error('导出图片必须来自本站。');if(!isCurrent())throw Error('登录已失效。');
-      const response=await fetch(parsed,{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(60000)});if(!response.ok)throw Error('图片下载失败，请稍后重试。');
-      const mime=response.headers.get('Content-Type')?.split(';')[0],ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[mime];if(!ext)throw Error('非图片资源已拒绝。');
-      const bytes=new Uint8Array(await response.arrayBuffer());total+=bytes.length;if(total>100*1024*1024)throw Error('图片总量超过本次导出容量，请缩小分篇。');
+      const parsed=new URL(asset,location.href);if(parsed.origin!==location.origin)throw Error('导出图片必须来自本站。');if(!isCurrent())throw Object.assign(Error('登录状态已失效，已停止导出。'),{kind:'identity',code:'identity_changed'});
+      const {bytes,ext}=await recoverRead(async()=>{
+       let response;try{response=await fetch(parsed,{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(60000)});}catch(error){if(['TypeError','AbortError','TimeoutError'].includes(error.name))error.kind=global.navigator?.onLine===false?'network':'transport';throw error;}
+       if(!response.ok)throw Object.assign(Error(`素材服务返回错误（HTTP ${response.status}），本次导出未完成。`),{kind:'http',status:response.status,code:'asset_http_'+response.status});
+       const mime=response.headers.get('Content-Type')?.split(';')[0],ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[mime];if(!ext)throw Object.assign(Error('素材响应不是图片，已停止导出。'),{kind:'application',code:'asset_content_type'});
+       let buffer;try{buffer=await response.arrayBuffer();}catch(error){if(['TypeError','AbortError','TimeoutError'].includes(error.name))error.kind=global.navigator?.onLine===false?'network':'transport';throw error;}return {bytes:new Uint8Array(buffer),ext};
+      },isCurrent);total+=bytes.length;if(total>100*1024*1024)throw Error('图片总量超过本次导出容量，请缩小分篇。');
       const result={bytes,ext};cache.set(key,result);loadedImages++;status(`正在准备素材：图片${loadedImages} / ${imageCount}…`);return result;
      };
      for(let i=0;i<groups.length;i++){
@@ -190,15 +217,15 @@ async function runCopy(kind){const status=document.querySelector('#copy-status')
       files.push([prefix+'title.txt',titleValue],[prefix+'body.html',documentHtml(titleValue,html,{copyHtml,url,published})],[prefix+'body.txt',plainText(copyHtml)],[prefix+'read-original-link.txt',url+(!published?'\n本文尚未发布，链接发布后可访问。':'')]);
       manifestParts.push({day:index+1,block_ids:part.original.map(b=>b.id),...part.stats,figures:figures.map(x=>({number:x.number,reference:x.reference,file:'images/'+x.fileName,block_id:x.key,source:x.src})),cover:'cover.'+cover.ext});
      }
-     const final=await api(path);if(!isCurrent()||(effective!=='static'&&final.version_hash!==planRevision))throw Error('文章或管理员身份已变化，已停止导出。');
+     const final=await recoverRead(()=>api(path),isCurrent);if(!isCurrent())throw Object.assign(Error('管理员身份已变化，已停止导出。'),{kind:'identity',code:'identity_changed'});if(effective!=='static'&&final.version_hash!==planRevision)throw Object.assign(Error('文章版本已变化，已停止导出。'),{kind:'version',code:'version_changed'});
      files.push(['manifest.json',JSON.stringify({articleId,source:effective,version_hash:planRevision,readingUrl:url,published,parts:manifestParts,note:'插图序号逐篇重置；原图号另列；封面独立。不含PDF、SI、批注或反馈。'},null,2)]);
      const blob=zip(files),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`${articleId}-${selection==='whole'?'full':selection==='parts'?'parts':'part-'+String(Number(selection)+1).padStart(2,'0')}.zip`;link.click();setTimeout(()=>URL.revokeObjectURL(link.href),10000);status(`已下载${groups.length}篇素材。打开body.html可一键复制排版正文，按占位文件名插图，cover为独立封面。`);
     }
     action(downloadActions,'下载素材包','download',download,true);refresh();loaded=true;
    }catch(error){fail(error);}finally{area.setAttribute('aria-busy','false');}
   }
-  node.addEventListener('toggle',()=>{if(node.open)load();});
+  node.addEventListener('toggle',()=>node.open?load():undefined);
   document.addEventListener('read-members-expired',()=>{area.replaceChildren();node.remove();},{once:true});return node;
  }
- const api={mount,split,suggest,stats,zip,render,citationBlockIds,exportGroups,documentHtml,plainText,figurePlan,readingUrl,copyPayload,copyFallback,SLOGAN};global.ReadArticleExport=api;if(typeof module!=='undefined')module.exports=api;
+ const api={mount,split,suggest,stats,zip,render,citationBlockIds,exportGroups,documentHtml,plainText,figurePlan,readingUrl,copyPayload,copyFallback,recoverRead,retryableRead,failureMessage,SLOGAN};global.ReadArticleExport=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);

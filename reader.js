@@ -87,14 +87,16 @@ const requestedVersion = new URLSearchParams(location.search).get("version");
 let reviewDraft = null;
 let reviewIdentity = null;
 async function reviewMemberBridge() {
+  if(window.ReadEnsureMembers)return window.ReadEnsureMembers();
   // The reader precedes members.js in the deferred script queue.
   if (!window.ReadMembers && document.readyState !== "complete") await new Promise(resolve => document.addEventListener("DOMContentLoaded", resolve, {once:true}));
-  if (!window.ReadMembers) throw new Error("账号组件暂时无法载入，请刷新重试");
+  if(window.ReadEnsureMembers)return window.ReadEnsureMembers();
+  if (!window.ReadMembers) throw Object.assign(new Error("账号组件尚未准备好。"),{kind:"resource",code:"member_script_unavailable",publicMessage:"账号组件尚未准备好，当前页面已保留。"});
   return window.ReadMembers;
 }
 function assertReviewIdentity() {
   const state = window.ReadMembers?.state;
-  if (!reviewIdentity || state?.expired || state?.user?.role !== "admin" || state.epoch !== reviewIdentity.epoch || state.user.id !== reviewIdentity.uid) throw new Error("登录状态已变化，请使用管理员账号重新打开稿件");
+  if (!reviewIdentity || state?.expired || state?.user?.role !== "admin" || state.epoch !== reviewIdentity.epoch || state.user.id !== reviewIdentity.uid) throw Object.assign(new Error("登录状态已变化，请使用管理员账号重新打开稿件"),{kind:"identity",code:"identity_changed",publicMessage:"登录状态已变化，请使用当前管理员账号完成验证。"});
 }
 function clearPrivateReview() {
   if (!reviewMode) return;
@@ -1351,16 +1353,25 @@ async function resumeRemoteProgress() {
 }
 
 function mountReadingTools(metadata, readerTouched) {
-  const placeholder={remove(){}};
-  (async()=>{
-    if (!window.ReadMembers && document.readyState !== "complete") await new Promise(resolve=>document.addEventListener("DOMContentLoaded",resolve,{once:true}));
-    if (!window.ReadMembers) {placeholder.remove();return;}
-    await window.ReadMembers.ready;
-    placeholder.remove();
-    const mount=reviewMode?window.ReadMembers.mountReviewReader:window.ReadMembers.mountReader;
-    mount({draft:reviewDraft,articleId:articleId(),revision:documentState.version_hash,snapshot:documentState,assetUrl:articleAsset,metadata,root:$("#article"),toolbar:$("#member-reader-tools"),figureRoot:$(".left-rail")});
-    await resumeRemoteProgress(readerTouched);
-  })().catch(error=>{window.ReadToast?.show({key:"reader-tools",kind:"info",message:"阅读工具暂未连接，可以继续阅读。"});console.warn("Reading tools unavailable",error);}).finally(()=>{window.ReadProgressPending=false;});
+  let mounted=null,owner=null,mounting=null;
+  const attach=()=>{
+    if(mounting)return mounting;
+    mounting=(async()=>{
+      const members=window.ReadMembers||await window.ReadEnsureMembers?.();if(!members)return;
+      await members.ready;if(members.state.authStatus!=="ready"||!members.state.libraryReady)return;
+      const next=readingIdentity();if(owner&&sameReadingIdentity(owner))return;
+      mounted?.destroy?.();owner=next;
+      const mount=reviewMode?members.mountReviewReader:members.mountReader;
+      mounted=mount({draft:reviewDraft,articleId:articleId(),revision:documentState.version_hash,snapshot:documentState,assetUrl:articleAsset,metadata,root:$("#article"),toolbar:$("#member-reader-tools"),figureRoot:$(".left-rail")});
+      await resumeRemoteProgress(readerTouched);
+    })().catch(error=>{window.ReadMembers?.recordOperationFailure?.("reader-tools","MOUNT",error);}).finally(()=>{mounting=null;window.ReadProgressPending=false;});
+    return mounting;
+  };
+  document.addEventListener("read-members-ready",attach);
+  document.addEventListener("read-members-available",attach);
+  document.addEventListener("read-members-expired",()=>{mounted?.destroy?.();mounted=null;owner=null;});
+  if(!window.ReadMembers&&document.readyState!=="complete")document.addEventListener("DOMContentLoaded",attach,{once:true});
+  void attach();
 }
 
 function configureReadingNavigation(articles) {
@@ -1393,27 +1404,39 @@ async function start() {
   $("#reading-preparation-continue").addEventListener("click", () => finishReadingPreparation(false, true));
   $("#panel-figure-retry").addEventListener("click", retryPanelFigure);
   $("#reading-preparation-retry").addEventListener("click", () => {
-    if (!documentState?.article) location.reload();
+    if (!documentState?.article) void prepareContent();
     else finishReadingPreparation(true);
   });
-  try {
-    let articles = [];
+  let articles=[],navigationFlight=null,navigationFailed=false,contentFlight=null;
+  const safeMessage=error=>window.ReadPublished?.failureMessage?.(error)||error?.publicMessage||"内容暂时无法读取，当前页面已保留。";
+  const report=error=>window.ReadPublished?.reportReadFailure?.(error,"reader-start");
+  function refreshReadingNavigation(refresh=false){
+    if(navigationFlight)return navigationFlight;
+    const transport=window.ReadWorkbenchRead||window.ReadPublished;
+    navigationFlight=transport.catalog('./catalog.json',{refresh}).then(data=>{
+      if(!Array.isArray(data.articles))throw Object.assign(Error('Invalid catalog'),{kind:'application',code:'invalid_catalog'});
+      articles=data.articles;navigationFailed=false;window.ReadMembers?.setPublicCatalog?.(articles);configureReadingNavigation(articles);
+    }).catch(error=>{navigationFailed=true;report(error);window.ReadToast?.show({key:'reader-navigation',kind:'error',message:safeMessage(error)});}).finally(()=>{navigationFlight=null;});
+    return navigationFlight;
+  }
+  function prepareContent(){if(contentFlight)return contentFlight;contentFlight=readContent().finally(()=>{contentFlight=null;});return contentFlight;}
+  async function readContent(){
+   try {
     if (reviewMode) {
       if (!requestedArticleId || !/^[\w-]+$/.test(requestedArticleId)) throw new Error("稿件编号无效");
       await reviewMemberBridge();
       await (window.ReadMembers.authReady || window.ReadMembers.ready);
       reviewIdentity = {epoch:window.ReadMembers.state.epoch, uid:window.ReadMembers.state.user?.id};
       assertReviewIdentity();
-      const response = await fetch(`/api/member/admin/drafts/${encodeURIComponent(requestedArticleId)}${requestedVersion ? "?version="+encodeURIComponent(requestedVersion) : ""}`, {credentials:"same-origin", cache:"no-store", signal:AbortSignal.timeout(15000)});
-      if (!response.ok) throw new Error([401,403].includes(response.status) ? "请使用管理员账号登录后查看稿件" : "稿件暂时无法载入，请重试");
-      reviewDraft = await response.json();
+      const url=`/api/member/admin/drafts/${encodeURIComponent(requestedArticleId)}${requestedVersion ? "?version="+encodeURIComponent(requestedVersion) : ""}`;
+      const current=()=>{try{assertReviewIdentity();return true;}catch{return false;}};
+      if(window.ReadPublished?.json)reviewDraft=await window.ReadPublished.json(url,15000,{fetchOptions:{credentials:"same-origin",cache:"no-store"},current});
+      else {const response=await fetch(url,{credentials:"same-origin",cache:"no-store",signal:AbortSignal.timeout(15000)});if(!response.ok)throw Object.assign(Error('Draft read failed'),{kind:'http',status:response.status,code:'read_http_'+response.status});reviewDraft=await response.json();}
       assertReviewIdentity();
       documentState = adaptReviewDraft(reviewDraft, requestedArticleId);
     } else {
     const transport = window.ReadWorkbenchRead || window.ReadPublished;
-    transport.catalog('./catalog.json').then(data => {
-      articles = data.articles; window.ReadMembers?.setPublicCatalog?.(articles); configureReadingNavigation(articles);
-    }).catch(() => {});
+    void refreshReadingNavigation();
     documentState = await transport.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
     }
     restoringReadingState = true;
@@ -1435,11 +1458,14 @@ async function start() {
     if (!reviewMode) configureReadingNavigation(articles);
     mountReadingTools(articles.find(a=>a.id===articleId()),()=>readerTouched);
   } catch(error) {
-    console.error("Reader preparation failed", error);
-    restoringReadingState = false;
-    $("#article").innerHTML = '<h1 class="article-title">阅读内容暂时无法载入</h1><p>' + (reviewMode ? escapeHtml(error.message || "请返回稿件审核重试。") : '请从文献导航重新选择文章。') + '</p>';
-    showPreparationFailure(reviewMode ? error.message || "稿件暂时无法载入，请重试。" : "阅读内容暂时无法载入，请重试。");
+    report(error);restoringReadingState=false;
+    if(reviewMode&&error.kind==='identity')clearPrivateReview();
+    showPreparationFailure(safeMessage(error));
+   }
   }
+  await prepareContent();
+  window.addEventListener('online',()=>{if(!readingPrepared){if(documentState?.article)void finishReadingPreparation(true);else void prepareContent();}else if(!reviewMode&&navigationFailed)void refreshReadingNavigation(true);});
+  window.addEventListener('focus',()=>{if(!reviewMode&&navigationFailed)void refreshReadingNavigation(true);});
   $("#nav-top").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("top");readingBottomIntent = false; beginFigureJump(0); window.scrollTo({top:0,behavior:"smooth"});});
   $("#nav-bottom").addEventListener("click", () => {if(window.ReadChrome?.jump)return window.ReadChrome.jump("bottom");readingBottomIntent = true; beginFigureJump(document.documentElement.scrollHeight); window.scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});});
   window.addEventListener("wheel", event => {if(!event.ctrlKey) {readingBottomIntent = false; cancelFigureJump(event);}}, {passive:true});

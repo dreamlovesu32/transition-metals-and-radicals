@@ -15,6 +15,19 @@
   const svg=(path)=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
   const star='m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z';
   const arrow='M7 17 18 6M7 6h11v11';
+  function failureMessage(error){
+    if(typeof error.publicMessage==='string')return error.publicMessage;
+    if(error.kind==='identity'||error.status===401)return '登录状态已变化，本次收藏未继续。';
+    if(error.status===403)return '当前账号没有完成此收藏操作的权限。';
+    if(error.kind==='resource')return '收藏工具尚未准备好。';
+    return '收藏尚未完成，当前状态已保留。';
+  }
+  function report(error){
+    global.ReadToast?.show({key:'card-favorite',kind:'error',message:failureMessage(error)});
+    const detail={scope:'favorite',kind:error.kind||(error.status?'http':'application'),status:error.status||0,code:error.code||'unclassified'};
+    if(global.CustomEvent&&typeof document!=='undefined'&&typeof document.dispatchEvent==='function')document.dispatchEvent(new global.CustomEvent('read-operation-error',{detail}));
+    if(detail.kind!=='network')global.console?.error?.('Favorite operation failed',detail);
+  }
   function refresh(){
     if(typeof document==='undefined')return;
     const state=global.ReadMembers?.state;
@@ -35,10 +48,15 @@
       card.querySelector('.card-action-error')?.remove();
       try{
         if(!global.ReadMembers&&document.readyState!=='complete')await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
-        if(!global.ReadMembers)throw Error('收藏工具暂未载入，请重试。');
-        await global.ReadMembers.ready;
-        await global.ReadMembers.toggleFavorite(article.id);refresh();
-      }catch(error){const notice=document.createElement('span');notice.className='card-action-error';notice.setAttribute('role','status');notice.textContent=error.message||'收藏未完成，请重试。';card.append(notice);refresh();}
+        const members=global.ReadMembers;if(!members)throw Object.assign(Error('收藏工具尚未准备好。'),{code:'member_script_unavailable',kind:'resource'});
+        await members.ready;
+        const epoch=members.state?.epoch,uid=members.state?.user?.id||null;
+        // Confirm the initial library before the one non-replayable toggle. Its
+        // owner handles durable pending writes and automatic outbox recovery.
+        if(members.ensureLibraryReady)await members.ensureLibraryReady();
+        if(global.ReadMembers!==members||members.state?.epoch!==epoch||(members.state?.user?.id||null)!==uid)throw Object.assign(Error('登录状态已变化，本次收藏未继续。'),{kind:'identity',code:'identity_changed'});
+        await members.toggleFavorite(article.id);refresh();
+      }catch(error){report(error);refresh();}
       finally{favorite.disabled=favorite.dataset.public==='false';favorite.removeAttribute('aria-busy');}
     });
     actions.append(favorite);
@@ -74,11 +92,11 @@
     members.ready?.then(()=>{
       if(catalogRows)members.setPublicCatalog(catalogRows);
       refresh();
-      if(members.state.user&&!members.state.presentationFavoritesKnown&&!members.state.libraryReady)members.ensureLibraryReady().then(refresh).catch(()=>{});
-    });
+      if(members.state.user&&!members.state.presentationFavoritesKnown&&!members.state.libraryReady)members.ensureLibraryReady().then(refresh).catch(report);
+    }).catch(report);
   }
   const api={mount,update,refresh,hydrate,sourceUrl,updatedToday};
   if(typeof module!=='undefined')module.exports=api;
   global.ReadCardActions=api;
-  if(typeof document!=='undefined')document.addEventListener('read-members-change',refresh);
+  if(typeof document!=='undefined'){document.addEventListener('read-members-change',refresh);document.addEventListener('read-members-sync',refresh);document.addEventListener('read-members-ready',()=>hydrate());}
 })(typeof window==='undefined'?globalThis:window);

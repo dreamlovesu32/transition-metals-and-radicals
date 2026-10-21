@@ -385,8 +385,8 @@
     },
     {
       "path": "导读工作台/card-actions.js",
-      "bytes": 6120,
-      "sha256": "da095e33de2b662975814aa4bf2a01773aada4e8a7bfaf6a5a201a7219c04a6d",
+      "bytes": 7644,
+      "sha256": "ee07fb193d3584e1df98dd86b3a2cfcb5fc7486308e4eee5ba29130c17f6b0ce",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -397,26 +397,26 @@
     },
     {
       "path": "导读工作台/catalog.html",
-      "bytes": 5340,
-      "sha256": "4b66294330de2c9c3dd5930fb2fdc2c7f9a6d53bbae6df8e278237be63dab39b",
+      "bytes": 5391,
+      "sha256": "ae5ef544777b53be03a9c21d1435be63b49cb99ab24e2d943c90e7cde919c806",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/catalog.js",
-      "bytes": 9748,
-      "sha256": "b80409dc72fd932ac3a762d9919d5251e94e82dad7ee2fcc3bb696c0846df312",
+      "bytes": 10478,
+      "sha256": "6e08ad3c756b06e9c10ded477d6c4fc8a33f750264a395a4bd3251e7b9cd24d9",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/export_github_pages.py",
-      "bytes": 15795,
-      "sha256": "3788e621daba75fae1608da0ca2f56a38c8e3079d5261e2c2a80b476d461bffa",
+      "bytes": 15816,
+      "sha256": "3ec1310703d548ab341a5c3477aaeb7722657044f13ce3acabf3386532b2a022",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/index.html",
-      "bytes": 9287,
-      "sha256": "7ada76a61940e32dbc54f07245e54d913c19139507a7093d6c2d39f7aeccfff5",
+      "bytes": 9338,
+      "sha256": "888ae9f020572f4f361355904ec52842ee46a8459c8aaf25908c0595d94d8656",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -444,15 +444,21 @@
       "origin": "byte-for-byte source copy"
     },
     {
+      "path": "导读工作台/member-loader.js",
+      "bytes": 2701,
+      "sha256": "7b969f7202d2068dc6fe599548e0a3c625d546a36c21666a700533515822aab0",
+      "origin": "byte-for-byte source copy"
+    },
+    {
       "path": "导读工作台/member-system/account-entry.test.cjs",
-      "bytes": 2153,
-      "sha256": "d121e2483e005bf3599ad0abb041077c2298d0ac6eb8cac3e600878f9532b929",
+      "bytes": 2265,
+      "sha256": "850c2f7a3b97dbb96a00d00614ed7ea196eaf3cec00b95c6b47e9bdcba472abb",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/member-system/account.html",
-      "bytes": 787,
-      "sha256": "0f38e6e9220125fed36b43de7619b73097308b00f23e8deb55d24eea4f11aa4e",
+      "bytes": 838,
+      "sha256": "c0ef8ac74715b9926d8c89f61bb8d04b376b69ab70584f8db50fa2e16b3de193",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -469,14 +475,14 @@
     },
     {
       "path": "导读工作台/member-system/admin.html",
-      "bytes": 753,
-      "sha256": "bac2e1d390044d13fe6d159b02cc9f4ce42aaed804735175dc8c680d78b8394f",
+      "bytes": 804,
+      "sha256": "d3fbc9aa38dd03435b63115c3a22a58c71166889fec69630a3522dc7fe1ba4db",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/member-system/article-export.js",
-      "bytes": 26883,
-      "sha256": "2864e5e9e82890250aa3ab04be14d633e15ca919955854ebcb010e5b95084120",
+      "bytes": 30492,
+      "sha256": "25fa5b92ebc2bb0007c0e5f8eca06ced06647f6c1fa4aa2408adf448920f144e",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -487,8 +493,8 @@
     },
     {
       "path": "导读工作台/member-system/favorites.html",
-      "bytes": 963,
-      "sha256": "cfcb784da6d98fac4040b5f392c72b40c80773f0733200b5c6eb3ce43d6c1ea6",
+      "bytes": 1014,
+      "sha256": "47fec234e99e392a254186491a2e11e34a67f1c03ade49e4e291ffae5d2d4e76",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -499,8 +505,8 @@
     },
     {
       "path": "导读工作台/member-system/members.js",
-      "bytes": 99391,
-      "sha256": "e4a5a11b7a6bd8ed72aab0df249aad60516954efe25fc20c8d58c077d8c59385",
+      "bytes": 117323,
+      "sha256": "a12e3faeff2a5d3f63d74feaa1e6b1c5d2197f8eea5001cf96a0d17f4bff5ed5",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -511,8 +517,8 @@
     },
     {
       "path": "导读工作台/member-system/navigation-init.test.cjs",
-      "bytes": 4247,
-      "sha256": "88b65d562ae796869af7b55a47a4ac44bea46799b35e245b49a86451de824dbf",
+      "bytes": 4533,
+      "sha256": "6dcd1fcf305eb893b40a6c9ce35e95986a765afa117d9b4b271464e8dad59445",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -553,26 +559,26 @@
     },
     {
       "path": "导读工作台/public-site/published-library.js",
-      "bytes": 5091,
-      "sha256": "4e7bc5b98768d2adbef191eb26b1eeea4a936e6330e0da3af1addc9d6f9059f9",
+      "bytes": 7545,
+      "sha256": "785fb6aa10ec3ac005da5912e1cfc8baccdbfe641bec20a025194939d2b63951",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/public-site/read.html",
-      "bytes": 6363,
-      "sha256": "0880f1db6e47d6d8de698acefe12db2450fe6b4adef52df80421484900d8e21b",
+      "bytes": 6414,
+      "sha256": "b35ee94a1be91b9ac6b8e5114e2eb4d47416c17dd1f22a19966df44fb6e44476",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/public-site/reader-boot.js",
-      "bytes": 8642,
-      "sha256": "7a76bdbe8328e93193c6534e5dca65ea7ecc8be0879c946bb41bdb5a535b0da1",
+      "bytes": 9996,
+      "sha256": "8955b0fd8644794b42dabe4ed3f03a5898059ad0cb0250b17befd54af99ac774",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/public-site/reader-prelude.js",
-      "bytes": 6009,
-      "sha256": "15646a669e3bddfc96594da9ec6f7ef19dd30071c65f8a32100f159616e4a782",
+      "bytes": 6401,
+      "sha256": "7c35bd3f5516f48de2114b0a350b9b23cd12fa45d34d10cbdb303e3652571ed8",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -595,8 +601,8 @@
     },
     {
       "path": "导读工作台/reader-core.js",
-      "bytes": 61008,
-      "sha256": "532b9fc424f643b96e17e26ea22656298687b5178f867666dd5e1150e551ecce",
+      "bytes": 61438,
+      "sha256": "4c64f1f3efd06abfd5185d789a92bf2bc940923c94a43cbe0dd67e5b00e8a430",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -607,8 +613,8 @@
     },
     {
       "path": "导读工作台/server.py",
-      "bytes": 17138,
-      "sha256": "c70e816995754acc590f9a1960d5ecff790ae47260eee8006ebf3a84be2afa86",
+      "bytes": 17160,
+      "sha256": "d100aaaa388fdf6222f4509743de7020c4d577f2d2f6f953a7fe1b9670dea31f",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -630,9 +636,15 @@
       "origin": "byte-for-byte source copy"
     },
     {
+      "path": "导读工作台/tests/automatic-sync.test.cjs",
+      "bytes": 12997,
+      "sha256": "61bbf7d4dff806e7a5d88fa2de3f24acbe6277c42a5ecd3c15ea6f6bb42fb61d",
+      "origin": "byte-for-byte source copy"
+    },
+    {
       "path": "导读工作台/tests/card-actions.test.cjs",
-      "bytes": 7261,
-      "sha256": "49784b30b9e4500af16d1c6398362d95641f1b38c68839746fdeb4e0e1b79e54",
+      "bytes": 10458,
+      "sha256": "6925aacd7c06cf04813a2bd61e5bd4a213afa0e525db192518221c026910d0af",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -661,14 +673,20 @@
     },
     {
       "path": "导读工作台/tests/highlight-entry.test.cjs",
-      "bytes": 3095,
-      "sha256": "e65b9d66ff1e7fee7050af4099219cb2854941f60eb9038e6857c4ff65950b54",
+      "bytes": 3016,
+      "sha256": "fe82a491f9d7b0fb4d8f890a6a03670ffa33dccbbda42e5e84ad7bd6d6e2b5ef",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/tests/loading-performance.test.cjs",
-      "bytes": 44378,
-      "sha256": "6abf916288f957921e575aa7b55e9451329d6df9a55af7153af15dac3109cffd",
+      "bytes": 44458,
+      "sha256": "3b81bc57fd373c5876e56708596302e9fb0df8e0dfdc8419b73b9ae828f71892",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/member-loader.test.cjs",
+      "bytes": 3228,
+      "sha256": "349d1a53fe55f7ec2c0c61d4c592e7e7802a661b6f85d8afd4772950fd3c9e92",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -685,8 +703,14 @@
     },
     {
       "path": "导读工作台/tests/private-review-reader.test.cjs",
-      "bytes": 5494,
-      "sha256": "f478312c7d63fa3179c4a38d5ae404321cc98342e247b0b966fd09a39ceb5e06",
+      "bytes": 5507,
+      "sha256": "e1b381c6bf48045b65d248e5ce2a7b90a32b263b9d309b0eae76f517dbb4dc07",
+      "origin": "byte-for-byte source copy"
+    },
+    {
+      "path": "导读工作台/tests/public-load-recovery.test.cjs",
+      "bytes": 8388,
+      "sha256": "8b4f1497495ba67c2766fb2563ce621f91661ce65a5c969ffbb802852969f6be",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -703,8 +727,8 @@
     },
     {
       "path": "导读工作台/tests/reading-resume-sync.test.cjs",
-      "bytes": 12721,
-      "sha256": "6c010521152587d42e420aea74530c8cce7a5cb0c86278ddf1ef56bb2a023091",
+      "bytes": 11207,
+      "sha256": "0dc9487951aac76ff9d7ac0b5da3662f708ee5dbae08ff8c72451a60337bf5bd",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -721,8 +745,8 @@
     },
     {
       "path": "导读工作台/tests/toast-toolbar.test.cjs",
-      "bytes": 9173,
-      "sha256": "aecdb582397b5654bc030affb87eab7f5c026aea631821a1163be73a6acb5d50",
+      "bytes": 9227,
+      "sha256": "4756e0db39cfacf95fe84589178e3d3a0b54be80d9a61cde3e46db49aaa1dbbd",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -733,8 +757,8 @@
     },
     {
       "path": "导读工作台/tests/wechat-export.test.cjs",
-      "bytes": 15873,
-      "sha256": "cff617cd90189af2ac5586a1341c64fb89d8e3c0239824d088d8871960664c82",
+      "bytes": 20008,
+      "sha256": "54342e67b4ffe014a6317120bb1a64ac2d435213ab1a8ed4d2bf51abdc50ae6d",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -745,8 +769,8 @@
     },
     {
       "path": "导读工作台/toast.js",
-      "bytes": 5178,
-      "sha256": "55d51a0f97b361f7e3e5526a7e3d93a14202a2339e8bbec4aeeedf2c14f1e5b2",
+      "bytes": 5266,
+      "sha256": "5801b8797367612ad28106bb184da834c584402c6b8e9450c939543dc6793139",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -775,14 +799,14 @@
     },
     {
       "path": "工具/同步网站源码.py",
-      "bytes": 17533,
-      "sha256": "1a08fe82f868e86daee1855cff0d64d681c9a3753f922f8dfd40bcf2bbf1fcea",
+      "bytes": 17659,
+      "sha256": "4e6d7625a7f28b4e667bb85903a79be554ed566ebe4e60d33153247137164e26",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "工具/构建审稿预览.py",
-      "bytes": 7799,
-      "sha256": "f463c1e40c148e14a74526f8222dedf49baaa60b6947226ccd37453471a84f2c",
+      "bytes": 7820,
+      "sha256": "dc66572ee48d40aedc7541f15fbffe0f3dccf4c23e263632b8641f1e1dd5c0a9",
       "origin": "byte-for-byte source copy"
     }
   ]

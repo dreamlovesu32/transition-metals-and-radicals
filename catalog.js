@@ -2,6 +2,7 @@
 
 const $ = selector => document.querySelector(selector);
 let catalogArticles = [];
+let catalogFlight=null,catalogReadFailed=false;
 
 function articleCard(article) {
   const card = document.createElement("article");
@@ -83,25 +84,32 @@ function patchArticleCard(card,article) {
   window.ReadCardActions?.update(card,article);
 }
 
-async function startCatalog() {
-  try {
+function startCatalog({refresh=false}={}) {
+  if(catalogFlight)return catalogFlight;
+  catalogFlight=(async()=>{try {
     // Static covers and article cards need not wait for the publication service.
-    if (window.ReadPublished) {
+    if (window.ReadPublished && !catalogArticles.length) {
       try {
         const initial = await (await fetch("./catalog.json")).json();
         catalogArticles = initial.articles; renderCatalog();
       } catch (_) {}
     }
-    const data = window.ReadPublished ? await window.ReadPublished.catalog("./catalog.json") : await (await fetch("./catalog.json", {cache:"no-store"})).json();
+    const data = window.ReadPublished ? await window.ReadPublished.catalog("./catalog.json",{refresh}) : await (await fetch("./catalog.json", {cache:"no-store"})).json();
     const {articles} = data;
+    if(!Array.isArray(articles))throw Object.assign(Error('Invalid catalog'),{kind:'application',code:'invalid_catalog'});
+    catalogReadFailed=false;
     if (JSON.stringify(catalogArticles) !== JSON.stringify(articles)) {
       catalogArticles = articles;
       renderCatalog();
     }
   } catch(error) {
-    $("#research-list").textContent = "目录暂时无法载入，请刷新页面重试。";
-  }
+    catalogReadFailed=true;window.ReadPublished?.reportReadFailure?.(error,'catalog');
+    window.ReadToast?.show({key:'catalog-read',kind:'error',message:window.ReadPublished?.failureMessage?.(error)||'目录暂时无法读取，已保留当前列表。'});
+  }})().finally(()=>{catalogFlight=null;});
+  return catalogFlight;
 }
+window.addEventListener?.('online',()=>{if(catalogReadFailed)void startCatalog({refresh:true});});
+window.addEventListener?.('focus',()=>{if(catalogReadFailed)void startCatalog({refresh:true});});
 
 function sortedArticles(kind) {
   const mode = $("#catalog-sort").value;

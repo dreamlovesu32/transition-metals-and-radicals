@@ -7,7 +7,33 @@
     if(!validId(id)||!validId(key)||!validVersion(version))throw Error('公开图片信息无效');
     return `${endpoint}/${encodeURIComponent(id)}/assets/${encodeURIComponent(key)}?v=${version}`;
   }
-  async function json(url,timeout=6000){const response=await fetch(url,{cache:'default',credentials:'omit',signal:AbortSignal.timeout(timeout)});if(!response.ok)throw Error('内容暂时无法载入');return response.json();}
+  function failure(message,kind,code,status=0){return Object.assign(Error(message),{kind,code,status,publicMessage:message});}
+  function failureMessage(error,fallback='内容暂时无法读取，当前页面已保留。'){
+    if(typeof error?.publicMessage==='string')return error.publicMessage;
+    if(error?.status===401||error?.kind==='identity')return '登录状态已变化，请使用当前账号完成验证。';
+    if(error?.status===403)return '当前账号没有读取此内容的权限。';
+    if(error?.kind==='version')return '内容版本已变化，本次读取已停止。';
+    return fallback;
+  }
+  function reportReadFailure(error,scope='public-read'){
+    const detail={scope,kind:error.kind||(error.status?'http':'application'),status:error.status||0,code:error.code||'unclassified'};
+    if(global.CustomEvent&&typeof global.dispatchEvent==='function')global.dispatchEvent(new global.CustomEvent('read-operation-error',{detail}));
+    global.console?.warn?.('Read request failed',detail);
+  }
+  async function retryRead(operation,current=()=>true,wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))){
+    for(let attempt=0;;attempt++){
+      if(!current())throw failure('登录状态已变化，本次读取已停止。','identity','identity_changed');
+      try{const value=await operation();if(!current())throw failure('登录状态已变化，本次读取已停止。','identity','identity_changed');return value;}
+      catch(error){if(!current()||attempt>=2||!(['network','transport'].includes(error.kind)||[429,502,503,504].includes(error.status)))throw error;await wait([250,1000][attempt]);}
+    }
+  }
+  async function json(url,timeout=6000,options={}){
+    return retryRead(async()=>{
+      let response;try{response=await fetch(url,{cache:'default',credentials:'omit',...options.fetchOptions,signal:AbortSignal.timeout(timeout)});}catch(error){if(['TypeError','AbortError','TimeoutError'].includes(error.name))error.kind=global.navigator?.onLine===false?'network':'transport';throw error;}
+      if(!response.ok)throw failure(response.status===401?'请登录后读取此内容。':response.status===403?'当前账号没有读取此内容的权限。':'内容服务暂时无法完成读取，当前页面已保留。','http','read_http_'+response.status,response.status||0);
+      try{return await response.json();}catch(error){throw failure('内容响应格式不正确，当前页面已保留。','application','invalid_json');}
+    },options.current,options.wait);
+  }
   function merge(base,live){
     const rows=new Map((base||[]).map(a=>[a.id,a]));
     for(const item of live||[]){
@@ -20,9 +46,10 @@
     return [...rows.values()];
   }
   let catalogTask;
-  function catalog(staticUrl){
+  function catalog(staticUrl,{refresh=false}={}){
+    if(refresh)catalogTask=null;
     if(!catalogTask)catalogTask=Promise.allSettled([json(staticUrl),json(endpoint)]).then(([base,live])=>{
-      if(base.status==='rejected'&&live.status==='rejected')throw Error('文献目录暂时无法载入');
+       if(base.status==='rejected'&&live.status==='rejected')throw live.reason;
       return {articles:merge(base.status==='fulfilled'?base.value.articles:[],live.status==='fulfilled'?live.value.items:[])};
     }).catch(e=>{catalogTask=null;throw e;});
     return catalogTask;
@@ -47,7 +74,7 @@
       return checked;
     });
     // Attach rejection immediately; a static page can finish before the live request.
-    const liveResult=liveTask.then(value=>({value}),()=>({value:null}));
+    const liveResult=liveTask.then(value=>({value}),error=>({value:null,error}));
     // Retain the static asset route for the same reviewed version. A live
     // background check must not turn the next visit into dynamic image requests.
     const sameStatic=staticCached&&(!cached||staticCached.version_hash===cached.version_hash);
@@ -58,8 +85,8 @@
       return value;
     }).catch(error=>{if(cached)return cached;throw error;});
     let base;
-    try{base=await baseTask;}catch{}
-    if(!base){const live=await liveResult;if(live.value)return live.value;throw Error('文章尚未发布或暂时无法载入');}
+    let baseError;try{base=await baseTask;}catch(error){baseError=error;}
+    if(!base){const live=await liveResult;if(live.value)return live.value;throw live.error||baseError||failure('文章尚未发布或暂时无法载入。','http','not_found',404);}
     // Immediately display verified cache/static content. Network revalidation is
     // independent of the reading path and never delays a warm page.
     // Never replace a document underneath an active selection or saved annotation.
@@ -70,7 +97,7 @@
     });
     return base;
   }
-  const api={asset,merge,catalog,read,validate};
+  const api={asset,merge,catalog,read,validate,json,retryRead,failureMessage,reportReadFailure};
   if(typeof module==='object'&&module.exports)module.exports=api;
   else global.ReadPublished=api;
 })(typeof window==='undefined'?globalThis:window);

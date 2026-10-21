@@ -41,14 +41,16 @@ const requestedVersion = new URLSearchParams(location.search).get("version");
 let reviewDraft = null;
 let reviewIdentity = null;
 async function reviewMemberBridge() {
+  if(window.ReadEnsureMembers)return window.ReadEnsureMembers();
   // The reader precedes members.js in the deferred script queue.
   if (!window.ReadMembers && document.readyState !== "complete") await new Promise(resolve => document.addEventListener("DOMContentLoaded", resolve, {once:true}));
-  if (!window.ReadMembers) throw new Error("账号组件暂时无法载入，请刷新重试");
+  if(window.ReadEnsureMembers)return window.ReadEnsureMembers();
+  if (!window.ReadMembers) throw Object.assign(new Error("账号组件尚未准备好。"),{kind:"resource",code:"member_script_unavailable",publicMessage:"账号组件尚未准备好，当前页面已保留。"});
   return window.ReadMembers;
 }
 function assertReviewIdentity() {
   const state = window.ReadMembers?.state;
-  if (!reviewIdentity || state?.expired || state?.user?.role !== "admin" || state.epoch !== reviewIdentity.epoch || state.user.id !== reviewIdentity.uid) throw new Error("登录状态已变化，请使用管理员账号重新打开稿件");
+  if (!reviewIdentity || state?.expired || state?.user?.role !== "admin" || state.epoch !== reviewIdentity.epoch || state.user.id !== reviewIdentity.uid) throw Object.assign(new Error("登录状态已变化，请使用管理员账号重新打开稿件"),{kind:"identity",code:"identity_changed",publicMessage:"登录状态已变化，请使用当前管理员账号完成验证。"});
 }
 function clearPrivateReview() {
   if (!reviewMode) return;

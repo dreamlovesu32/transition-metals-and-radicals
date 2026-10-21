@@ -1,6 +1,7 @@
 /* Authentication is server-owned. This module never persists an identity or password. */
 (function (global) {
   'use strict';
+  if(global.ReadMembers)return;
   const KEY = 'read-guest-library-v1';
   const staticMode=locationIsStatic();
   function locationIsStatic(){if(typeof document!=='undefined'&&document.documentElement?.dataset?.readerSource==='workbench')return false;return typeof location!=='undefined'&&(location.pathname.endsWith('.html')||location.pathname.includes('/member-system/'));}
@@ -93,37 +94,146 @@
       return value;
     });
   }
-  async function memberRequest(path,body,method) {
-    const verb=method||(body===undefined?'GET':'POST');const headers={};if(!['GET','HEAD'].includes(verb))headers['X-CSRF-Token']=state.csrfToken;if(body!==undefined)headers['Content-Type']='application/json';const response=await fetch('/api/member/'+path,{method:verb,credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(['verification','reset-request','register','verify','reset-password','login'].includes(path)?60000:15000),headers,body:body===undefined?undefined:JSON.stringify(body)});
-    let data={};try{data=await response.json();}catch{}
-    if(state.user&&shouldExpireSession(path,response.status,data.error)){clearAccountMemory();throw new Error('登录状态已失效，请重新登录；未保存的内容不会写入其他账号。');}if(!response.ok){if(data.error==='reauthentication_required')throw new Error('请先在账号页重新登录，再返回完成此版本审核。');const messages={invalid_input:'提交内容不完整或格式不正确，请刷新页面后重试；意见内容仍保留。',invalid_target:'请选择有效的整篇、段落或图片意见范围。',invalid_version:'稿件版本信息无效，请重新打开稿件后提交。',stale_feedback:'稿件已更新，请重新打开最新版本后填写意见。',feedback_conflict:'此批注已在其他窗口修改，请重新打开稿件后编辑。',feedback_owner_required:'只能修改本人保存的批注。',verification_response_invalid:'邮件可能已发送，但未取得有效验证凭据。请重新发送验证码，以最新一封为准。',verification_persistence_failed:'邮件可能已送达，但验证记录保存失败。请重新发送验证码后再提交。',csrf_rejected:'安全会话已失效，请刷新页面后重试。',auth_rejected:path==='login'?'邮箱或密码不正确，请检查后重试。':'验证未通过，请检查验证码是否正确、是否过期。',auth_unavailable:'邮箱认证服务暂时不可用，请稍后再试。',service_unavailable:'账号服务暂时不可用，请稍后再试。',rate_limited:'操作过于频繁，请稍后再试。',captcha_required:'请先完成图片安全验证。',captcha_expired_or_used:'图片验证码已过期或已使用，请重新获取。',verification_not_issued:'邮箱验证码已过期，请重新发送。',verification_already_used:'此邮箱验证码已使用，请重新发送。',password_too_short:'密码至少需要 12 位。',captcha_unconfigured:'安全验证尚未配置，请稍后重试。'};const error=new Error(messages[data.error]||data.message||'暂时无法完成，请稍后重试。');error.code=data.error;error.status=response.status;throw error;}return data;
+  async function memberRequest(path,body,method,{csrfRefreshed=false}={}) {
+    const verb=method||(body===undefined?'GET':'POST');const headers={};if(!['GET','HEAD'].includes(verb))headers['X-CSRF-Token']=state.csrfToken;if(body!==undefined)headers['Content-Type']='application/json';const encodedBody=body===undefined?undefined:JSON.stringify(body);let response;try{response=await fetch('/api/member/'+path,{method:verb,credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(['verification','reset-request','register','verify','reset-password','login'].includes(path)?60000:15000),headers,body:encodedBody});}catch(cause){const error=Object.assign(new Error('network_unavailable'),{kind:global.navigator?.onLine===false?'network':'transport',code:'transport_unavailable',status:0});recordOperationFailure(path,verb,error);throw error;}
+    let data;try{data=await response.json();}catch{const error=Object.assign(new Error('invalid_response'),{kind:'protocol',code:'invalid_json_response',status:response.status});recordOperationFailure(path,verb,error);throw error;}
+    if(!data||typeof data!=='object'){const error=Object.assign(new Error('invalid_response'),{kind:'protocol',code:'invalid_json_response',status:response.status});recordOperationFailure(path,verb,error);throw error;}
+    if(!response.ok){
+      const diagnostic=Object.assign(new Error('request_failed'),{kind:'http',code:/^[a-z_]{1,64}$/.test(data.error||'')?data.error:'http_error',status:response.status,retryAfterMs:Math.min(300000,Math.max(0,Number(response.headers?.get('Retry-After'))||0)*1000)});
+      recordOperationFailure(path,verb,diagnostic);
+      if(response.status===403&&data.error==='csrf_rejected'&&!csrfRefreshed){const uid=state.user?.id,epoch=state.epoch;await refreshAuthSession();if(!state.expired&&state.user?.id===uid&&state.epoch===epoch)return memberRequest(path,body,method,{csrfRefreshed:true});}
+    }
+
+    if(state.user&&shouldExpireSession(path,response.status,data.error)){clearAccountMemory();throw new Error('登录状态已失效，请重新登录；未保存的内容不会写入其他账号。');}if(!response.ok){if(data.error==='reauthentication_required')throw new Error('请先在账号页重新登录，再返回完成此版本审核。');const messages={invalid_input:'提交内容不完整或格式不正确，请刷新页面后重试；意见内容仍保留。',invalid_target:'请选择有效的整篇、段落或图片意见范围。',invalid_version:'稿件版本信息无效，请重新打开稿件后提交。',stale_feedback:'稿件已更新，请重新打开最新版本后填写意见。',feedback_conflict:'此批注已在其他窗口修改，请重新打开稿件后编辑。',feedback_owner_required:'只能修改本人保存的批注。',verification_response_invalid:'邮件可能已发送，但未取得有效验证凭据。请重新发送验证码，以最新一封为准。',verification_persistence_failed:'邮件可能已送达，但验证记录保存失败。请重新发送验证码后再提交。',csrf_rejected:'安全会话已失效，请刷新页面后重试。',auth_rejected:path==='login'?'邮箱或密码不正确，请检查后重试。':'验证未通过，请检查验证码是否正确、是否过期。',auth_unavailable:'邮箱认证服务暂时不可用，请稍后再试。',service_unavailable:'账号服务暂时不可用，请稍后再试。',rate_limited:'操作过于频繁，请稍后再试。',captcha_required:'请先完成图片安全验证。',captcha_expired_or_used:'图片验证码已过期或已使用，请重新获取。',verification_not_issued:'邮箱验证码已过期，请重新发送。',verification_already_used:'此邮箱验证码已使用，请重新发送。',password_too_short:'密码至少需要 12 位。',captcha_unconfigured:'安全验证尚未配置，请稍后重试。'};const error=new Error(messages[data.error]||'操作暂未完成。');error.code=data.error;error.status=response.status;error.kind='http';throw error;}return data;
   }
   function notify(message,source){
     const form=source?.closest?.('form');
     const targets=form?[...form.querySelectorAll('[data-member-status]')]:[];
     if(targets.length){targets.forEach(n=>{n.textContent=message;n.setAttribute('role','alert');});return;}
     const pending=/同步尚未完成/.test(message),uid=state.user?.id,epoch=state.epoch;
-    global.ReadToast?.show({message,kind:pending?'pending':/已保存|已下载|成功/.test(message)?'success':'info',key:'member-status',...(pending?{action:{label:'重试同步',onClick:()=>state.user?.id===uid&&state.epoch===epoch&&!state.expired?persist():undefined}}:{})});
+    global.ReadToast?.show({message,kind:pending?'pending':/已保存|已下载|成功/.test(message)?'success':'info',key:'member-status'});
   }
   function durableWrite(storage,key,value){const encoded=JSON.stringify(value);storage.setItem(key,encoded);if(storage.getItem(key)!==encoded)throw Error('浏览器未能保存，请稍后重试；本次内容仍保留在页面。');return encoded;}
-  function transientError(error){return !error.status||[408,425,429].includes(error.status)||error.status>=500;}
+  function transientError(error){return recoverableError(error)||(!error.kind&&(!error.status||[408,425,429,502,503,504].includes(error.status)));}
   const retryWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   async function finiteRetry(operation,current,wait=retryWait){for(let attempt=0;;attempt++){if(!current())throw Error('登录状态已变化，同步已停止。');try{return await operation();}catch(error){if(!current()||!transientError(error)||attempt>=2)throw error;await wait([250,1000][attempt]);}}}
-  function pendingLibraryKey(uid){return 'read-member-pending-v1:'+uid;}
-  function applyPendingLibrary(remote,pending){
-    if(!pending?.base||!pending?.desired)return remote;
-    const base=normalizeLibrary(pending.base),desired=normalizeLibrary(pending.desired),result=structuredClone(remote);
-    const removed=base.favorites.filter(x=>!desired.favorites.includes(x));
-    result.favorites=[...new Set([...result.favorites.filter(x=>!removed.includes(x)),...desired.favorites.filter(x=>!base.favorites.includes(x))])];
-    result.annotations=result.annotations.filter(x=>!base.annotations.some(y=>sameNote(x,y)&&!desired.annotations.some(z=>sameNote(y,z))));
-    for(const note of desired.annotations.filter(x=>!base.annotations.some(y=>sameNote(x,y))))if(!result.annotations.some(y=>sameNote(note,y)))result.annotations.push({...note,syncPending:true});
-    return result;
+  function isNetworkFailure(error){return error?.kind==='network';}
+  function recoverableError(error){return isNetworkFailure(error)||error?.kind==='transport'||(error?.kind==='http'&&[408,425,429,502,503,504].includes(error.status));}
+  const diagnosticTimes=new Map();
+  function recordOperationFailure(path,method,error){
+    const operation=String(path).split('?')[0].replace(/^(notes|favorites|progress)\/[^/]+/,'$1/:item').replace(/admin\/.*/,'admin/:operation');
+    const detail={operation,method,status:Number(error?.status)||0,code:/^[a-z_]{1,64}$/.test(error?.code||'')?error.code:'client_failure',category:isNetworkFailure(error)?'network':error?.kind||'application'};
+    const key=JSON.stringify(detail),now=Date.now();if(now-(diagnosticTimes.get(key)||0)<60000)return;diagnosticTimes.set(key,now);if(diagnosticTimes.size>50)diagnosticTimes.delete(diagnosticTimes.keys().next().value);
+    global.console?.warn?.('Read operation diagnostic',detail);
+    if(typeof document!=='undefined')document.dispatchEvent(new CustomEvent('read-operation-error',{detail}));
   }
-  function recoverPendingLibrary(){if(!state.user||!state.libraryReady)return;try{const pending=JSON.parse(localStorage.getItem(pendingLibraryKey(state.user.id))||'null');state.library=applyPendingLibrary(state.library,pending);}catch{}}
+  function createRecoveryQueue({current=()=>true,setTimer=setTimeout,clearTimer=clearTimeout,onState=()=>{},onFault=()=>{}}={}){
+    const jobs=new Map();let networkSeen=false,transportSeen=false;
+    function schedule(key,job,delay){if(job.timer)clearTimer(job.timer);job.timer=setTimer(()=>{job.timer=null;void pump(key,job);},delay);job.timer?.unref?.();}
+    async function pump(key,job){
+      if(jobs.get(key)!==job||job.active)return;
+      if(!current()||!job.current()){cancel(key);return;}
+      job.active=true;const ticket=job.ticket;
+      try{await job.run();if(!current()||!job.current()){cancel(key);return;}if(job.ticket!==ticket){job.active=false;schedule(key,job,0);return;}jobs.delete(key);onState({status:jobs.size?'syncing':'synced',pending:jobs.size>0,networkRecovered:networkSeen&&!jobs.size,connectionRecovered:transportSeen&&!jobs.size});if(!jobs.size){networkSeen=false;transportSeen=false;}}
+      catch(error){if(!current()||!job.current()){cancel(key);return;}if(!recoverableError(error)){job.blocked=true;onFault(error);onState({status:'blocked',pending:true,networkRecovered:false});return;}job.attempt++;const network=isNetworkFailure(error);networkSeen ||= network;transportSeen ||= error.kind==='transport';onFault(error);onState({status:network?'offline':error.kind==='transport'?'recovering':'syncing',pending:true,networkRecovered:false});schedule(key,job,Math.max(Number(error.retryAfterMs)||0,Math.min(300000,1000*2**Math.min(job.attempt-1,9))));}
+      finally{job.active=false;}
+    }
+    function enqueue(key,run,owns=()=>true){let job=jobs.get(key);if(job){job.run=run;job.current=owns;job.ticket++;if(!job.active&&!job.blocked)schedule(key,job,0);return;}job={run,current:owns,ticket:0,attempt:0,active:false,timer:null};jobs.set(key,job);onState({status:'syncing',pending:true,networkRecovered:false});schedule(key,job,0);}
+    function cancel(key){const job=jobs.get(key);if(job?.timer)clearTimer(job.timer);jobs.delete(key);}
+    return {enqueue,block(key,error,owns=()=>true){if(!jobs.has(key))jobs.set(key,{run:async()=>{throw error;},current:owns,ticket:0,attempt:0,active:false,timer:null,blocked:true});onFault(error);onState({status:'blocked',pending:true,networkRecovered:false});},kick(){for(const [key,job]of jobs)if(!job.active&&!job.blocked)schedule(key,job,0);},cancel,dispose(){for(const key of jobs.keys())cancel(key);},get size(){return jobs.size;}};
+  }
+  let accountRecovery=null;
+  function recoveryForAccount(){
+    const uid=state.user?.id||'guest',epoch=state.epoch;
+    if(accountRecovery?.uid===uid&&accountRecovery.epoch===epoch)return accountRecovery.queue;
+    accountRecovery?.queue.dispose();
+    const current=()=>!state.expired&&(state.user?.id||'guest')===uid&&state.epoch===epoch;
+    let priorStatus=null,networkNoticeShown=false,transportNoticeShown=false;
+    const queue=createRecoveryQueue({current,onFault:error=>recordOperationFailure('background','SYNC',error),onState:detail=>{
+      if(!current())return;const first=detail.status!==priorStatus;priorStatus=detail.status;state.syncStatus=detail.status;
+      if(detail.status==='offline'&&!networkNoticeShown){networkNoticeShown=true;global.ReadToast?.show({key:'account-network',kind:'info',message:'因网络问题暂未同步，恢复连接后会自动完成。'});}
+      if(detail.status==='recovering'&&!transportNoticeShown){transportNoticeShown=true;global.ReadToast?.show({key:'account-network',kind:'info',message:'连接暂不可用，正在自动恢复。'});}
+      if(detail.status==='synced'){networkNoticeShown=false;transportNoticeShown=false;}
+      if(detail.connectionRecovered&&!detail.networkRecovered)global.ReadToast?.show({key:'account-network',kind:'success',message:'连接已恢复，内容已同步。'});
+      if(detail.networkRecovered)global.ReadToast?.show({key:'account-network',kind:'success',message:'网络已恢复，内容已同步。'});
+      if(typeof document!=='undefined')document.dispatchEvent(new CustomEvent('read-members-sync',{detail}));
+    }});
+    accountRecovery={uid,epoch,queue};return queue;
+  }
+  function wakeRecovery(){if(state.user&&state.authStatus==='ready'&&state.libraryReady){const uid=state.user.id,epoch=state.epoch;migrateLibraryOutbox(uid);if(readLibraryOperations(uid).length)recoveryForAccount().enqueue('library',()=>flushLibraryOperations(uid,epoch),()=>!state.expired&&state.user?.id===uid&&state.epoch===epoch);recoverProgressOutboxes();}accountRecovery?.queue.kick();}
+  async function whenConnected(){for(let attempt=0;;attempt++){try{await fetch('/api/member/session',{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(5000)});return;}catch{await retryWait(Math.min(300000,1000*2**Math.min(attempt,9)));}}}
+  function pendingLibraryKey(uid){return 'read-member-pending-v1:'+uid;}
+  function operationPrefix(uid){return 'read-member-op-v2:'+uid+':';}
+  function libraryDelta(base,desired){
+    return {addFavorites:desired.favorites.filter(x=>!base.favorites.includes(x)),removeFavorites:base.favorites.filter(x=>!desired.favorites.includes(x)),addNotes:desired.annotations.filter(x=>!base.annotations.some(y=>sameNote(x,y))).map(n=>({...n,clientId:n.clientId||n.id})),removeNotes:base.annotations.filter(x=>!desired.annotations.some(y=>sameNote(x,y))).map(n=>({id:n.id,clientId:n.clientId||n.id}))};
+  }
+  function applyLibraryDelta(remote,delta){
+    const result=structuredClone(remote);result.favorites=[...new Set([...result.favorites.filter(x=>!delta.removeFavorites.includes(x)),...delta.addFavorites])];
+    result.annotations=result.annotations.filter(n=>!delta.removeNotes.some(x=>sameNote(n,x)));
+    for(const n of delta.addNotes)if(!result.annotations.some(x=>sameNote(x,n)))result.annotations.push({...n,syncPending:true});return result;
+  }
+  function applyPendingLibrary(remote,pending){return pending?.base&&pending?.desired?applyLibraryDelta(remote,libraryDelta(normalizeLibrary(pending.base),normalizeLibrary(pending.desired))):remote;}
+  function readLibraryOperations(uid){
+    const prefix=operationPrefix(uid),items=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(!key?.startsWith(prefix))continue;try{const raw=localStorage.getItem(key),op=JSON.parse(raw);if(op?.delta)items.push({key,raw,...op});}catch{}}
+    items.sort((a,b)=>Number(!a.legacy)-Number(!b.legacy)||(a.at-b.at)||a.key.localeCompare(b.key));return items;
+  }
+  function migrateLibraryOutbox(uid){
+    const raw=localStorage.getItem(pendingLibraryKey(uid));if(!raw)return;
+    const pending=JSON.parse(raw);if(!pending?.base||!pending?.desired)return;
+    let hash=2166136261;for(const char of raw)hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+    const key=operationPrefix(uid)+'legacy-'+hash.toString(16)+'-'+raw.length;
+    if(!localStorage.getItem(key))durableWrite(localStorage,key,{legacy:raw,at:0,delta:libraryDelta(normalizeLibrary(pending.base),normalizeLibrary(pending.desired))});
+  }
+  let localLibraryBase=null;
+  function recoverPendingLibrary(){
+    if(!state.libraryReady)return;
+    if(state.user){migrateLibraryOutbox(state.user.id);for(const op of readLibraryOperations(state.user.id))state.library=applyLibraryDelta(state.library,op.delta);}
+    localLibraryBase=structuredClone(state.library);
+    if(state.user&&readLibraryOperations(state.user.id).length){const uid=state.user.id,epoch=state.epoch;recoveryForAccount().enqueue('library',()=>flushLibraryOperations(uid,epoch),()=>state.user?.id===uid&&state.epoch===epoch&&!state.expired);}recoverProgressOutboxes();
+  }
+  function markLibraryChanged(){if(typeof document!=='undefined')document.dispatchEvent(new CustomEvent('read-members-change'));}
+  let syncLockDatabase=null;
+  function indexedAccountLock(run){
+    if(!global.indexedDB)return Promise.reject(Object.assign(Error('sync_lock_unavailable'),{kind:'capability',code:'sync_lock_unavailable'}));
+    if(!syncLockDatabase)syncLockDatabase=new Promise((resolve,reject)=>{const request=global.indexedDB.open('read-account-sync-lock-v1',1);request.onupgradeneeded=()=>request.result.createObjectStore('mutex');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(Object.assign(Error('sync_lock_unavailable'),{kind:'capability',code:'sync_lock_unavailable'}));});
+    return syncLockDatabase.then(database=>new Promise((resolve,reject)=>{
+      const transaction=database.transaction('mutex','readwrite'),store=transaction.objectStore('mutex');let running=true,started=false,value,failure;
+      transaction.oncomplete=()=>failure?reject(failure):resolve(value);transaction.onabort=()=>reject(failure||Object.assign(Error('sync_lock_aborted'),{kind:'capability',code:'sync_lock_aborted'}));
+      // Keep the exclusive IDB transaction alive across network awaits. A crashed
+      // tab aborts it automatically; no expiring lease can release an old writer.
+      const hold=()=>{const request=store.get('hold');request.onsuccess=()=>{if(!started){started=true;Promise.resolve().then(run).then(result=>{value=result;running=false;},error=>{failure=error;running=false;});}if(running)hold();};request.onerror=()=>{failure=request.error;running=false;};};hold();
+    }));
+  }
+  function withAccountSyncLock(uid,run){return global.navigator?.locks?.request?global.navigator.locks.request('read-library-sync:'+uid,{mode:'exclusive'},run):indexedAccountLock(run);}
+  function flushLibraryOperations(uid,epoch){return withAccountSyncLock(uid,()=>flushLibraryOperationsUnlocked(uid,epoch));}
+  async function flushLibraryOperationsUnlocked(uid,epoch){
+    const current=()=>!state.expired&&state.user?.id===uid&&state.epoch===epoch;
+    const assertCurrent=()=>{if(!current())throw Object.assign(Error('identity_changed'),{kind:'identity',code:'identity_changed'});};
+    while(current()){
+      const op=readLibraryOperations(uid)[0];if(!op)return;
+      const remote=await remoteLoad();assertCurrent();
+      const desired=applyLibraryDelta(remote,op.delta);
+      try{await syncLibrary(desired,serverLibrary,api,assertCurrent);}catch(error){if(error.code!=='note_deleted')throw error;const remaining=readLibraryOperations(uid).some(item=>item.delta.removeNotes.some(n=>op.delta.addNotes.some(a=>sameNote(n,a))));if(!remaining)throw error;}
+      const confirmed=await remoteLoad();assertCurrent();
+      const deletedClientIds=readLibraryOperations(uid).flatMap(item=>item.delta.removeNotes.map(n=>n.clientId));
+      const valid=op.delta.addFavorites.every(id=>confirmed.favorites.includes(id))&&op.delta.removeFavorites.every(id=>!confirmed.favorites.includes(id))&&op.delta.addNotes.every(note=>deletedClientIds.includes(note.clientId)||confirmed.annotations.some(n=>sameNote(n,note)&&n.quote===note.quote&&n.note===note.note))&&op.delta.removeNotes.every(note=>!confirmed.annotations.some(n=>sameNote(n,note)));
+      if(!valid)throw Object.assign(Error('invalid_ack'),{kind:'protocol',code:'library_verification_failed'});
+      for(const saved of confirmed.annotations){const live=state.library.annotations.find(n=>sameNote(n,saved));if(live){live.clientId=saved.clientId;live.id=saved.id;live.syncPending=false;}}
+      if(localStorage.getItem(op.key)===op.raw)localStorage.removeItem(op.key);
+      if(op.legacy&&localStorage.getItem(pendingLibraryKey(uid))===op.legacy)localStorage.removeItem(pendingLibraryKey(uid));
+      state.library=confirmed;for(const pending of readLibraryOperations(uid))state.library=applyLibraryDelta(state.library,pending.delta);localLibraryBase=structuredClone(state.library);markLibraryChanged();
+    }
+  }
   function guestLoad(){try{return normalizeLibrary(JSON.parse(localStorage.getItem(KEY)||'{}'));}catch{return normalizeLibrary({});}}
   let serverLibrary={favorites:[],annotations:[]};
-  function decodeNote(n){let anchor={};try{anchor=JSON.parse(n.anchor||'{}');}catch{}return {...anchor,id:n.id,clientId:n.client_id||n.id,articleId:n.article_id,revision:n.version_hash,quote:n.quote,note:n.text,updatedAt:n.created_at||''};}
-  async function remoteLoad(){const [favorites,notes]=await Promise.all([api('favorites'),api('notes')]);serverLibrary={favorites:(favorites.items||favorites).map(x=>x.article_id),annotations:(notes.items||notes).map(decodeNote)};return structuredClone(serverLibrary);}
+  function decodeNote(n){let anchor={};try{anchor=JSON.parse(n.anchor||'{}');}catch{}return {...anchor,id:n.id,clientId:n.client_id||n.id,articleId:n.article_id,revision:n.version_hash,quote:n.quote,note:n.text,updatedAt:n.created_at||'',syncPending:false};}
+  async function remoteLoad(){
+    const uid=state.user?.id,epoch=state.epoch;
+    const [favorites,notes]=await Promise.all([api('favorites'),api('notes')]);
+    if(state.expired||state.user?.id!==uid||state.epoch!==epoch)throw Object.assign(Error('identity_changed'),{kind:'identity',code:'identity_changed'});
+    serverLibrary={favorites:(favorites.items||favorites).map(x=>x.article_id),annotations:(notes.items||notes).map(decodeNote)};return structuredClone(serverLibrary);
+  }
+
   let readerContextFlight=null;
   function loadReaderContext(){
     if(readerContextFlight)return readerContextFlight;
@@ -171,7 +281,7 @@
     })().finally(()=>{if(libraryReadyFlight===job)libraryReadyFlight=null;});
     libraryReadyFlight=job;return job;
   }
-  function sameNote(a,b){return a.id===b.id||Boolean(a.clientId&&b.clientId&&a.clientId===b.clientId);}
+  function sameNote(a,b){return a.id===b.id||Boolean((a.clientId||a.id)&&(a.clientId||a.id)===(b.clientId||b.id));}
   async function syncLibrary(desired,confirmed,request,assertCurrent=()=>{}){
     const checked=async(path,body,method)=>{assertCurrent();const result=await request(path,body,method);assertCurrent();return result;};
     for(const id of desired.favorites.filter(x=>!confirmed.favorites.includes(x))){await checked('favorites/'+encodeURIComponent(id),{},'PUT');confirmed.favorites.push(id);}
@@ -179,6 +289,7 @@
     for(const note of desired.annotations.filter(x=>!confirmed.annotations.some(y=>sameNote(x,y)))){
       note.clientId=note.clientId||note.id;note.syncPending=true;
       const saved=await checked('notes',{client_id:note.clientId,article_id:note.articleId,version_hash:note.revision,anchor:JSON.stringify({blockId:note.blockId,prefix:note.prefix,suffix:note.suffix,offset:note.offset}),quote:note.quote,text:note.note});
+      if(!saved||typeof saved.id!=='string'||!saved.id)throw Object.assign(Error('invalid_note_ack'),{kind:'protocol',code:'invalid_note_ack'});
       note.id=saved.id;note.syncPending=false;confirmed.annotations.push(structuredClone(note));
     }
     for(const note of confirmed.annotations.filter(x=>!desired.annotations.some(y=>sameNote(x,y)))){
@@ -189,32 +300,21 @@
   }
   let persistQueue=Promise.resolve();
   function persist(){
-    if(!state.libraryReady)return Promise.reject(new Error('收藏与笔记尚未载入，请重试连接。'));
-    const epoch=state.epoch,uid=state.user?.id;
-    const current=()=>!state.expired&&state.epoch===epoch&&state.user?.id===uid;
-    const assertCurrent=()=>{if(!current())throw Error('登录状态已变化，同步已停止，请重新打开阅读页。');};
-    let desired,key,encoded;
+    if(!state.libraryReady)return Promise.reject(new Error('library_not_ready'));
+    const epoch=state.epoch,uid=state.user?.id,current=()=>!state.expired&&state.epoch===epoch&&state.user?.id===uid;
     try{
-      assertCurrent();if(uid)state.library.annotations.forEach(n=>{if(!serverLibrary.annotations.some(y=>sameNote(n,y)))n.syncPending=true;});
-      desired=structuredClone(state.library);key=uid?pendingLibraryKey(uid):KEY;
-      // Save at the user's action, before waiting behind any older network job.
-      encoded=durableWrite(localStorage,key,uid?{base:serverLibrary,desired}:desired);
+      if(!current())throw Error('identity_changed');
+      if(uid){
+        state.library.annotations.forEach(n=>{n.clientId=n.clientId||n.id;if(!serverLibrary.annotations.some(y=>sameNote(n,y)))n.syncPending=true;});
+        const desired=structuredClone(state.library),delta=libraryDelta(localLibraryBase||serverLibrary,desired);
+        if(delta.addFavorites.length+delta.removeFavorites.length+delta.addNotes.length+delta.removeNotes.length){const id=global.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);durableWrite(localStorage,operationPrefix(uid)+id,{at:Math.max(Date.now(),...readLibraryOperations(uid).map(op=>Number(op.at)||0))+1,delta});}
+        localLibraryBase=desired;
+      }else{durableWrite(localStorage,KEY,state.library);localLibraryBase=structuredClone(state.library);}
     }catch(error){return Promise.reject(error);}
     const run=async()=>{
-      assertCurrent();
-      if(uid){
-        try{
-          await finiteRetry(()=>syncLibrary(desired,serverLibrary,api,assertCurrent),current);assertCurrent();
-          for(const saved of desired.annotations){const live=state.library.annotations.find(n=>sameNote(n,saved));if(live){live.id=saved.id;live.syncPending=saved.syncPending;}}
-          // An old acknowledgement must not delete a newer action's outbox.
-          if(localStorage.getItem(key)===encoded)localStorage.removeItem(key);
-        }catch(error){
-          assertCurrent();
-          if(localStorage.getItem(key)===encoded)encoded=durableWrite(localStorage,key,{base:serverLibrary,desired});
-          notify('已保存在此设备，账号同步尚未完成。');
-        }
-      }
-      assertCurrent();document.dispatchEvent(new CustomEvent('read-members-change'));
+      if(!current())throw Error('identity_changed');if(!uid){markLibraryChanged();return {synced:true};}
+      try{await flushLibraryOperations(uid,epoch);return {synced:true};}
+      catch(error){if(!current())throw error;recordOperationFailure('library','SYNC',error);const queue=recoveryForAccount();if(recoverableError(error))queue.enqueue('library',()=>flushLibraryOperations(uid,epoch),current);else queue.block('library',error,current);return {pending:true};}
     };
     const result=persistQueue.then(run,run);persistQueue=result.catch(()=>{});return result;
   }
@@ -225,7 +325,7 @@
     const had=state.library.favorites.includes(id);state.library.favorites=had?state.library.favorites.filter(x=>x!==id):[...state.library.favorites,id];
     try{await persist();cachePublicFavorites();return !had;}catch(error){if(state.epoch===epoch&&!state.expired)state.library.favorites=had?[...new Set([...state.library.favorites,id])]:state.library.favorites.filter(x=>x!==id);throw error;}
   }
-  function button(text,action){const n=el('button',text);n.type='button';n.addEventListener('click',async()=>{n.disabled=true;try{await action();}catch(e){if(n.isConnected)notify(e?.message||'操作未完成，请稍后重试。',n);}finally{n.disabled=false;}});return n;}
+  function button(text,action){const n=el('button',text);n.type='button';n.addEventListener('click',async()=>{n.disabled=true;try{await action();}catch(e){if(n.isConnected){recordOperationFailure('member-action','ACTION',e);if(n.closest?.('form')||[401,403,409].includes(e?.status))notify(e?.message||'请确认当前操作权限。',n);else if(isNetworkFailure(e))notify('因网络问题暂时未完成。',n);}}finally{n.disabled=false;}});return n;}
   function isAdministrator(){return state.authStatus==='ready'&&!state.expired&&state.user?.role==='admin';}
   function administratorLink(label='审稿'){const link=el('a',label);link.href=memberUrl('admin');link.setAttribute('data-member-admin','');return link;}
   function mountNavigation(container){
@@ -242,7 +342,7 @@
     if(resolveAccountEntry)return;
     const modal=el('dialog',undefined,'member-auth member-main'),prior=document.activeElement,close=button('×',()=>modal.close()),title=el('h1','账号'),body=el('div');
     close.className='member-auth-close';close.setAttribute('aria-label','关闭账号窗口');title.id='member-pending-title';modal.setAttribute('aria-labelledby',title.id);modal.append(close,title,body);
-    const update=()=>{if(!modal.isConnected)return;if(state.authStatus==='ready'&&state.csrfToken){resolveAccountEntry=null;modal.close();openAccount(state.user?'account':'login');return;}body.replaceChildren();const status=el('p',state.authStatus==='error'?'账号暂时无法载入，请重试。':'正在恢复登录状态，请稍候。');status.setAttribute('role','status');body.append(status);if(state.authStatus==='error')body.append(button('重试',()=>location.reload()));};
+    const update=()=>{if(!modal.isConnected)return;if(state.authStatus==='ready'&&state.csrfToken){resolveAccountEntry=null;modal.close();openAccount(state.user?'account':'login');return;}body.replaceChildren();const status=el('p','正在恢复登录状态，请稍候。');status.setAttribute('role','status');body.append(status);};
     resolveAccountEntry=update;modal.addEventListener('close',()=>{if(resolveAccountEntry===update)resolveAccountEntry=null;modal.remove();if(state.authStatus!=='ready')prior?.focus();});document.body.append(modal);modal.showModal();update();if(state.authStatus==='cached'||!state.csrfToken)refreshAuthSession().catch(()=>{state.authStatus='error';refreshNavigation();});
   }
   function closeAnnotationButton(action){const control=button('',action);control.className='member-annotation-close';control.setAttribute('aria-label','关闭批注');control.title='关闭';const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','M6 6l12 12M18 6L6 18');svg.append(path);control.append(svg);return control;}
@@ -273,11 +373,20 @@
     const next=annotationPopupPosition(anchor,popup.getBoundingClientRect(),viewport);popup.style.left=next.left+'px';popup.style.top=next.top+'px';popup.style.maxHeight=next.maxHeight+'px';popup.style.right='auto';popup.style.bottom='auto';
   }
   let exportLoader;
+  function loadArticleExportScript(){
+    if(global.ReadArticleExport)return Promise.resolve(global.ReadArticleExport);
+    if(exportLoader)return exportLoader;
+    const url=new URL('member-system/article-export.js?v=20261020-wechat-1',scriptRoot).href;
+    exportLoader=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=url;
+      script.onload=()=>{if(global.ReadArticleExport)resolve(global.ReadArticleExport);else reject(Object.assign(Error('export_module_unavailable'),{kind:'protocol',code:'export_module_unavailable'}));};
+      script.onerror=async()=>{script.remove?.();let failure;try{const response=await fetch(url,{cache:'no-cache'});failure=Object.assign(Error('export_resource_unavailable'),{kind:response.ok?'transport':'http',status:response.status,code:'export_resource_unavailable'});}catch{failure=Object.assign(Error('export_resource_unavailable'),{kind:global.navigator?.onLine===false?'network':'transport',status:0,code:'export_resource_unavailable'});}reject(failure);};document.head.append(script);
+    }).catch(error=>{exportLoader=null;throw error;});return exportLoader;
+  }
   function mountArticleExport(context){
     if(state.user?.role!=='admin'||!context.snapshot)return;
-    const epoch=state.epoch,uid=state.user.id;
-    if(!exportLoader)exportLoader=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL('member-system/article-export.js?v=20261020-wechat-1',scriptRoot).href;script.onload=()=>resolve(global.ReadArticleExport);script.onerror=()=>{exportLoader=null;reject(Error('导出工具加载失败，请刷新重试。'));};document.head.append(script);});
-    exportLoader.then(tool=>{if(state.epoch!==epoch||state.user?.id!==uid)return;tool.mount({...context,api,isCurrent:()=>state.epoch===epoch&&state.user?.id===uid&&state.user?.role==='admin'&&!state.expired,coverUrl:new URL(`covers/${context.articleId}.png`,scriptRoot).href});}).catch(error=>notify(error.message));
+    const epoch=state.epoch,uid=state.user.id,current=()=>state.epoch===epoch&&state.user?.id===uid&&state.user?.role==='admin'&&!state.expired;
+    const mount=async()=>{const tool=await loadArticleExportScript();if(!current())return;tool.mount({...context,api,isCurrent:current,coverUrl:new URL(`covers/${context.articleId}.png`,scriptRoot).href});};
+    mount().catch(error=>{if(!current())return;recordOperationFailure('export-resource','GET',error);const queue=recoveryForAccount();if(recoverableError(error))queue.enqueue('export-script:'+context.articleId,mount,current);else queue.block('export-script:'+context.articleId,error,current);});
   }
   function versionReaderUrl(articleId,version){const url=new URL(readUrl(articleId),location.href);url.searchParams.set('review','1');if(version)url.searchParams.set('version',version);return url.href;}
   function mountVersionHistory({articleId,revision,toolbar}){
@@ -285,7 +394,7 @@
     const epoch=state.epoch,uid=state.user.id,current=()=>state.epoch===epoch&&state.user?.id===uid&&!state.expired;
     const detail=el('details',undefined,'member-version-panel');detail.append(el('summary','版本'));const list=el('div',undefined,'reader-version-list');detail.append(list);toolbar.append(detail);
     let loaded=false;
-    detail.addEventListener('toggle',async()=>{if(!detail.open||loaded)return;list.replaceChildren(el('p','正在读取版本记录…'));try{const result=await api('admin/drafts/'+encodeURIComponent(articleId)+'/versions');if(!current())return;list.replaceChildren();for(const item of result.items||[]){const card=el('a',undefined,'reader-version-card');card.href=versionReaderUrl(articleId,item.is_current?null:item.version_hash);const viewing=item.version_hash===revision||item.content_hash===revision;card.dataset.current=String(!!item.is_current);card.dataset.viewing=String(viewing);if(viewing)card.setAttribute('aria-current','page');const heading=el('div',undefined,'reader-version-card-heading');heading.append(el('strong','版本 '+item.version_number));if(viewing)heading.append(el('span','正在查看','reader-version-tag'));if(item.is_current)heading.append(el('span','最新版','reader-version-tag'));const savedTime=el('time','保存时间未记录');if(item.created_at){const date=new Date(item.created_at);if(Number.isFinite(date.getTime())){savedTime.dateTime=item.created_at;savedTime.textContent=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Shanghai'}).format(date);}}card.append(heading,savedTime,el('p',item.summary||item.note||'此版本未附修改说明'),el('small',String(item.feedback_count||0)+' 条批注'));list.append(card);}if(!list.children.length)list.append(el('p','尚无版本记录。'));loaded=true;}catch(error){list.replaceChildren(el('p',error.message||'版本记录暂时无法载入。'),button('重试',()=>{loaded=false;detail.open=false;detail.open=true;}));}});
+    const loadVersions=async()=>{if(!detail.open||loaded)return;list.replaceChildren(el('p','正在读取版本记录…'));try{const result=await api('admin/drafts/'+encodeURIComponent(articleId)+'/versions');if(!current())return;list.replaceChildren();for(const item of result.items||[]){const card=el('a',undefined,'reader-version-card');card.href=versionReaderUrl(articleId,item.is_current?null:item.version_hash);const viewing=item.version_hash===revision||item.content_hash===revision;card.dataset.current=String(!!item.is_current);card.dataset.viewing=String(viewing);if(viewing)card.setAttribute('aria-current','page');const heading=el('div',undefined,'reader-version-card-heading');heading.append(el('strong','版本 '+item.version_number));if(viewing)heading.append(el('span','正在查看','reader-version-tag'));if(item.is_current)heading.append(el('span','最新版','reader-version-tag'));const savedTime=el('time','保存时间未记录');if(item.created_at){const date=new Date(item.created_at);if(Number.isFinite(date.getTime())){savedTime.dateTime=item.created_at;savedTime.textContent=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Shanghai'}).format(date);}}card.append(heading,savedTime,el('p',item.summary||item.note||'此版本未附修改说明'),el('small',String(item.feedback_count||0)+' 条批注'));list.append(card);}if(!list.children.length)list.append(el('p','尚无版本记录。'));loaded=true;}catch(error){recordOperationFailure('admin/versions','GET',error);recoveryForAccount().enqueue('versions:'+articleId,async()=>{if(!current())return;loaded=false;await loadVersions();},current);throw error;}};detail.addEventListener('toggle',()=>loadVersions().catch(()=>{}));
     document.addEventListener('read-members-expired',()=>detail.remove(),{once:true});return detail;
   }
   function mountHistoricReader({articleId,revision,snapshot,assetUrl,root,toolbar,draft}){
@@ -298,14 +407,14 @@
   function mountReader({articleId,revision,snapshot,assetUrl,metadata,root,toolbar,figureRoot}) {
     mountVersionHistory({articleId,revision:snapshot?.review_version_hash||revision,toolbar});
     mountArticleExport({articleId,revision,snapshot,assetUrl,metadata,toolbar:toolbar||root.parentElement,source:!staticMode&&snapshot?.sourceSha256?'draft-content':'published'});
-    if(!state.libraryReady){global.ReadToast?.show({key:'member-connection',kind:'info',message:'收藏与笔记暂未连接，可以继续阅读。',action:{label:'重试连接',onClick:()=>location.reload()}});return {refresh(){},destroy(){}};}
+    if(!state.libraryReady){return {refresh(){},destroy(){}};}
     let pending=null,pendingItem=null,highlightEnabled=false;document.addEventListener('read-members-expired',()=>{disposeHighlightNotes();clearPendingAnnotation();pending=null;pendingItem=null;textarea.value='';quote.textContent='';quote.hidden=true;collect.disabled=true;});const bar=el('div',undefined,'member-reader-actions');const status=el('span');status.setAttribute('data-member-status','');
-    const favorite=button('',async()=>{await toggleFavorite(articleId);refresh();});function refresh(){favorite.textContent=state.library.favorites.includes(articleId)?'已收藏':'收藏本文';}refresh();bar.append(favorite);const marker=button('荧光笔',()=>{highlightEnabled=!highlightEnabled;marker.setAttribute('aria-pressed',String(highlightEnabled));if(highlightEnabled)capture();else{clearTimeout(selectionTimer);clearPendingAnnotation();pending=null;editor.hidden=true;}});marker.setAttribute('aria-pressed','false');marker.setAttribute('data-reader-highlighter','');bar.append(marker);const collect=button('保存所选文字',async()=>{if(!pending)throw new Error('请先在正文中选择文字。');const note=textarea.value.trim();const item=pendingItem||{...pending,id:crypto.randomUUID(),note,updatedAt:new Date().toISOString()};pendingItem=item;if(!state.library.annotations.includes(item))state.library.annotations.push(item);try{await persist();clearPendingAnnotation();pending=null;pendingItem=null;collect.disabled=true;quote.hidden=true;textarea.value='';global.getSelection()?.removeAllRanges();editor.hidden=true;notify(item.syncPending?'已保存在此设备，账号同步尚未完成。':'已保存到阅读笔记。');paint();}catch(error){if(!state.expired){item.syncPending=true;paint();}throw error;}});collect.disabled=true;
+    const favorite=button('',async()=>{await toggleFavorite(articleId);refresh();});function refresh(){favorite.textContent=state.library.favorites.includes(articleId)?'已收藏':'收藏本文';}refresh();bar.append(favorite);const marker=button('荧光笔',()=>{highlightEnabled=!highlightEnabled;marker.setAttribute('aria-pressed',String(highlightEnabled));if(highlightEnabled)capture();else{clearTimeout(selectionTimer);clearPendingAnnotation();pending=null;editor.hidden=true;}});marker.setAttribute('aria-pressed','false');marker.setAttribute('data-reader-highlighter','');bar.append(marker);const collect=button('保存所选文字',async()=>{if(!pending)throw new Error('请先在正文中选择文字。');const note=textarea.value.trim();const item=pendingItem||{...pending,id:crypto.randomUUID(),note,updatedAt:new Date().toISOString()};pendingItem=item;if(!state.library.annotations.includes(item))state.library.annotations.push(item);try{await persist();clearPendingAnnotation();pending=null;pendingItem=null;collect.disabled=true;quote.hidden=true;textarea.value='';global.getSelection()?.removeAllRanges();editor.hidden=true;if(!item.syncPending)notify('已保存到阅读笔记。');paint();}catch(error){if(!state.expired){item.syncPending=true;paint();}throw error;}});collect.disabled=true;
     const textarea=el('textarea');textarea.placeholder='给所选文字写笔记（可留空）';textarea.maxLength=10000;textarea.setAttribute('aria-label','所选文字笔记');textarea.rows=2;const quote=el('p',undefined,'member-selection');quote.hidden=true;bar.append(status);const editor=el('section',undefined,'member-review-editor');editor.hidden=true;const editorHeading=el('strong','阅读批注'),markOnly=button('仅标黄',()=>{textarea.value='';collect.click();}),allNotes=button('全部批注',()=>{if(global.ReadChrome?.openNotes)global.ReadChrome.openNotes(allNotes);else panel.open=true;});allNotes.className='member-all-notes';editor.append(editorHeading,quote,textarea,collect,markOnly,allNotes,closeAnnotationButton(()=>{clearPendingAnnotation();editor.hidden=true;pending=null;pendingItem=null;collect.disabled=true;global.getSelection()?.removeAllRanges();}));document.body.append(editor);const panel=el('details',undefined,'member-notes-panel');panel.append(el('summary','划句与笔记'));const list=el('div');panel.append(list);(toolbar||root.parentElement).append(bar,panel);
     function capture(){if(!highlightEnabled)return;const sel=global.getSelection();if(!sel||sel.isCollapsed||sel.rangeCount!==1)return;const range=sel.getRangeAt(0);const node=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;const block=node.closest('[data-block-id]');if(!block||!root.contains(block)||block.querySelector('figure')||figureRoot?.contains(block))return;const endBlock=(range.endContainer.nodeType===1?range.endContainer:range.endContainer.parentElement).closest('[data-block-id]');if(endBlock!==block)return;const before=range.cloneRange();before.selectNodeContents(block);before.setEnd(range.startContainer,range.startOffset);const start=before.toString().length,text=block.textContent,selected=range.toString();if(!selected.trim()||selected.length>2000)return;if(textarea.readOnly||!pending||pending.blockId!==block.dataset.blockId||pending.quote!==selected||pending.offset.start!==start)textarea.value='';pendingItem=null;pending={articleId,revision:String(revision),blockId:block.dataset.blockId,quote:selected,prefix:text.slice(Math.max(0,start-32),start),suffix:text.slice(start+selected.length,start+selected.length+32),offset:{start,end:start+selected.length}};quote.textContent=selected;quote.hidden=false;editorHeading.textContent='阅读批注';textarea.readOnly=false;collect.hidden=markOnly.hidden=false;collect.disabled=false;void global.ReadChrome?.closePanel();editor.hidden=false;showPendingAnnotation(range);positionAnnotationPopup(editor,range);}
     let selectionTimer,selecting=false;const selectionChanged=()=>{clearTimeout(selectionTimer);if(highlightEnabled&&!selecting)selectionTimer=setTimeout(capture,250);};const beginSelection=()=>{selecting=true;clearTimeout(selectionTimer);};const endSelection=()=>{selecting=false;selectionChanged();};root.addEventListener('pointerdown',beginSelection);document.addEventListener('pointerup',endSelection);document.addEventListener('pointercancel',endSelection);root.addEventListener('keyup',selectionChanged);document.addEventListener('selectionchange',selectionChanged);
     let highlightedNotes=[];const disposeHighlightNotes=mountHighlightNotes(root,()=>highlightedNotes,()=>{clearTimeout(selectionTimer);clearPendingAnnotation();editor.hidden=true;},hits=>{clearPendingAnnotation();const hit=hits[0];pending=null;quote.textContent=hit.quote;quote.hidden=false;textarea.value=hit.note||'';textarea.readOnly=true;collect.hidden=markOnly.hidden=true;editorHeading.textContent='已保存的批注';void global.ReadChrome?.closePanel();editor.hidden=false;positionAnnotationPopup(editor,hit.range);});
-    function paint(){list.replaceChildren();highlightedNotes=[];const highlights=[];for(const item of state.library.annotations.filter(x=>x.articleId===articleId)){const row=el('div',undefined,'member-note');row.append(el('blockquote',item.quote),el('p',item.note||'未写笔记'));if(item.syncPending)row.append(button('重试同步',async()=>{await persist();paint();}));const block=[...root.querySelectorAll('[data-block-id]')].find(n=>n.dataset.blockId===item.blockId);const anchor=block?resolveAnchor(item,{articleId,revision,blockId:item.blockId,text:block.textContent,legacyText:legacyBlockText(snapshot,item.blockId)}):null;if(!anchor)row.append(el('small','原文版本或位置已变化，保留笔记，未自动贴回。'));else if(global.CSS?.highlights&&global.Highlight){const walk=document.createTreeWalker(block,NodeFilter.SHOW_TEXT);let p=0,s=null,e=null;while(walk.nextNode()){const n=walk.currentNode,next=p+n.length;if(s===null&&anchor.start>=p&&anchor.start<next)s=[n,anchor.start-p];if(anchor.end>p&&anchor.end<=next){e=[n,anchor.end-p];break;}p=next;}if(s&&e){const r=document.createRange();r.setStart(...s);r.setEnd(...e);highlights.push(r);highlightedNotes.push({range:r,quote:item.quote,note:item.note});}}row.append(button('删除笔记',async()=>{const old=state.library.annotations;state.library.annotations=old.filter(x=>x.id!==item.id);try{await persist();paint();}catch(error){if(!state.expired&&!state.library.annotations.some(x=>sameNote(x,item)))state.library.annotations.push(item);throw error;}}));list.append(row);}if(global.CSS?.highlights&&global.Highlight)CSS.highlights.set('read-member-notes',new Highlight(...highlights));if(!list.children.length)list.append(el('p','还没有笔记。选择正文中的一句话即可开始。'));}paint();return {refresh:paint,destroy(){clearPendingAnnotation();disposeHighlightNotes();clearTimeout(selectionTimer);root.removeEventListener('pointerdown',beginSelection);document.removeEventListener('pointerup',endSelection);document.removeEventListener('pointercancel',endSelection);root.removeEventListener('keyup',selectionChanged);document.removeEventListener('selectionchange',selectionChanged);editor.remove();bar.remove();panel.remove();}};
+    function paint(){list.replaceChildren();highlightedNotes=[];const highlights=[];for(const item of state.library.annotations.filter(x=>x.articleId===articleId)){const row=el('div',undefined,'member-note');row.append(el('blockquote',item.quote),el('p',item.note||'未写笔记'));const block=[...root.querySelectorAll('[data-block-id]')].find(n=>n.dataset.blockId===item.blockId);const anchor=block?resolveAnchor(item,{articleId,revision,blockId:item.blockId,text:block.textContent,legacyText:legacyBlockText(snapshot,item.blockId)}):null;if(!anchor)row.append(el('small','原文版本或位置已变化，保留笔记，未自动贴回。'));else if(global.CSS?.highlights&&global.Highlight){const walk=document.createTreeWalker(block,NodeFilter.SHOW_TEXT);let p=0,s=null,e=null;while(walk.nextNode()){const n=walk.currentNode,next=p+n.length;if(s===null&&anchor.start>=p&&anchor.start<next)s=[n,anchor.start-p];if(anchor.end>p&&anchor.end<=next){e=[n,anchor.end-p];break;}p=next;}if(s&&e){const r=document.createRange();r.setStart(...s);r.setEnd(...e);highlights.push(r);highlightedNotes.push({range:r,quote:item.quote,note:item.note});}}row.append(button('删除笔记',async()=>{const old=state.library.annotations;state.library.annotations=old.filter(x=>x.id!==item.id);try{await persist();paint();}catch(error){if(!state.expired&&!state.library.annotations.some(x=>sameNote(x,item)))state.library.annotations.push(item);throw error;}}));list.append(row);}if(global.CSS?.highlights&&global.Highlight)CSS.highlights.set('read-member-notes',new Highlight(...highlights));if(!list.children.length)list.append(el('p','还没有笔记。选择正文中的一句话即可开始。'));}paint();document.addEventListener('read-members-change',paint);return {refresh:paint,destroy(){document.removeEventListener('read-members-change',paint);clearPendingAnnotation();disposeHighlightNotes();clearTimeout(selectionTimer);root.removeEventListener('pointerdown',beginSelection);document.removeEventListener('pointerup',endSelection);document.removeEventListener('pointercancel',endSelection);root.removeEventListener('keyup',selectionChanged);document.removeEventListener('selectionchange',selectionChanged);editor.remove();bar.remove();panel.remove();}};
   }
   function field(form,label,name,type='text',required=true){const wrap=el('label',label),input=el('input');input.name=name;input.type=type;input.required=required;input.autocomplete=type==='password'?(name==='password'?'current-password':'new-password'):'email';wrap.append(input);form.append(wrap);return input;}
   let authRefresh=null;
@@ -487,11 +596,28 @@
       if(root?.dataset.memberPage==='account')accountPage(root);
       if(root?.dataset.memberPage==='admin')pageTask=adminPage(root).catch(error=>notify(error.message));
       state.presentationFavoritesKnown=Array.isArray(session.favoriteIds);
-      if(state.user){state.library={favorites:session.favoriteIds||[],annotations:[]};try{const navigationOnly=typeof location!=='undefined'&&['/','/index.html','/catalog'].includes(location.pathname)&&!root;if(context){state.readerContext=context;state.library=libraryFromContext(context);state.libraryReady=true;}else if(!navigationOnly){state.library=await remoteLoad();state.libraryReady=true;}}catch(error){notify('账号收藏与笔记暂时无法载入，可以继续阅读；请刷新重试。当前不会覆盖账号数据。');}}
+      if(state.user){state.library={favorites:session.favoriteIds||[],annotations:[]};try{const navigationOnly=typeof location!=='undefined'&&['/','/index.html','/catalog'].includes(location.pathname)&&!root;if(context){state.readerContext=context;state.library=libraryFromContext(context);state.libraryReady=true;}else if(!navigationOnly){state.library=await remoteLoad();state.libraryReady=true;}}catch(error){scheduleMemberRecovery(error);}}
       else state.libraryReady=true;
       if(state.libraryReady){recoverPendingLibrary();state.presentationFavoritesKnown=true;if(typeof cachePublicFavorites==='function')cachePublicFavorites();}
-    }catch(error){if(state.epoch!==initEpoch){resolveAuthReady(state);state.loaded=true;return state;}state.authStatus='error';state.accountHint=false;state.adminNavHint=false;state.user=null;state.configured=false;refreshNavigation();resolveAuthReady(state);}
-    if(root){if(root.dataset.memberPage==='account'&&state.authStatus!=='ready')accountPage(root);if(root.dataset.memberPage==='favorites'&&!state.libraryReady){root.append(el('p','收藏尚未载入，请重试连接后查看。'),button('重试连接',()=>location.reload()));}if(root.dataset.memberPage==='favorites'&&state.libraryReady){try{let catalog;if(staticMode&&global.ReadPublished){catalog=await global.ReadPublished.catalog(new URL('catalog.json',scriptRoot).href);}else{const response=await fetch(staticMode?new URL('catalog.json',scriptRoot).href:'/api/catalog');if(!response.ok)throw Error();catalog=await response.json();}state.catalog=catalog.articles||[];setPublicCatalog(state.catalog);favoritesPage(root);global.ReadCardActions?.hydrate();}catch{root.append(el('p','文献目录暂时无法载入，请稍后刷新。'));}}if(pageTask)await pageTask;else if(root.dataset.memberPage==='admin')await adminPage(root);const privacy=el('details',undefined,'member-privacy');privacy.append(el('summary','数据与隐私'),el('p','游客收藏和笔记保存在当前浏览器。登录后的同步内容保存在本站账号服务；密码不写入浏览器存储。阅读笔记可能包含私人研究想法，请避免记录未公开敏感资料。'));if(state.user&&guestLoad().favorites.length+guestLoad().annotations.length>0)privacy.append(button('将本机游客数据合并到账号',async()=>{const old=state.library;state.library=mergeLibraries(old,guestLoad());try{await persist();localStorage.removeItem(KEY);location.reload();}catch(error){throw error;}}));root.append(privacy);}state.loaded=true;if(typeof sessionCache!=='undefined'&&sessionCache.peek()?.cached){const timer=setTimeout(()=>checkSession(),Math.max(1000,sessionCache.peek().cacheRemainingMs||30000));timer?.unref?.();}return state;}
+    }catch(error){if(state.epoch!==initEpoch){resolveAuthReady(state);state.loaded=true;return state;}state.authStatus='error';state.accountHint=false;state.adminNavHint=false;state.user=null;state.configured=false;refreshNavigation();resolveAuthReady(state);scheduleMemberRecovery(error);}
+    if(root){if(root.dataset.memberPage==='account'&&state.authStatus!=='ready')accountPage(root);if(root.dataset.memberPage==='favorites'&&state.libraryReady){try{await renderFavoriteCatalog(root);}catch(error){scheduleMemberRecovery(error);}}if(pageTask)await pageTask;else if(root.dataset.memberPage==='admin')await adminPage(root);const privacy=el('details',undefined,'member-privacy');privacy.append(el('summary','数据与隐私'),el('p','游客收藏和笔记保存在当前浏览器。登录后的同步内容保存在本站账号服务；密码不写入浏览器存储。阅读笔记可能包含私人研究想法，请避免记录未公开敏感资料。'));if(state.user&&guestLoad().favorites.length+guestLoad().annotations.length>0)privacy.append(button('将本机游客数据合并到账号',async()=>{const old=state.library;state.library=mergeLibraries(old,guestLoad());try{await persist();localStorage.removeItem(KEY);location.reload();}catch(error){throw error;}}));root.append(privacy);}state.loaded=true;document.dispatchEvent(new CustomEvent('read-members-ready'));if(typeof sessionCache!=='undefined'&&sessionCache.peek()?.cached){const timer=setTimeout(()=>checkSession(),Math.max(1000,sessionCache.peek().cacheRemainingMs||30000));timer?.unref?.();}return state;}
+  function scheduleMemberRecovery(error){
+    recordOperationFailure('reader-context','GET',error);
+    recoveryForAccount().enqueue('member-context',async()=>{
+      if(state.authStatus!=='ready')await refreshAuthSession();
+      if(!state.libraryReady)await ensureLibraryReady();
+      const root=typeof document!=='undefined'?document.querySelector('[data-member-page]'):null;
+      if(root?.dataset.memberPage==='favorites')await renderFavoriteCatalog(root);
+      if(typeof document!=='undefined')document.dispatchEvent(new CustomEvent('read-members-ready'));
+    });
+  }
+  async function renderFavoriteCatalog(root){
+    const uid=state.user?.id,epoch=state.epoch;let catalog;
+    if(staticMode&&global.ReadPublished)catalog=await global.ReadPublished.catalog(new URL('catalog.json',scriptRoot).href);
+    else{let response;try{response=await fetch(staticMode?new URL('catalog.json',scriptRoot).href:'/api/catalog');}catch{throw Object.assign(Error('catalog_transport'),{kind:global.navigator?.onLine===false?'network':'transport',code:'catalog_transport'});}if(!response.ok)throw Object.assign(Error('catalog_response'),{kind:'http',status:response.status,code:'catalog_response'});catalog=await response.json();}
+    if(state.expired||state.user?.id!==uid||state.epoch!==epoch)return;
+    state.catalog=catalog.articles||[];setPublicCatalog(state.catalog);root.replaceChildren();favoritesPage(root);global.ReadCardActions?.hydrate();
+  }
   // Serialize writes per article and retain only the newest waiting position.
   function createProgressQueue(write) {
     const entries=new Map();
@@ -513,24 +639,24 @@
     const write=async(id,job,{force=false}={})=>{
       if(!current())return;
       if(force)conflicts.delete(id);
-      else if(conflicts.has(id)){onStatus('conflict',job,conflicts.get(id));return;}
+      else if(conflicts.has(id)){const remote=conflicts.get(id);onStatus('conflict',job,remote);return {status:'conflict',remote};}
       try{
         if(!revisions.has(id))await read(id);if(!current())return;
         const baseline=snapshots.get(id);
-        if(!force&&baseline?.version_hash===job.hash&&Date.parse(baseline.updated_at||'')>Number(job.position.savedAt||0)&&JSON.stringify(baseline.position)!==JSON.stringify(job.position)){conflicts.set(id,baseline);onStatus('conflict',job,baseline);return;}
+        if(!force&&baseline?.version_hash===job.hash&&Date.parse(baseline.updated_at||'')>Number(job.position.savedAt||0)&&JSON.stringify(baseline.position)!==JSON.stringify(job.position)){conflicts.set(id,baseline);onStatus('conflict',job,baseline);return {status:'conflict',remote:baseline};}
         if(!current())return;
         const remote=await finiteRetry(()=>request(path(id),{version_hash:job.hash,revision:revisions.get(id),position:job.position},'PUT'),current,wait);
-        if(current()){revisions.set(id,remote.revision);onStatus('saved',job);}
+        if(current()){if(!Number.isInteger(remote?.revision)||remote.revision!==(revisions.get(id)||0)+1)throw Object.assign(Error('invalid_progress_ack'),{kind:'protocol',code:'invalid_progress_ack'});revisions.set(id,remote.revision);onStatus('saved',job);return {status:'saved'};}
       }catch(error){
         if(!current())return;
         if(error.code==='progress_conflict'){
           // Re-read only to classify a lost acknowledgement. A different device's
           // position is never silently overwritten with a refreshed revision.
-          try{const remote=await read(id);if(!current())return;if(remote.version_hash===job.hash&&JSON.stringify(remote.position)===JSON.stringify(job.position)){onStatus('saved',job);return;}
-            conflicts.set(id,remote);onStatus('conflict',job,remote);return;
+          try{const remote=await read(id);if(!current())return;if(remote.version_hash===job.hash&&JSON.stringify(remote.position)===JSON.stringify(job.position)){onStatus('saved',job);return {status:'saved'};}
+            conflicts.set(id,remote);onStatus('conflict',job,remote);return {status:'conflict',remote};
           }catch(next){if(!current())return;error=next;}
         }
-        onStatus(error.code==='version_mismatch'?'version':'pending',job,{status:error.status||0,code:error.code||'network_error'});
+        const status=error.code==='version_mismatch'?'version':'pending';onStatus(status,job,error);return {status,error};
       }
     };
     return {read,write,remember(id,value){if((Number(value?.revision)||0)>=(revisions.get(id)||0)){revisions.set(id,Number(value?.revision)||0);snapshots.set(id,value);}},clear(){revisions.clear();conflicts.clear();snapshots.clear();}};
@@ -541,37 +667,73 @@
     const uid=state.user?.id,epoch=state.epoch;
     if(progressSync?.uid===uid&&progressSync.epoch===epoch)return progressSync.engine;
     const current=()=>!state.expired&&state.user?.id===uid&&state.epoch===epoch;
-    const engine=createProgressSync({request:api,current,onStatus(kind,job,detail){
+    const engine=createProgressSync({request:api,current,onStatus(kind,job){
       if(!current())return;
-      const key='read-progress-pending-v1:'+uid+':'+job.id+':'+job.hash;
-      if(kind==='saved'){try{if(localStorage.getItem(key)===JSON.stringify(job.position))localStorage.removeItem(key);}catch{}return;}
-      // Core has already durably saved this position. This outbox is account-bound.
-      try{durableWrite(localStorage,key,job.position);}catch{}
-      const message=kind==='conflict'?'另一设备有不同的阅读记录，本机位置已保留。':kind==='version'?'文章已有新版本，本机阅读位置已保留。':'阅读位置已保存在此设备，账号同步尚未完成。';
-      global.ReadToast?.show({key:'reading-sync',kind:'pending',message,...(kind!=='version'?{action:{label:kind==='conflict'?'使用本机记录':'重试同步',onClick:()=>{if(current())return progressQueue(job.id,{...job,force:kind==='conflict'});}}}:{})});
+      const key=progressOutboxKey(uid,job.id,job.hash);
+      if(kind==='saved'){try{if(localStorage.getItem(key)===JSON.stringify(job.position))localStorage.removeItem(key);}catch{}}
     }});
     progressSync={uid,epoch,engine};return engine;
   }
+  function progressOutboxKey(uid,id,hash){return 'read-progress-pending-v1:'+uid+':'+id+':'+hash;}
+  async function syncProgressJob(id,job){
+    const current=()=>!state.expired&&state.user?.id===job.uid&&state.epoch===job.epoch;
+    if(!current())return;
+    const engine=accountProgressSync();let result=await engine.write(id,job,{force:job.force===true});
+    if(!current()||!result)return;
+    if(result.status==='conflict'){
+      const remote=result.remote,remoteTime=Date.parse(remote?.updated_at||'')||Number(remote?.position?.savedAt)||0;
+      // A different server position is authoritative for CAS; retain the local
+      // alternative without automatic text movement or client-clock overwrite.
+      const key=progressOutboxKey(job.uid,id,job.hash);if(localStorage.getItem(key)===JSON.stringify(job.position)){durableWrite(localStorage,'read-progress-alternative-v1:'+job.uid+':'+id+':'+job.hash,job.position);localStorage.removeItem(key);}return;
+    }
+    if(result?.status==='pending')throw result.error;
+    if(result?.status==='version')throw result.error;
+  }
+  function queueProgressRecovery(id,hash,position){
+    if(!state.user||state.expired)return;
+    const uid=state.user.id,epoch=state.epoch,current=()=>!state.expired&&state.user?.id===uid&&state.epoch===epoch;
+    recoveryForAccount().enqueue('progress:'+id+':'+hash,async()=>{
+      const raw=localStorage.getItem(progressOutboxKey(uid,id,hash));if(!raw)return;
+      let latest=JSON.parse(raw);if(latest?.documentVersion!==hash||latest.article!==id)throw Object.assign(Error('invalid_progress_outbox'),{kind:'protocol',code:'invalid_progress_outbox'});
+      for(const mode of ['desktop','single']){const stored=JSON.parse(localStorage.getItem(uid+':reading-desk:v2:'+id+':'+hash+':'+mode)||'null');if(stored?.article===id&&stored.documentVersion===hash&&Number(stored.savedAt)>Number(latest.savedAt))latest=stored;}
+      durableWrite(localStorage,progressOutboxKey(uid,id,hash),latest);
+      await syncProgressJob(id,{id,hash,position:latest,uid,epoch});
+    },current);
+  }
+  function recoverProgressOutboxes(){
+    if(!state.user||state.authStatus!=='ready'||state.expired)return;
+    const prefix='read-progress-pending-v1:'+state.user.id+':';
+    for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(!key?.startsWith(prefix))continue;try{const position=JSON.parse(localStorage.getItem(key));if(position?.article&&position.documentVersion)queueProgressRecovery(position.article,position.documentVersion,position);}catch{}}
+  }
   const progressQueue=createProgressQueue(async(id,job)=>{
-    if(!state.expired&&state.user?.id===job.uid&&state.epoch===job.epoch)await accountProgressSync().write(id,job,{force:job.force===true});
+    if(state.expired||state.user?.id!==job.uid||state.epoch!==job.epoch)return;
+    try{await syncProgressJob(id,job);}catch(error){if(state.expired||state.user?.id!==job.uid||state.epoch!==job.epoch)return;recordOperationFailure('progress/'+id,'PUT',error);if(recoverableError(error))queueProgressRecovery(id,job.hash,job.position);else recoveryForAccount().block('progress:'+id+':'+job.hash,error,()=>!state.expired&&state.user?.id===job.uid&&state.epoch===job.epoch);}
   });
-  function clearAccountMemory(){sessionCache.invalidate();readerContextFlight=null;libraryReadyFlight=null;state.readerContext=null;state.presentationFavoritesKnown=false;state.accountHint=false;state.adminNavHint=false;state.csrfToken='';state.libraryReady=false;state.epoch++;state.expired=true;document.querySelectorAll('[data-member-page]').forEach(n=>{n.replaceChildren(el('p','登录状态已变化，请刷新页面后继续。'));const a=el('a','重新登录');a.href=memberUrl('account');n.append(a);});document.querySelectorAll('.member-draft-view').forEach(n=>{n.querySelectorAll('img').forEach(img=>img.removeAttribute('src'));n.replaceChildren();});document.dispatchEvent(new CustomEvent('read-members-expired'));for(const timer of progressTimers.values())clearTimeout(timer);progressTimers.clear();progressSync?.engine.clear();progressSync=null;state.user=null;state.authStatus='ready';refreshNavigation();document.querySelectorAll('[data-member-admin]').forEach(n=>n.remove());state.library={favorites:[],annotations:[]};serverLibrary={favorites:[],annotations:[]};if(global.CSS?.highlights)CSS.highlights.delete('read-member-notes');document.querySelectorAll('.member-note').forEach(n=>n.remove());document.dispatchEvent(new CustomEvent('read-members-change'));}
+  function clearAccountMemory(){
+    accountRecovery?.queue.dispose();accountRecovery=null;localLibraryBase=null;sessionCache.invalidate();readerContextFlight=null;libraryReadyFlight=null;
+    state.readerContext=null;state.presentationFavoritesKnown=false;state.accountHint=false;state.adminNavHint=false;state.csrfToken='';state.libraryReady=false;state.epoch++;state.expired=true;
+    for(const timer of progressTimers.values())clearTimeout(timer);progressTimers.clear();progressSync?.engine.clear();progressSync=null;state.user=null;state.authStatus='ready';state.library={favorites:[],annotations:[]};serverLibrary={favorites:[],annotations:[]};
+    if(typeof document!=='undefined'){
+      document.querySelectorAll('[data-member-page]').forEach(n=>{n.replaceChildren();const a=el('a','登录 / 注册');a.href=memberUrl('account');n.append(a);});
+      document.querySelectorAll('.member-draft-view').forEach(n=>{n.querySelectorAll('img').forEach(img=>img.removeAttribute('src'));n.replaceChildren();});
+      document.dispatchEvent(new CustomEvent('read-members-expired'));document.querySelectorAll('[data-member-admin]').forEach(n=>n.remove());
+      if(global.CSS?.highlights)global.CSS.highlights.delete('read-member-notes');document.querySelectorAll('.member-note').forEach(n=>n.remove());document.dispatchEvent(new CustomEvent('read-members-change'));
+    }
+    refreshNavigation();
+  }
   async function loadProgress(id,hash,local,mode,latestLocal=()=>local){
     if(!state.user||!hash||state.authStatus!=='ready')return local;
     const uid=state.user.id,epoch=state.epoch,current=()=>!state.expired&&state.user?.id===uid&&state.epoch===epoch;
     try{
       const engine=accountProgressSync(),context=state.readerContext;
-      try{const pending=JSON.parse(localStorage.getItem('read-progress-pending-v1:'+uid+':'+id+':'+hash)||'null');if(pending?.documentVersion===hash&&pending.article===id){global.ReadToast?.show({key:'reading-sync',kind:'pending',message:'此设备有待同步的阅读记录。',action:{label:'重试同步',onClick:()=>{
-        if(!current())return;const newest=latestLocal(),position=newest?.article===id&&newest.documentVersion===hash&&Number(newest.savedAt)>Number(pending.savedAt)?newest:pending;
-        durableWrite(localStorage,'read-progress-pending-v1:'+uid+':'+id+':'+hash,position);return progressQueue(id,{id,hash,position,uid,epoch});
-      }}});}}catch{}
+      try{let pending=JSON.parse(localStorage.getItem(progressOutboxKey(uid,id,hash))||'null');if(pending?.documentVersion===hash&&pending.article===id){const latest=latestLocal();if(latest?.documentVersion===hash&&latest.article===id&&Number(latest.savedAt)>Number(pending.savedAt)){pending=latest;durableWrite(localStorage,progressOutboxKey(uid,id,hash),pending);}queueProgressRecovery(id,hash,pending);}}catch{}
       const remote=context?.session?.user?.id===uid&&context.article===id&&Object.hasOwn(context,'progress')?context.progress:await engine.read(id);
       if(!current())return local;engine.remember(id,remote);
       if(remote?.version_hash!==hash||remote.position?.version!==1||remote.position.article!==id)return local;
       const savedAt=Date.parse(remote.updated_at||'')||Number(remote.position.savedAt)||0;
       if(local&&(!savedAt||Number(local.savedAt)>=savedAt))return local;
       return {...remote.position,documentVersion:hash,savedAt,mode:mode||remote.position.mode};
-    }catch(error){if(current())global.ReadToast?.show({key:'reading-sync',kind:'pending',message:'暂时未取得账号阅读记录，可以继续阅读。'});return local;}
+    }catch(error){if(current()){recordOperationFailure('progress/'+id,'GET',error);recoveryForAccount().enqueue('progress-read:'+id,async()=>{await accountProgressSync().read(id);},current);}return local;}
   }
   function saveProgress(id,hash,position){
     if(!state.user||!hash||state.expired||state.authStatus!=='ready'||position.documentVersion!==hash)return;
@@ -581,6 +743,7 @@
     if(JSON.stringify(compact).length>3900)compact.inline={};
     if(JSON.stringify(compact).length>4000)return;
     const job={id,hash,position:compact,uid:state.user.id,epoch:state.epoch};
+    durableWrite(localStorage,progressOutboxKey(job.uid,id,hash),compact);
     clearTimeout(progressTimers.get(id));
     progressTimers.set(id,setTimeout(()=>{progressTimers.delete(id);void progressQueue(id,job);},1000));
   }
@@ -601,10 +764,10 @@
     sessionCheck=job;return job.promise;
   }
   function handleSessionSignal(){clearAccountMemory();Promise.resolve(global.ReadMembers?.ready).then(()=>checkSession());}
-  if(typeof document!=='undefined'){if(typeof BroadcastChannel!=='undefined'){sessionChannel=new BroadcastChannel('read-session');sessionChannel.onmessage=handleSessionSignal;}window.addEventListener('storage',e=>{if(e.key==='read-session-change')handleSessionSignal();});window.addEventListener('focus',()=>checkSession());document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkSession();});}
+  if(typeof document!=='undefined'){if(typeof BroadcastChannel!=='undefined'){sessionChannel=new BroadcastChannel('read-session');sessionChannel.onmessage=handleSessionSignal;}window.addEventListener('storage',e=>{if(e.key==='read-session-change')handleSessionSignal();else if(state.user&&(e.key?.startsWith(operationPrefix(state.user.id))||e.key?.startsWith('read-progress-pending-v1:'+state.user.id+':')))wakeRecovery();});window.addEventListener('focus',()=>{wakeRecovery();void checkSession();});window.addEventListener('online',wakeRecovery);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkSession();});}
   let annotationPositionFrame=0;
   function scheduleAnnotationPosition(){if(annotationPositionFrame)return;annotationPositionFrame=requestAnimationFrame(()=>{annotationPositionFrame=0;document.querySelectorAll('.member-review-editor:not([hidden])').forEach(popup=>positionAnnotationPopup(popup));});}
   if(typeof document!=='undefined'){global.addEventListener?.('resize',scheduleAnnotationPosition);global.addEventListener?.('scroll',scheduleAnnotationPosition,{passive:true});global.visualViewport?.addEventListener('resize',scheduleAnnotationPosition);}
-  const exported={durableWrite,finiteRetry,createProgressSync,applyPendingLibrary,annotationPopupPosition,setPublicCatalog,ensureLibraryReady,createSessionCache,authReady,mountReviewReader,reviewAnchor,reviewLocation,reviewBucket,draftSelection,createProgressQueue,state,init,mountReader,mountNavigation,toggleFavorite,normalizeLibrary,mergeLibraries,resolveAnchor,loadProgress,saveProgress,validCaptchaReply,syncLibrary,validateImageChallenge,refreshAuthSession,passwordStrength,authenticationPayload,openAccount,shouldExpireSession,checkSession};global.ReadMembers=exported;if(typeof module!=='undefined')module.exports=exported;if(typeof document!=='undefined')exported.ready=init().catch(e=>notify(e.message));
+  const exported={recoverableError,withAccountSyncLock,isNetworkFailure,whenConnected,createRecoveryQueue,libraryDelta,applyLibraryDelta,readLibraryOperations,flushLibraryOperations,recordOperationFailure,durableWrite,finiteRetry,createProgressSync,applyPendingLibrary,annotationPopupPosition,setPublicCatalog,ensureLibraryReady,createSessionCache,authReady,mountReviewReader,reviewAnchor,reviewLocation,reviewBucket,draftSelection,createProgressQueue,state,init,mountReader,mountNavigation,toggleFavorite,normalizeLibrary,mergeLibraries,resolveAnchor,loadProgress,saveProgress,validCaptchaReply,syncLibrary,validateImageChallenge,refreshAuthSession,passwordStrength,authenticationPayload,openAccount,shouldExpireSession,checkSession};global.ReadMembers=exported;if(typeof module!=='undefined')module.exports=exported;if(typeof document!=='undefined')exported.ready=init().catch(error=>{scheduleMemberRecovery(error);return state;});
 })(typeof window!=='undefined'?window:globalThis);
 

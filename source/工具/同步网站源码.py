@@ -17,9 +17,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = ROOT / "发布" / "github-pages"
 FRONTEND = (
-    "toast.js", "toast.css",
+    "member-loader.js", "toast.js", "toast.css",
     "reader-core.js", "reader-contract.js", "reader_contract.py", "workbench-reader.js", "README.md", "文章模板.md",
-    "tests/section-resume.test.cjs", "tests/reading-resume-sync.test.cjs", "tests/toast-toolbar.test.cjs", "tests/preload-harness.cjs", "tests/preload-queue.test.cjs", "tests/catalog-patch.test.cjs",
+    "tests/public-load-recovery.test.cjs", "tests/automatic-sync.test.cjs", "tests/member-loader.test.cjs", "tests/section-resume.test.cjs", "tests/reading-resume-sync.test.cjs", "tests/toast-toolbar.test.cjs", "tests/preload-harness.cjs", "tests/preload-queue.test.cjs", "tests/catalog-patch.test.cjs",
     "tests/reader-contract.test.cjs", "tests/test_article_interface.py", "tests/fixtures/reading-contract.json",
     "tests/figure-native-touch.test.cjs", "tests/highlight-entry.test.cjs", "tests/private-review-reader.test.cjs", "tests/version-history.test.cjs",
     "app.css", "app.js", "media_assets.py", "progressive-media.js", "progressive-media.css", "card-actions.js", "card-actions.css", "article_config.py", "catalog.css", "catalog.html",

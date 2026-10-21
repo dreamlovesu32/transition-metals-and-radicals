@@ -1183,14 +1183,23 @@ async function resumeRemoteProgress() {
 }
 
 function mountReadingTools(metadata, readerTouched) {
-  const placeholder={remove(){}};
-  (async()=>{
-    if (!window.ReadMembers && document.readyState !== "complete") await new Promise(resolve=>document.addEventListener("DOMContentLoaded",resolve,{once:true}));
-    if (!window.ReadMembers) {placeholder.remove();return;}
-    await window.ReadMembers.ready;
-    placeholder.remove();
-    const mount=reviewMode?window.ReadMembers.mountReviewReader:window.ReadMembers.mountReader;
-    mount({draft:reviewDraft,articleId:articleId(),revision:documentState.version_hash,snapshot:documentState,assetUrl:articleAsset,metadata,root:$("#article"),toolbar:$("#member-reader-tools"),figureRoot:$(".left-rail")});
-    await resumeRemoteProgress(readerTouched);
-  })().catch(error=>{window.ReadToast?.show({key:"reader-tools",kind:"info",message:"阅读工具暂未连接，可以继续阅读。"});console.warn("Reading tools unavailable",error);}).finally(()=>{window.ReadProgressPending=false;});
+  let mounted=null,owner=null,mounting=null;
+  const attach=()=>{
+    if(mounting)return mounting;
+    mounting=(async()=>{
+      const members=window.ReadMembers||await window.ReadEnsureMembers?.();if(!members)return;
+      await members.ready;if(members.state.authStatus!=="ready"||!members.state.libraryReady)return;
+      const next=readingIdentity();if(owner&&sameReadingIdentity(owner))return;
+      mounted?.destroy?.();owner=next;
+      const mount=reviewMode?members.mountReviewReader:members.mountReader;
+      mounted=mount({draft:reviewDraft,articleId:articleId(),revision:documentState.version_hash,snapshot:documentState,assetUrl:articleAsset,metadata,root:$("#article"),toolbar:$("#member-reader-tools"),figureRoot:$(".left-rail")});
+      await resumeRemoteProgress(readerTouched);
+    })().catch(error=>{window.ReadMembers?.recordOperationFailure?.("reader-tools","MOUNT",error);}).finally(()=>{mounting=null;window.ReadProgressPending=false;});
+    return mounting;
+  };
+  document.addEventListener("read-members-ready",attach);
+  document.addEventListener("read-members-available",attach);
+  document.addEventListener("read-members-expired",()=>{mounted?.destroy?.();mounted=null;owner=null;});
+  if(!window.ReadMembers&&document.readyState!=="complete")document.addEventListener("DOMContentLoaded",attach,{once:true});
+  void attach();
 }
