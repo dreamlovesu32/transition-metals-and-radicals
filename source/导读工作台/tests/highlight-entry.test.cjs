@@ -10,3 +10,8 @@ test('missing account context leaves the body intact for the automatic ready bri
  vm.runInContext(source.slice(source.indexOf('  function mountReader('),source.indexOf('  function field(')),ctx);
  const mounted=ctx.mountReader({root:{parentElement:body}});assert.equal(toast,undefined);assert.equal(reloads,0);mounted.destroy();
 });
+
+test('annotation deletion announces deletion only after confirmed persistence',async()=>{
+ const start=source.indexOf("row.append(button('删除笔记',async()=>{");assert(start>=0);const a=start+"row.append(button('删除笔记',".length,b=source.indexOf('));list.append(row);',a);assert(b>a);const actual=source.slice(a,b);
+ for(const synced of [true,false]){const item={id:'note'},other={id:'other'},messages=[],state={expired:false,library:{annotations:[item,other]}};let painted=0;const ctx=vm.createContext({state,item,persist:async()=>({synced}),paint:()=>painted++,notify:m=>messages.push(m),sameNote:(x,y)=>x.id===y.id});await vm.runInContext('('+actual+')()',ctx);assert.deepEqual(state.library.annotations,[other]);assert.equal(painted,1);assert.deepEqual(messages,synced?['已删除批注。']:[]);}
+});

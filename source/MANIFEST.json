@@ -505,8 +505,8 @@
     },
     {
       "path": "导读工作台/member-system/members.js",
-      "bytes": 117323,
-      "sha256": "a12e3faeff2a5d3f63d74feaa1e6b1c5d2197f8eea5001cf96a0d17f4bff5ed5",
+      "bytes": 117393,
+      "sha256": "1c3fce788d8678706723ca9b923578a9dc6e35502626c03c5217e5e562946d67",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -673,8 +673,8 @@
     },
     {
       "path": "导读工作台/tests/highlight-entry.test.cjs",
-      "bytes": 3016,
-      "sha256": "fe82a491f9d7b0fb4d8f890a6a03670ffa33dccbbda42e5e84ad7bd6d6e2b5ef",
+      "bytes": 3838,
+      "sha256": "c69909c0ecee79d3a3a1a8a26580be387cedb2a72b470079938ea3f0c1fa1826",
       "origin": "byte-for-byte source copy"
     },
     {
