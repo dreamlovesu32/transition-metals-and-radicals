@@ -142,6 +142,7 @@ function blockElement(block) {
       applyInlineFigureScale(wrap, false);
       const position = pendingInlinePositions?.[wrap.dataset.blockId];
       if (position) requestAnimationFrame(() => {
+        if (position !== pendingInlinePositions?.[wrap.dataset.blockId]) return;
         const viewport = wrap.querySelector(".inline-figure-stage");
         restoreScrollFraction(viewport,"x",position.x);
         restoreScrollFraction(viewport,"y",position.y);
@@ -213,6 +214,7 @@ function inlineFigureScale(wrap) {
 
 function applyInlineFigureScale(wrap, preserveCenter=true, anchor=null, immediate=false) {
   const stage = wrap.querySelector(".inline-figure-stage");
+  const revision = stage.readScaleRevision = (stage.readScaleRevision || 0) + 1;
   const canvas = wrap.querySelector(".inline-figure-canvas");
   const image = canvas.querySelector("img");
   if (!image.naturalWidth || !stage.clientWidth || !stage.clientHeight) return;
@@ -237,7 +239,11 @@ function applyInlineFigureScale(wrap, preserveCenter=true, anchor=null, immediat
   canvas.style.height = `${Math.max(1, Math.floor(image.naturalHeight * fit * scale))}px`;
   stage.style.overflow = "auto";
   const finish = () => {
-    if (point) {
+    if (revision !== stage.readScaleRevision) return;
+    if (wrap.dataset.figureStartPending === "true") {
+      stage.scrollLeft = 0; stage.scrollTop = 0;
+      delete wrap.dataset.figureStartPending;
+    } else if (point) {
       const resized = canvas.getBoundingClientRect();
       stage.scrollLeft += resized.left + point.fractionX * resized.width - point.targetX;
       stage.scrollTop += resized.top + point.fractionY * resized.height - point.targetY;
@@ -249,6 +255,15 @@ function applyInlineFigureScale(wrap, preserveCenter=true, anchor=null, immediat
   };
   if (immediate) finish();
   else requestAnimationFrame(finish);
+}
+
+function resetInlineFigureOrigin(wrap) {
+  if (!wrap) return;
+  wrap.dataset.figureStartPending = "true";
+  if (pendingInlinePositions) delete pendingInlinePositions[wrap.dataset.blockId];
+  applyInlineFigureScale(wrap, false, null, true);
+  const stage = wrap.querySelector(".inline-figure-stage");
+  stage.scrollLeft = 0; stage.scrollTop = 0;
 }
 
 function updateDragPanState(stage) {
@@ -371,13 +386,18 @@ function setPanelFigureState(state) {
   $("#figure-zoom").disabled = state !== "ready";
 }
 
-function handlePanelVisibleLoad() {
-  applyFigureScale(false);
-  if (pendingPanelViewport) requestAnimationFrame(() => {
-    restoreScrollFraction($("#figure-stage"),"x",pendingPanelViewport.x);
-    restoreScrollFraction($("#figure-stage"),"y",pendingPanelViewport.y);
+function handlePanelVisibleLoad(changed=false) {
+  // Complete sizing before revealing the committed image; no old frame may recenter it.
+  applyFigureScale(false, null, true);
+  const stage = $("#figure-stage");
+  if (changed) {
     pendingPanelViewport = null;
-  });
+    stage.scrollLeft = 0; stage.scrollTop = 0;
+  } else if (pendingPanelViewport) {
+    restoreScrollFraction(stage, "x", pendingPanelViewport.x);
+    restoreScrollFraction(stage, "y", pendingPanelViewport.y);
+    pendingPanelViewport = null;
+  }
 }
 
 function requestPanelFigure(block, retry=false) {
@@ -401,11 +421,13 @@ function requestPanelFigure(block, retry=false) {
       if (result !== "ready") {setPanelFigureState("failed"); resolve(result); return;}
       candidate.id = "panel-figure-image";
       const visible = $("#panel-figure-image");
+      const changed = Boolean(visible.dataset.figureSource && (visible.dataset.figureSource !== block.src || (block.id && visible.dataset.figureBlockId !== block.id)));
       if (visible !== candidate) visible.replaceWith(candidate);
       candidate.dataset.figureSource = block.src;
+      candidate.dataset.figureBlockId = block.id || "";
       if (!backgroundFigureImages.includes(candidate)) backgroundFigureImages.push(candidate);
       $("#figure-canvas .panel-media-preview")?.remove();
-      commitPanelFigure(block); handlePanelVisibleLoad(); setPanelFigureState("ready");
+      commitPanelFigure(block); handlePanelVisibleLoad(changed); setPanelFigureState("ready");
       resolve("ready");
     };
     const loaded = async () => {
@@ -471,10 +493,12 @@ function showFigure(index, force=false) {
   if (!figureBlocks.length) return;
   const nextIndex = Math.max(0, Math.min(index, figureBlocks.length - 1));
   if (!force && nextIndex === currentFigureIndex) return;
+  const changed = nextIndex !== currentFigureIndex;
   currentFigureIndex = nextIndex;
   const block = figureBlocks[currentFigureIndex];
   updatePanelFigurePosition();
   if (isDesktopLayout()) requestPanelFigure(block).then(result => {if (result === "ready" && readingPrepared) preloadOtherFigures();});
+  if (!isDesktopLayout() && changed) resetInlineFigureOrigin(document.querySelector(`#article .block[data-figure-index="${nextIndex}"]`));
   $("#figure-prev").disabled = currentFigureIndex === 0;
   $("#figure-next").disabled = currentFigureIndex === figureBlocks.length - 1;
   $("#figure-edge-prev").disabled = currentFigureIndex === 0;
@@ -504,6 +528,7 @@ function setFigureFillPane(enabled) {
 }
 
 function applyFigureScale(preserveCenter=true, anchor=null, immediate=false) {
+  const requestId = panelFigureRequest;
   const stage = $("#figure-stage");
   const image = $("#panel-figure-image");
   const canvas = $("#figure-canvas");
@@ -529,6 +554,7 @@ function applyFigureScale(preserveCenter=true, anchor=null, immediate=false) {
   canvas.style.width = `${Math.max(1, Math.floor(image.naturalWidth * fit * figureScale))}px`;
   canvas.style.height = `${Math.max(1, Math.floor(image.naturalHeight * fit * figureScale))}px`;
   const finish = () => {
+    if (requestId !== panelFigureRequest || image !== $("#panel-figure-image")) return;
     if (point) {
       const resized = canvas.getBoundingClientRect();
       stage.scrollLeft += resized.left + point.fractionX * resized.width - point.targetX;
@@ -718,7 +744,7 @@ function syncFigureToScroll(force=false) {
     if (!readingPrepared) return;
     const wrap = currentInlineFigure();
     const index = Number(wrap?.dataset.figureIndex);
-    if (Number.isInteger(index) && index !== currentFigureIndex) {currentFigureIndex = index; updatePanelFigurePosition(); preloadOtherFigures();}
+    if (Number.isInteger(index) && index !== currentFigureIndex) {currentFigureIndex = index; updatePanelFigurePosition(); resetInlineFigureOrigin(wrap); preloadOtherFigures();}
     return;
   }
   if (!figureAuto) return;

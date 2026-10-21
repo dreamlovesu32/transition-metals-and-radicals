@@ -142,6 +142,7 @@ function blockElement(block) {
       applyInlineFigureScale(wrap, false);
       const position = pendingInlinePositions?.[wrap.dataset.blockId];
       if (position) requestAnimationFrame(() => {
+        if (position !== pendingInlinePositions?.[wrap.dataset.blockId]) return;
         const viewport = wrap.querySelector(".inline-figure-stage");
         restoreScrollFraction(viewport,"x",position.x);
         restoreScrollFraction(viewport,"y",position.y);

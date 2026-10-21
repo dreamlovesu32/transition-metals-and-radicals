@@ -361,8 +361,8 @@
     },
     {
       "path": "导读工作台/app.js",
-      "bytes": 79089,
-      "sha256": "57894d9dc1aea94e70c980ad340861c19c1d42cc7ae41f064923944172dddc09",
+      "bytes": 80593,
+      "sha256": "3b5da26ef4d7575701677d414b1cdb3ebd15a881627e9c65985ed55097a6a8f7",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -403,8 +403,8 @@
     },
     {
       "path": "导读工作台/export_github_pages.py",
-      "bytes": 18012,
-      "sha256": "1cf3b9282c921add186b6167dcdd5ad09132e3c8f80b570917d8454059add8aa",
+      "bytes": 18039,
+      "sha256": "e50efc41b8702a2e5dcf28343a2876dac5c7810b769904a3804d4965cac82ea4",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -565,8 +565,8 @@
     },
     {
       "path": "导读工作台/public-site/reader-prelude.js",
-      "bytes": 10887,
-      "sha256": "f1170b292560aa3a774ab46542ec4cdfa502285e790ee305c0526bed7d9e7962",
+      "bytes": 10968,
+      "sha256": "498d91191eab5483e3afd65057d1d6d4e226af0b501d0b02b9a6d87cf296a2ad",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -619,8 +619,8 @@
     },
     {
       "path": "导读工作台/tests/loading-performance.test.cjs",
-      "bytes": 41972,
-      "sha256": "64025a0d3e8bff1a1e8164b25de3f55cb072f2e3b6bb8688b3ffcf694f70f1c6",
+      "bytes": 46648,
+      "sha256": "4a3d56b40e5b5e10122abb51dbb26b40748ca85595d21c5c777bf8295142cd8a",
       "origin": "byte-for-byte source copy"
     },
     {
