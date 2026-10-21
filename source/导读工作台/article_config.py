@@ -83,7 +83,7 @@ def load_manifest(path: Path) -> dict:
             raise ValueError("Invalid figure filename")
         if figure["file"].lower() in names or Path(figure["file"]).stem.lower() in media_stems or type(figure.get("page")) is not int or figure["page"] < 1:
             raise ValueError("Duplicate figure or invalid source PDF page")
-        if "sourceLabel" in figure and (not isinstance(figure["sourceLabel"], str) or not re.fullmatch(r"(?:扩展图式|扩展图|扩展表|图式|图|表)\d+[A-Z]{0,3}(?:（局部）)?", figure["sourceLabel"])):
+        if "sourceLabel" in figure and (not isinstance(figure["sourceLabel"], str) or not re.fullmatch(r"(?:扩展图式|扩展图|扩展表|图式|图|表)\d+[A-Z]{0,3}(?:（(?:局部|上|中|下)）)?", figure["sourceLabel"])):
             raise ValueError("Invalid source figure label")
         names.add(figure["file"].lower())
         media_stems.add(Path(figure["file"]).stem.lower())

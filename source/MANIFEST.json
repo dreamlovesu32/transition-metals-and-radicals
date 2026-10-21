@@ -373,8 +373,8 @@
     },
     {
       "path": "导读工作台/article_config.py",
-      "bytes": 9929,
-      "sha256": "7ab76c7742c3e0d0426e825057602ec059ca00b6c1ed7f38b32360cec8c4b898",
+      "bytes": 9945,
+      "sha256": "d8632cbe613130d67958b6ccc0543f130673b5e81baca8dd3591c09e077cfb64",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -481,8 +481,8 @@
     },
     {
       "path": "导读工作台/member-system/article-export.js",
-      "bytes": 31621,
-      "sha256": "cf06e74aabf45ae15c8eaa5975ee40d24469cbd7a4e9dea4efc31a6062ce30f6",
+      "bytes": 31674,
+      "sha256": "4b2d3cf1b80423f4d4eb64269699ed3778109e00a01150f3c90bad43ca319e87",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -505,8 +505,8 @@
     },
     {
       "path": "导读工作台/member-system/members.js",
-      "bytes": 118167,
-      "sha256": "36f360855ad2624bc39cc0979d55ba6a19d7a5dc7fcfc02a676a198c561925db",
+      "bytes": 118173,
+      "sha256": "d9a7faee8bdf12f1065d3b521945f6cf5ebe0f2b2510ed34e77466bba7150160",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -673,8 +673,8 @@
     },
     {
       "path": "导读工作台/tests/export-source-labels.test.cjs",
-      "bytes": 1826,
-      "sha256": "f9d5861f303bda4e79672aa8cb601e50f865a55b0da24181aec79220c00dfbf7",
+      "bytes": 2386,
+      "sha256": "2b7c013152f91c986761e13b335942b2f363136f98269d916c77821a4583d8f9",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -799,8 +799,8 @@
     },
     {
       "path": "导读工作台/tests/test_article_interface.py",
-      "bytes": 7638,
-      "sha256": "ceeb0c703006d5a9188132627a221ab82df6450d0789a1aa61884ec6bb434646",
+      "bytes": 8267,
+      "sha256": "2309446c44733d9e4a5a0581b6a809cf9e3129f80b66fe345ee1b7abb1873333",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -847,8 +847,8 @@
     },
     {
       "path": "导读工作台/文章模板.md",
-      "bytes": 7617,
-      "sha256": "ce7be6caca042a04160a82e52f5b0aea61ad79a5d6a412812f5f242e1c129c6b",
+      "bytes": 7720,
+      "sha256": "8da66247466e8346669f7334b16d9742997530447c7ee32cee7e0f202b2bab5a",
       "origin": "byte-for-byte source copy"
     },
     {

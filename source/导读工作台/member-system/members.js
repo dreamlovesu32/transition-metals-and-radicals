@@ -376,7 +376,7 @@
   function loadArticleExportScript(){
     if(global.ReadArticleExport)return Promise.resolve(global.ReadArticleExport);
     if(exportLoader)return exportLoader;
-    const url=new URL('member-system/article-export.js?v=20261020-wechat-1',scriptRoot).href;
+    const url=new URL('member-system/article-export.js?v=20261021-source-labels-2',scriptRoot).href;
     exportLoader=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=url;
       script.onload=()=>{if(global.ReadArticleExport)resolve(global.ReadArticleExport);else reject(Object.assign(Error('export_module_unavailable'),{kind:'protocol',code:'export_module_unavailable'}));};
       script.onerror=async()=>{script.remove?.();let failure;try{const response=await fetch(url,{cache:'no-cache'});failure=Object.assign(Error('export_resource_unavailable'),{kind:response.ok?'transport':'http',status:response.status,code:'export_resource_unavailable'});}catch{failure=Object.assign(Error('export_resource_unavailable'),{kind:global.navigator?.onLine===false?'network':'transport',status:0,code:'export_resource_unavailable'});}reject(failure);};document.head.append(script);

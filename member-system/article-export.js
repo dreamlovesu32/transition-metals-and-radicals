@@ -78,10 +78,10 @@
    // type/number and a vertical separator. Asset sequence numbers are not paper IDs.
    const explicit=new RegExp('^(?:原文\\s*)?('+types+')\\s*(\\d+[A-Za-z]{0,3})\\s*[｜|]').exec(caption.trim());
    const raw=Object.hasOwn(sourceLabels,block.id)?sourceLabels[block.id]:Object.hasOwn(sourceLabels,block.src)?sourceLabels[block.src]:block.sourceLabel;
-   const metadata=typeof raw==='string'?new RegExp('^('+types+')\\s*(\\d+[A-Za-z]{0,3})([（(]局部[）)])?$').exec(raw.trim()):null;
+   const metadata=typeof raw==='string'?new RegExp('^('+types+')\\s*(\\d+[A-Za-z]{0,3})([（(](?:局部|上|中|下)[）)])?$').exec(raw.trim()):null;
    const known=metadata||(Object.keys(sourceLabels).length?explicit:null),label=known?canonical(known):legacy?({figure:'图',fig:'图',table:'表',scheme:'图式'}[legacy[1].toLowerCase()]+legacy[2].toUpperCase()):labelMatch?labelMatch[1]+labelMatch[2]:'配图';
    // Keep existing legacy origin wording and deliberate guide/source renumbering.
-   const origin=metadata||legacy?'原文':'文中',reference=label==='配图'?'本段配图':origin+label+(metadata?.[3]?'（局部）':'')+(!known&&legacy&&labelMatch&&labelMatch[1]+labelMatch[2]!==label?'｜文中'+labelMatch[1]+labelMatch[2]:'');
+   const origin=metadata||legacy?'原文':'文中',reference=label==='配图'?'本段配图':origin+label+(metadata?.[3]?metadata[3].replace('(','（').replace(')','）'):'')+(!known&&legacy&&labelMatch&&labelMatch[1]+labelMatch[2]!==label?'｜文中'+labelMatch[1]+labelMatch[2]:'');
    const number=String(index+1).padStart(2,'0'),stem=number+'-'+label.replace(/[^\p{Script=Han}A-Za-z0-9_-]/gu,'');
    return {key:block.id||'figure-'+index,src:block.src,number,label,reference,stem};
   });

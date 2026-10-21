@@ -75,6 +75,16 @@ class ArticleInterfaceTests(unittest.TestCase):
             save()
             with patch.object(config, 'ROOT', root), patch.object(config, 'WORKSPACE', workspace), patch.object(cli, 'ROOT', root):
                 self.assertEqual(cli.validate(manifest), [])
+                for label in ('表1（上）', '表1（中）', '表1（下）', '图式42', '图2C（局部）'):
+                    template['figures'][0]['sourceLabel'] = label
+                    save()
+                    self.assertEqual(config.load_manifest(manifest)['figures'][0]['sourceLabel'], label)
+                template['figures'][0]['sourceLabel'] = '表1（任意文字）'
+                save()
+                with self.assertRaisesRegex(ValueError, 'source figure label'):
+                    config.load_manifest(manifest)
+                template['figures'][0].pop('sourceLabel')
+                save()
                 template.pop('reviewStatus')
                 save()
                 self.assertEqual(config.load_article('fixture-new')['reviewStatus'], 'pending')
