@@ -117,7 +117,7 @@ test('public reader starts account I/O only after content readiness and a paint 
  const source=fs.readFileSync(path.join(__dirname,'../member-system/members.js'),'utf8');
  const at=source.indexOf('  async function waitForReaderContent('),end=source.indexOf('  // Serialize writes',at);
  const listeners={},frames=[];let requests=0;
- const ctx={global:{ReadContentReady:false},state:{epoch:0},document:{body:{classList:{contains:()=>true}},querySelector:()=>null,addEventListener:(name,fn)=>listeners[name]=fn},location:{pathname:'/read.html',search:'?article=synthetic'},URLSearchParams,sessionCache:{peek:()=>null,hint:()=>false},guestLoad:()=>({favorites:[],annotations:[]}),refreshNavigation(){},resolveAuthReady(){},loadReaderContext:async()=>{requests++;return {session:{configured:true,user:null,csrfToken:'synthetic'}};},requestAnimationFrame:fn=>frames.push(fn),setTimeout,notify(){}};
+ const ctx={global:{ReadContentReady:false},state:{epoch:0},document:{body:{classList:{contains:()=>true}},querySelector:()=>null,addEventListener:(name,fn)=>listeners[name]=fn},location:{pathname:'/read.html',search:'?article=synthetic'},URLSearchParams,sessionCache:{peek:()=>null,hint:()=>false},guestLoad:()=>({favorites:[],annotations:[]}),refreshNavigation(){},resolveAuthReady(){},loadReaderContext:async()=>{requests++;return {session:{configured:true,user:null,csrfToken:'synthetic'}};},requestAnimationFrame:fn=>frames.push(fn),setTimeout,recoverPendingLibrary(){},notify(){}};
  vm.createContext(ctx);vm.runInContext(source.slice(at,end)+';this.start=init;',ctx);
  const pending=ctx.start();await Promise.resolve();assert.equal(requests,0);
  listeners['read-content-ready']();await Promise.resolve();assert.equal(requests,0);
@@ -125,7 +125,7 @@ test('public reader starts account I/O only after content readiness and a paint 
 });
 test('private review authenticates before content readiness so drafts never load as a guest',async()=>{
  const source=fs.readFileSync(path.join(__dirname,'../member-system/members.js'),'utf8'),at=source.indexOf('  async function waitForReaderContent('),end=source.indexOf('  // Serialize writes',at);let requests=0;
- const ctx={global:{ReadContentReady:false},state:{epoch:0},document:{body:{classList:{contains:()=>true}},querySelector:()=>null,addEventListener(){throw Error('private review must not wait for public text');}},location:{pathname:'/read.html',search:'?article=synthetic&review=1'},URLSearchParams,sessionCache:{peek:()=>null,hint:()=>false},guestLoad:()=>({favorites:[],annotations:[]}),refreshNavigation(){},resolveAuthReady(){},api:async()=>{requests++;return {user:{id:'admin',role:'admin'},csrfToken:'fresh',configured:true};},remoteLoad:async()=>({favorites:[],annotations:[]}),setTimeout,notify(){}};
+ const ctx={global:{ReadContentReady:false},state:{epoch:0},document:{body:{classList:{contains:()=>true}},querySelector:()=>null,addEventListener(){throw Error('private review must not wait for public text');}},location:{pathname:'/read.html',search:'?article=synthetic&review=1'},URLSearchParams,sessionCache:{peek:()=>null,hint:()=>false},guestLoad:()=>({favorites:[],annotations:[]}),refreshNavigation(){},resolveAuthReady(){},api:async()=>{requests++;return {user:{id:'admin',role:'admin'},csrfToken:'fresh',configured:true};},remoteLoad:async()=>({favorites:[],annotations:[]}),setTimeout,recoverPendingLibrary(){},notify(){}};
  vm.createContext(ctx);vm.runInContext(source.slice(at,end)+';this.start=init;',ctx);await ctx.start();assert.equal(requests,1);assert.equal(ctx.state.user.role,'admin');
 });
 test('highlighter has no second notes button; history retains a read-only record entry',()=>{
@@ -197,33 +197,14 @@ test('a text-only article has no artificial picture failure',async()=>{
  const h=preparationHarness(false);h.ctx.currentInlineFigure=()=>null;h.ctx.waitForInlineImage=image=>Promise.resolve(image?'error':'ready');
  await h.ctx.finish();assert.equal(h.ctx.readingPrepared,true);assert.equal(h.failures,0);
 });
-test('late remote progress offers explicit resume, never jumps on response, and expires with its owner',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
- const at=source.indexOf('async function resumeRemoteProgress('),end=source.indexOf('\nfunction mountReadingTools(',at);
- for(const expire of [false,true]){
-  const handlers={},buttons=[];let figures=0,restores=0,finishes=0;
-  const state={user:{id:'A'},epoch:1},remote={figure:{index:3},scroll:{blockId:'later'}};
-  const ctx={reviewMode:false,window:{ReadMembers:{ready:Promise.resolve(),state,loadProgress:async()=>remote}},articleId:()=> 'synthetic',documentState:{version_hash:'v'},storedReadingState:()=>null,readingMode:()=> 'desktop',readingRestoreInterrupted:false,readingPrepared:true,readingPreparationSaved:null,captureReadingState:()=>({figure:{index:0}}),
-   document:{createElement(){const b={addEventListener:(name,cb)=>b[name]=cb,remove(){b.removed=true;}};buttons.push(b);return b;},addEventListener:(name,cb)=>handlers[name]=cb,removeEventListener:name=>delete handlers[name],body:{classList:{add(){}}}},
-   $:()=>({append(){},inert:false,hidden:true}),DEFAULT_PANE_RATIO:.45,inlineFigureScales:new Map(),showFigure:()=>figures++,setFigureAuto(){},setFigureFillPane(){},restoreReadingState:async()=>restores++,finishReadingPreparation:async()=>finishes++};
-  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);
-  const job=ctx.resumeRemoteProgress(()=>false);await new Promise(r=>setImmediate(r));assert.equal(figures,0);assert.equal(restores,0);assert.equal(buttons.length,1);assert.equal(ctx.window.ReadProgressPending,false);
-  if(expire){state.user={id:'B'};state.epoch++;handlers['read-members-change']();}else buttons[0].click();
-  await job;assert.equal(figures,expire?0:1);assert.equal(finishes,expire?0:1);assert.equal(buttons[0].removed,true);
+test('both startup adapters prime the first original and never automatically restore a saved record',()=>{
+ for(const file of ['app.js','public-site/reader-boot.js']){
+  const source=fs.readFileSync(path.join(__dirname,'..',file),'utf8'),start=source.slice(source.indexOf('async function start()'));
+  assert(start.includes('currentFigureIndex=0'));assert(start.includes('saveReadingState.progressed=false'));
+  assert(!start.includes('const saved = storedReadingState()'));assert(start.includes('await restoreReadingState(null)'));
+  assert(start.indexOf('primeCurrentFigure();')<start.indexOf('await restoreReadingState(null)'));
  }
 });
-
-
-test('unchanged remote progress and a restored local position never create a resume prompt',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../reader-core.js'),'utf8');
- const at=source.indexOf('async function resumeRemoteProgress('),end=source.indexOf('\nfunction mountReadingTools(',at);
- for(const localPreferred of [false,true]){
-  let created=0;const remote={figure:{index:localPreferred?4:0}},state={user:{id:'A'},epoch:1};
-  const ctx={reviewMode:false,window:{ReadMembers:{ready:Promise.resolve(),state,loadProgress:async()=>remote}},articleId:()=> 'synthetic',documentState:{version_hash:'v'},storedReadingState:()=>null,readingMode:()=> 'desktop',readingRestoreInterrupted:false,readingPrepared:true,readingPreparationSaved:localPreferred?{figure:{index:1}}:null,captureReadingState:()=>({figure:{index:0}}),document:{createElement(){created++;throw Error('unexpected resume');}}};
-  vm.createContext(ctx);vm.runInContext(source.slice(at,end),ctx);await ctx.resumeRemoteProgress(()=>false);assert.equal(created,0);
- }
-});
-
 
 test('a figure jump reprioritizes the next background slot without replaying an obsolete window',async()=>{
  const h=require('./preload-harness.cjs').create();h.ctx.preloadOtherFigures();assert.equal(h.requests[0].url,'figure-1');
@@ -315,7 +296,7 @@ test('known restored original starts before DOM and layout recovery and shares o
  ctx.primeCurrentFigure();ctx.primeCurrentFigure();assert.equal(images.length,1);assert.equal(images[0].src,'restored');assert.equal(images[0].fetchPriority,'high');
  await Promise.all([ctx.decodeFigureImage(images[0]),ctx.decodeFigureImage(images[0])]);assert.equal(decodeCalls,1);
  ctx.documentState.blocks=[];ctx.primeCurrentFigure();assert.equal(images.length,1);
- for(const file of ['app.js','public-site/reader-boot.js']){const text=fs.readFileSync(path.join(__dirname,'..',file),'utf8'),start=text.slice(text.indexOf('async function start()'));assert(start.indexOf('primeCurrentFigure();')<start.indexOf('renderArticle();'));assert(start.indexOf('primeCurrentFigure();')<start.indexOf('await restoreReadingState(saved)'));}
+ for(const file of ['app.js','public-site/reader-boot.js']){const text=fs.readFileSync(path.join(__dirname,'..',file),'utf8'),start=text.slice(text.indexOf('async function start()'));assert(start.indexOf('primeCurrentFigure();')<start.indexOf('renderArticle();'));assert(start.indexOf('primeCurrentFigure();')<start.indexOf('await restoreReadingState(null)'));}
 });
 
 test('single-column adopts the already requested original instead of starting a second element',async()=>{

@@ -18,7 +18,7 @@ async function start() {
   history.scrollRestoration = "manual";
   window.ReadProgressPending = !reviewMode;
   let readerTouched = false;
-  const touched = () => { readerTouched = true; };
+  const touched = () => { readerTouched = true;window.ReadReaderTouched=true; };
   for (const type of ["wheel","touchstart","pointerdown","keydown"]) window.addEventListener(type,touched,{once:true,passive:true});
   if (reviewMode) {
     configureReviewNavigation();
@@ -52,29 +52,18 @@ async function start() {
     documentState = await transport.read(requestedArticleId,`./data/${encodeURIComponent(requestedArticleId)}.json`);
     }
     restoringReadingState = true;
-    const localSaved = storedReadingState();
-    const saved = localSaved;
-    readingPreparationSaved = saved;
-    pendingPanelViewport = saved?.figure || null;
-    pendingInlinePositions = {...(saved?.inline || {})};
-    if (saved) {
-      readingBottomIntent = saved.scroll?.atBottom === true;
-      paneRatio = Number.isFinite(saved.paneRatio) ? saved.paneRatio : DEFAULT_PANE_RATIO;
-      currentFigureIndex = Number.isInteger(saved.figure?.index) ? saved.figure.index : 0;
-      figureAuto = saved.figure?.auto !== false;
-      figureFillPane = saved.figure?.fill === true;
-      figureScale = Math.min(5, Math.max(1, Number(saved.figure?.scale) || 1));
-      for (const [id, position] of Object.entries(saved.inline || {})) {
-        inlineFigureScales.set(id, Math.min(5, Math.max(1, Number(position.scale) || 1)));
-      }
-    }
+    // Every opening starts at the top; saved positions are offered only after readiness.
+    const saved=null;readingPreparationSaved=null;pendingPanelViewport=null;pendingInlinePositions=null;
+    currentFigureIndex=0;saveReadingState.progressed=false;window.ReadReaderTouched=false;
+    window.scrollTo({top:0,behavior:"instant"});
     primeCurrentFigure();
     updateReadingChrome();
     renderArticle();
     applyPaneRatio();
     restoreStartScrollY = window.scrollY;
     window.addEventListener("scroll", handleReadingScroll, {passive:true});
-    await restoreReadingState(saved);
+    await restoreReadingState(null);
+    window.scrollTo({top:0,behavior:"instant"});
     syncFigureToScroll();
     await finishReadingPreparation();
     if (reviewMode) assertReviewIdentity();

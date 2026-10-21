@@ -569,6 +569,7 @@ function setFigureAuto(enabled) {
 }
 
 function chooseFigure(index) {
+  saveReadingState.progressed=true;
   setFigureAuto(false);
   showFigure(index);
 }
@@ -749,8 +750,22 @@ function readingMode() {
   return document.body.dataset.readerLayout || (isDesktopLayout() ? "desktop" : "single");
 }
 
+function readingIdentity() {
+  const state=window.ReadMembers?.state;
+  return {uid:state?.user?.id||"guest",epoch:state?.epoch||0,document:documentState,hash:documentState?.version_hash};
+}
+
+function sameReadingIdentity(owner) {
+  const now=readingIdentity();return owner.document===now.document&&owner.hash===now.hash&&owner.uid===now.uid&&owner.epoch===now.epoch;
+}
+
 function readingKey() {
-  return `${window.ReadMembers?.state.user?.id || "guest"}:reading-desk:v1:${reviewMode ? "review:" + documentState.version_hash + ":" : ""}${articleId()}:${readingMode()}`;
+  return `${window.ReadMembers?.state.user?.id || "guest"}:reading-desk:v2:${reviewMode ? "review:" : ""}${articleId()}:${documentState.version_hash}:${readingMode()}`;
+}
+
+function clearReadingActivity() {
+  clearTimeout(readingSaveTimer);readingSaveTimer=null;saveReadingState.progressed=false;
+  resumeRemoteProgress.refresh=null;window.ReadChrome?.clearResume?.();
 }
 
 function scrollFraction(element, axis) {
@@ -789,7 +804,7 @@ function captureReadingState() {
     inline[wrap.dataset.blockId] = {scale:inlineFigureScale(wrap),
       x:scrollFraction(viewport,"x"), y:scrollFraction(viewport,"y")};
   });
-  return {version:1, article:articleId(), mode:readingMode(),
+  return {version:1, article:articleId(), documentVersion:documentState.version_hash, savedAt:Date.now(), mode:readingMode(),
     scroll:readingAnchor(), paneRatio,
     figure:{index:currentFigureIndex, auto:figureAuto, fill:figureFillPane,
       scale:figureScale, x:scrollFraction(stage,"x"), y:scrollFraction(stage,"y")},
@@ -797,26 +812,34 @@ function captureReadingState() {
 }
 
 function saveReadingState() {
-  clearTimeout(readingSaveTimer);
-  readingSaveTimer = null;
-  if (window.ReadProgressPending || restoringReadingState || !documentState?.article) return;
-  const captured = captureReadingState();
-  if (!reviewMode && window.ReadMembers) window.ReadMembers.saveProgress(articleId(),documentState.version_hash,captured);
-  try { localStorage.setItem(readingKey(), JSON.stringify(captured)); }
-  catch(error) { /* Reading remains usable if local storage is unavailable. */ }
+  clearTimeout(readingSaveTimer);readingSaveTimer=null;
+  if(restoringReadingState || !documentState?.article || !readingPrepared || !saveReadingState.progressed)return false;
+  if(window.ReadMembers && window.ReadMembers.state.authStatus!=="ready")return false;
+  const owner=readingIdentity(),key=readingKey(),captured=captureReadingState();
+  saveReadingState.previous ||= new Map();
+  if(!saveReadingState.previous.has(key))saveReadingState.previous.set(key,storedReadingState());
+  if(!sameReadingIdentity(owner))return false;
+  try {
+    const encoded=JSON.stringify(captured);localStorage.setItem(key,encoded);
+    if(localStorage.getItem(key)!==encoded)throw Error("storage verification failed");
+  } catch(error) {
+    window.ReadToast?.show({key:"reading-storage",kind:"error",message:"阅读位置尚未保存到此设备，请稍后重试。"});return false;
+  }
+  if(!reviewMode && sameReadingIdentity(owner))window.ReadMembers?.saveProgress(articleId(),documentState.version_hash,captured);
+  return true;
 }
 
 function scheduleReadingSave() {
-  if (restoringReadingState || !documentState?.article) return;
-  clearTimeout(readingSaveTimer);
-  readingSaveTimer = setTimeout(saveReadingState, 180);
+  if(restoringReadingState || !documentState?.article)return;
+  clearTimeout(readingSaveTimer);const owner=readingIdentity();
+  readingSaveTimer=setTimeout(()=>{if(sameReadingIdentity(owner))saveReadingState();},180);
 }
 
 function storedReadingState() {
   try {
-    const state = JSON.parse(localStorage.getItem(readingKey()));
-    return state?.version === 1 && state.article === articleId() && state.mode === readingMode() ? state : null;
-  } catch(error) { return null; }
+    const state=JSON.parse(localStorage.getItem(readingKey()));
+    return state?.version===1&&state.article===articleId()&&state.documentVersion===documentState.version_hash&&state.mode===readingMode()?state:null;
+  } catch(error) {return null;}
 }
 
 function animationFrame() {
@@ -835,6 +858,8 @@ function imageSettled(image) {
 
 function handleReadingScroll() {
   if (changingLayout) return;
+  if(readingPrepared&&!restoringReadingState&&window.ReadReaderTouched&&window.scrollY>24)saveReadingState.progressed=true;
+  resumeRemoteProgress.refresh?.();
   if (restoringReadingState && documentState?.article && Math.abs(window.scrollY - restoreStartScrollY) > 5) {
     readingRestoreInterrupted = true;
     restoringReadingState = false;
@@ -1061,57 +1086,59 @@ async function finishReadingPreparation(retry=false, textOnly=false) {
   preloadOtherFigures();
 }
 
-async function resumeRemoteProgress(readerTouched) {
-  if (reviewMode || !window.ReadMembers) return;
+function resumeTarget(record) {
+  if(record?.version!==1 || record.article!==articleId() || record.documentVersion!==documentState.version_hash)return null;
+  const block=[...document.querySelectorAll("#article .block[data-block-id]")].find(node=>node.dataset.blockId===record.scroll?.blockId);
+  if(!block || !Number.isFinite(record.scroll?.offset))return null;
+  const max=Math.max(0,document.documentElement.scrollHeight-innerHeight);
+  return Math.max(0,Math.min(max,record.scroll.atBottom?max:block.getBoundingClientRect().top+window.scrollY+record.scroll.offset));
+}
+
+function resumeChapter(record) {
+  const index=documentState.blocks.findIndex(block=>block.id===record.scroll?.blockId);
+  const heading=documentState.blocks.slice(0,index+1).reverse().find(block=>block.kind==="heading");
+  return (heading?.text||"正文").replace(/[*`]/g,"");
+}
+
+async function resumeRemoteProgress() {
+  if(!window.ReadMembers)return;
   await window.ReadMembers.ready;
-  const owner = {uid:window.ReadMembers.state.user?.id, epoch:window.ReadMembers.state.epoch};
-  const sameOwner = () => !window.ReadMembers.state.expired && window.ReadMembers.state.epoch === owner.epoch && window.ReadMembers.state.user?.id === owner.uid;
-  const local = storedReadingState();
-  const remote = await window.ReadMembers.loadProgress(articleId(),documentState.version_hash,local,readingMode());
-  if (!remote || remote === local || readingPreparationSaved || readerTouched() || readingRestoreInterrupted || !sameOwner()) return;
-  const positionKey = value => JSON.stringify([value?.scroll?.blockId || null,Number(value?.scroll?.offset) || 0,Number(value?.scroll?.fraction) || 0,value?.scroll?.atBottom === true,Number(value?.figure?.index) || 0,Number(value?.figure?.scale) || 1]);
-  if (positionKey(remote) === positionKey(captureReadingState())) return;
-  // The remote revision is now known; a resume invitation must not block new progress saves.
-  window.ReadProgressPending = false;
-  // Late account I/O must not move text or pictures already revealed to the reader.
-  if (readingPrepared) {
-    const button = document.createElement("button");
-    button.type = "button"; button.className = "reader-resume-progress";
-    button.textContent = "继续上次阅读";
-    ($(".reader-toolbar") || $(".topbar")).append(button);
-    const accepted = await new Promise(resolve => {
-      const cleanup = value => {button.remove();document.removeEventListener("read-members-expired", expired);document.removeEventListener("read-members-change", changed);resolve(value);};
-      const expired = () => cleanup(false);
-      const changed = () => {if (!sameOwner()) cleanup(false);};
-      document.addEventListener("read-members-expired", expired);
-      document.addEventListener("read-members-change", changed);
-      button.addEventListener("click", () => cleanup(true), {once:true});
-    });
-    if (!accepted || !sameOwner()) return;
-    readingPrepared = false;
-    document.body.classList.add("reader-preparing");
-    $(".layout").inert = true; $("#reading-preparation").hidden = false;
-  }
-  restoringReadingState = true;
-  readingBottomIntent = remote.scroll?.atBottom === true;
-  readingPreparationSaved = remote;
-  paneRatio = Number.isFinite(remote.paneRatio) ? remote.paneRatio : DEFAULT_PANE_RATIO;
-  pendingPanelViewport = remote.figure || null;
-  pendingInlinePositions = {...(remote.inline || {})};
-  figureAuto = remote.figure?.auto !== false;
-  figureFillPane = remote.figure?.fill === true;
-  figureScale = Math.min(5,Math.max(1,Number(remote.figure?.scale)||1));
-  for (const [id,position] of Object.entries(remote.inline||{})) inlineFigureScales.set(id,Math.min(5,Math.max(1,Number(position.scale)||1)));
-  showFigure(Number.isInteger(remote.figure?.index)?remote.figure.index:0);
-  setFigureAuto(figureAuto);setFigureFillPane(figureFillPane);
-  await restoreReadingState(remote);
-  await finishReadingPreparation();
+  if(window.ReadMembers.state.authStatus==="cached")await window.ReadMembers.refreshAuthSession();
+  if(window.ReadMembers.state.authStatus!=="ready")return;
+  const owner=readingIdentity();
+  const current=()=>sameReadingIdentity(owner)&&!window.ReadMembers.state.expired;
+  const key=readingKey(),previous=saveReadingState.previous;
+  let candidate=previous?.has(key)?previous.get(key):storedReadingState(),offered="";
+  const far=record=>{const target=resumeTarget(record);return target!==null&&Math.abs(target-window.scrollY)>Math.max(160,innerHeight*.35);};
+  const offer=record=>{
+    if(!current()||!far(record))return;
+    const signature=JSON.stringify([record.scroll,record.documentVersion]);if(signature===offered)return;
+    candidate=record;offered=signature;
+    window.ReadChrome?.offerResume?.({key,caption:`上次读到「${resumeChapter(record)}」`,label:resumeChapter(record),onResume:()=>{
+      if(!current()||!far(record)){window.ReadChrome?.clearResume?.();return;}
+      saveReadingState.progressed=true;readingBottomIntent=record.scroll.atBottom===true;
+      // Move immediately on the explicit click. Image/decode completion never moves text later.
+      restoreArticleScroll(record);
+      if(isDesktopLayout()){
+        if(figureAuto)syncFigureToScroll(true);
+        else showFigure(Math.min(figureBlocks.length-1,Math.max(0,Number(record.figure?.index)||0)),true);
+      }else{
+        syncFigureToScroll(true);const wrap=currentInlineFigure(),image=wrap?.querySelector(".inline-figure-canvas img");
+        void waitForInlineImage(image).then(()=>{if(current()&&wrap?.isConnected)applyInlineFigureScale(wrap,false);});
+      }
+      window.ReadChrome?.clearResume?.();scheduleReadingSave();preloadOtherFigures();
+    }});
+  };
+  resumeRemoteProgress.refresh=()=>{if(!current()||(candidate&&!far(candidate)))window.ReadChrome?.clearResume?.();};
+  document.addEventListener("read-members-expired",clearReadingActivity,{once:true});
+  offer(candidate);
+  if(reviewMode)return;
+  const remote=await window.ReadMembers.loadProgress(articleId(),documentState.version_hash,candidate,readingMode(),()=>storedReadingState());
+  if(current())offer(remote);
 }
 
 function mountReadingTools(metadata, readerTouched) {
-  const placeholder=document.createElement("span");
-  placeholder.className="reader-tools-pending";placeholder.textContent="正在连接阅读工具…";
-  $("#member-reader-tools").append(placeholder);
+  const placeholder={remove(){}};
   (async()=>{
     if (!window.ReadMembers && document.readyState !== "complete") await new Promise(resolve=>document.addEventListener("DOMContentLoaded",resolve,{once:true}));
     if (!window.ReadMembers) {placeholder.remove();return;}
@@ -1120,5 +1147,5 @@ function mountReadingTools(metadata, readerTouched) {
     const mount=reviewMode?window.ReadMembers.mountReviewReader:window.ReadMembers.mountReader;
     mount({draft:reviewDraft,articleId:articleId(),revision:documentState.version_hash,snapshot:documentState,assetUrl:articleAsset,metadata,root:$("#article"),toolbar:$("#member-reader-tools"),figureRoot:$(".left-rail")});
     await resumeRemoteProgress(readerTouched);
-  })().catch(error=>{placeholder.textContent="阅读工具暂未连接";console.warn("Reading tools unavailable",error);}).finally(()=>{window.ReadProgressPending=false;});
+  })().catch(error=>{window.ReadToast?.show({key:"reader-tools",kind:"info",message:"阅读工具暂未连接，可以继续阅读。"});console.warn("Reading tools unavailable",error);}).finally(()=>{window.ReadProgressPending=false;});
 }

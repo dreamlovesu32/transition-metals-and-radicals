@@ -185,7 +185,7 @@ class Handler(DemoMixin, BaseHTTPRequestHandler):
             return self.file_response(ROOT / "catalog.css", "text/css; charset=utf-8")
         if path == "/catalog.js":
             return self.file_response(ROOT / "catalog.js", "text/javascript; charset=utf-8")
-        if path in ('/literature-lookup.js', '/literature-lookup.css', '/reader-chrome.js', '/reader-chrome.css', '/progressive-media.js', '/progressive-media.css', '/card-actions.js', '/card-actions.css'):
+        if path in ('/toast.js', '/toast.css', '/literature-lookup.js', '/literature-lookup.css', '/reader-chrome.js', '/reader-chrome.css', '/progressive-media.js', '/progressive-media.css', '/card-actions.js', '/card-actions.css'):
             return self.file_response(ROOT / path[1:])
         media = re.fullmatch(r"/media/([a-z0-9-]+)/([a-zA-Z0-9][a-zA-Z0-9._-]*\.webp)", path)
         if media and media.group(1) in CATALOG_IDS:

@@ -351,7 +351,7 @@ async function start() {
   history.scrollRestoration = "manual";
   window.ReadProgressPending = !reviewMode;
   let readerTouched = false;
-  for (const type of ["wheel","touchstart","pointerdown","keydown"]) window.addEventListener(type,()=>{readerTouched=true;},{once:true,passive:true});
+  for (const type of ["wheel","touchstart","pointerdown","keydown"]) window.addEventListener(type,()=>{readerTouched=true;window.ReadReaderTouched=true;},{once:true,passive:true});
   loadLayoutPreference();
   $("#reading-preparation-continue").addEventListener("click", () => finishReadingPreparation(false, true));
   $("#panel-figure-retry").addEventListener("click", retryPanelFigure);
@@ -366,21 +366,9 @@ async function start() {
       await (window.ReadMembers.authReady||window.ReadMembers.ready);reviewIdentity={epoch:window.ReadMembers.state.epoch,uid:window.ReadMembers.state.user?.id};assertReviewIdentity();
       reviewDraft=await request(`/api/member/admin/drafts/${encodeURIComponent(requestedArticleId)}${requestedVersion?'?version='+encodeURIComponent(requestedVersion):''}`,{credentials:'same-origin',cache:'no-store'});assertReviewIdentity();documentState=adaptReviewDraft(reviewDraft,requestedArticleId);configureReviewNavigation();document.addEventListener('read-members-expired',clearPrivateReview);
     }else documentState = await request(`/api/document?lang=zh${requestedArticleId ? `&article=${encodeURIComponent(requestedArticleId)}` : ""}`, {signal:AbortSignal.timeout(15000)});
-    const saved = storedReadingState();
-    readingPreparationSaved = saved;
-    pendingPanelViewport = saved?.figure || null;
-    pendingInlinePositions = {...(saved?.inline || {})};
-    if (saved) {
-      readingBottomIntent = saved.scroll?.atBottom === true;
-      paneRatio = Number.isFinite(saved.paneRatio) ? saved.paneRatio : DEFAULT_PANE_RATIO;
-      currentFigureIndex = Number.isInteger(saved.figure?.index) ? saved.figure.index : 0;
-      figureAuto = saved.figure?.auto !== false;
-      figureFillPane = saved.figure?.fill === true;
-      figureScale = Math.min(5, Math.max(1, Number(saved.figure?.scale) || 1));
-      for (const [id, position] of Object.entries(saved.inline || {})) {
-        inlineFigureScales.set(id, Math.min(5, Math.max(1, Number(position.scale) || 1)));
-      }
-    }
+    const saved=null;readingPreparationSaved=null;pendingPanelViewport=null;pendingInlinePositions=null;
+    currentFigureIndex=0;saveReadingState.progressed=false;window.ReadReaderTouched=false;
+    window.scrollTo({top:0,behavior:"instant"});
     primeCurrentFigure();
     updateLanguageChrome();
     renderArticle();
@@ -388,7 +376,8 @@ async function start() {
     if (READING_TOOLS_ENABLED) renderSelections();
     restoreStartScrollY = window.scrollY;
     window.addEventListener("scroll", handleReadingScroll, {passive:true});
-    await restoreReadingState(saved);
+    await restoreReadingState(null);
+    window.scrollTo({top:0,behavior:"instant"});
     syncFigureToScroll();
     await finishReadingPreparation();
     if(!reviewMode)configureReadingNavigation().catch(() => {});
