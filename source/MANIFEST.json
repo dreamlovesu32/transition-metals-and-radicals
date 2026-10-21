@@ -427,14 +427,14 @@
     },
     {
       "path": "导读工作台/literature-lookup.css",
-      "bytes": 5843,
-      "sha256": "3c005bf0f1de7b253cf693e3911a69264065ba02cbc224a2e68d31eff64a4665",
+      "bytes": 5850,
+      "sha256": "004d8628a2ed433bb6ace980c307e78312819834e045a220199b2a4582064e77",
       "origin": "byte-for-byte source copy"
     },
     {
       "path": "导读工作台/literature-lookup.js",
-      "bytes": 11781,
-      "sha256": "544f863c013e3865496df29811b333e6d236f7a5b20d1337a7005a30ba86bf7a",
+      "bytes": 12282,
+      "sha256": "1b200ca840bab3140431175413c53e526d8c365f7b74ad78c6b575f48aa1200b",
       "origin": "byte-for-byte source copy"
     },
     {
@@ -697,8 +697,8 @@
     },
     {
       "path": "导读工作台/tests/literature-inline.test.cjs",
-      "bytes": 7134,
-      "sha256": "69fd8a6d0744ea51fe3d3244de1ce48a7a21148e9157af1d660b0fb879676966",
+      "bytes": 9028,
+      "sha256": "dc3def29f18f6e7092e409e879adfa0f50327668bf8b3b92efd8a6d2245eccab",
       "origin": "byte-for-byte source copy"
     },
     {

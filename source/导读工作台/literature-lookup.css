@@ -9,18 +9,18 @@
 .literature-toggle:disabled{opacity:.55;cursor:wait}
 .literature-toggle svg,.literature-close svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
 .literature-input-label{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.literature-lookup{position:fixed;z-index:1800;right:clamp(16px,4vw,56px);top:80px;width:760px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 110px);overflow:auto;overscroll-behavior:contain;margin:0;padding:20px 22px 22px;border:1px solid #dce5ee;border-radius:14px;background:#fff;color:#233d58;box-shadow:0 14px 48px #18395324;font:14px/1.65 "Microsoft YaHei","PingFang SC",system-ui,sans-serif;box-sizing:border-box}
+.literature-lookup{position:fixed;z-index:1800;right:clamp(16px,4vw,56px);top:80px;width:620px;max-width:calc(100vw - 32px);max-height:min(560px,calc(100dvh - 110px));overflow:auto;overscroll-behavior:contain;margin:0;padding:14px 16px 16px;border:1px solid #dce5ee;border-radius:14px;background:#fff;color:#233d58;box-shadow:0 14px 48px #18395324;font:14px/1.65 "Microsoft YaHei","PingFang SC",system-ui,sans-serif;box-sizing:border-box}
 .literature-lookup[hidden],.literature-results[hidden]{display:none}
-.literature-heading,.literature-result-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 14px}
-.literature-heading h2,.literature-result-head h2{margin:0;font-size:17px;font-weight:600}
+.literature-heading,.literature-result-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 6px}
+.literature-heading h2,.literature-result-head h2{margin:0;font-size:15px;font-weight:600}
 .literature-close{margin:-8px -10px -8px 0}
 .literature-status{font-size:13px;line-height:1.7;color:#60758b;margin:7px 0;overflow-wrap:anywhere}
 .literature-status:empty{display:none}.literature-status a{display:inline-flex;align-items:center;min-height:44px;color:#315f8b;text-decoration:underline;text-underline-offset:3px}
-.literature-results{margin-top:16px}
-.literature-candidates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:10px}
-.literature-card{min-width:0;border:1px solid #d5e2ed;border-radius:9px;padding:16px;background:#fcfdff;overflow-wrap:anywhere}
-.literature-card h3{font-size:16px;line-height:1.55;margin:0 0 9px}.literature-card p{font-size:13px;line-height:1.6;margin:6px 0}.literature-authors{color:#627184}.literature-doi{font-family:monospace}.literature-match{color:#446988}
-.literature-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.literature-results{margin-top:10px}
+.literature-candidates{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:8px}
+.literature-card{min-width:0;border:1px solid #d5e2ed;border-radius:8px;padding:12px 14px;background:#fcfdff;overflow-wrap:anywhere}
+.literature-card h3{font-size:14px;line-height:1.5;margin:0 0 5px}.literature-card p{font-size:12px;line-height:1.55;margin:3px 0}.literature-authors{color:#627184}.literature-doi{font-family:monospace}.literature-match{color:#446988}
+.literature-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .literature-actions a,.literature-actions button,.literature-collapse{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border:1px solid #bfd0e0;border-radius:7px;background:#eef5fb;color:#214e78;font:inherit;text-decoration:none;cursor:pointer;box-sizing:border-box}
 .literature-result-head .literature-collapse{background:transparent;border-color:transparent;font-size:12px;padding:6px 8px}
 .literature-card textarea{width:100%;box-sizing:border-box;min-height:100px;margin-top:10px}
@@ -40,7 +40,7 @@
  body.has-inline-literature .reader-global-articles{order:2;margin-right:auto}
  body.has-inline-literature .topbar [data-member-nav]{margin:0}
  body.has-inline-literature #article :is(h2,h3,h4){scroll-margin-top:187px}
- .literature-lookup{right:12px;max-width:calc(100vw - 24px);padding:18px}
+ .literature-lookup{right:12px;max-width:calc(100vw - 24px);padding:12px 14px}
  .literature-candidates{grid-template-columns:minmax(0,1fr)}
 }
 
